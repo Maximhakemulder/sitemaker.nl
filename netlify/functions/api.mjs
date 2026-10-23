@@ -9,6 +9,7 @@ import { checkUnsub, unsubscribe } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
 import { one, getSettings } from "../lib/core.mjs";
 import * as hq from "../lib/admin.mjs";
+import { publishedReviews, listReviews, saveReview, deleteReview } from "../lib/reviews.mjs";
 
 const body = async (req) => { try { return await req.json(); } catch { return {}; } };
 
@@ -46,6 +47,8 @@ export default async (req, context) => {
       if (m === "POST") { await unsubscribe(id); return htmlPage("Je bent afgemeld", "Je ontvangt geen berichten meer van Sitemaker op dit adres."); }
       return htmlPage("Afmelden", "Wil je geen berichten meer van Sitemaker ontvangen?", `<form method="post"><button type="submit">Ja, meld mij af</button></form>`);
     }
+
+    if (path === "reviews" && m === "GET") return json(await publishedReviews(), 200, { "cache-control": "public, max-age=300" });
 
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");
 
@@ -139,6 +142,10 @@ export default async (req, context) => {
         case "POST settings/testmail": return json(await hq.testMail(user));
         case "GET team": return json({ ...(await hq.listTeam()), me: { id: user.id, email: user.email, role: user.role } });
         case "POST team": requireAdmin(user); return json(await hq.saveTeamMember(await body(req), user));
+        case "GET reviews": return json({ reviews: await listReviews() });
+        case "POST reviews": return json(await saveReview(null, await body(req), user));
+        case "PUT reviews/:id": return json(await saveReview(id, await body(req), user));
+        case "DELETE reviews/:id": return json(await deleteReview(id, user));
         case "GET maillog": return json({ mails: await hq.mailLog() });
         default: fail(404, "Niet gevonden.");
       }
