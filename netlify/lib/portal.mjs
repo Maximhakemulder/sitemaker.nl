@@ -1,8 +1,9 @@
 // Klantenportaal. Elke query filtert op de customer_id van de ingelogde gebruiker.
 import crypto from "node:crypto";
-import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase } from "./core.mjs";
+import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase, getSettings } from "./core.mjs";
 import { putFile, getFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
+import { mollieReady } from "./mollie.mjs";
 
 export const STATUS_LABEL = { ontvangen: "Ontvangen", in_behandeling: "In behandeling", verwerkt: "Verwerkt", afgewezen: "Niet uitgevoerd" };
 
@@ -62,6 +63,8 @@ export async function portalState(user) {
     usage, canSubmit: canSubmit(c),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
+    payOnline: mollieReady(),
+    vatNote: await getSettings().then((s) => (s.billing.pricesIncludeVat === false ? "excl. btw" : s.billing.pricesIncludeVat === true ? "incl. btw" : "")),
     pendingFirstPayment: openPay ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,
   };
 }

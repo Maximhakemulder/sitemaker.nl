@@ -6,7 +6,7 @@ import { submitAppointment } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
 import { checkUnsub, unsubscribe } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
-import { one } from "../lib/core.mjs";
+import { one, getSettings } from "../lib/core.mjs";
 import * as hq from "../lib/admin.mjs";
 
 const body = async (req) => { try { return await req.json(); } catch { return {}; } };
@@ -44,6 +44,12 @@ export default async (req, context) => {
       if (!id || !checkUnsub(id, t)) return htmlPage("Link werkt niet", "Deze afmeldlink is niet (meer) geldig. Stuur ons een mail met 'afmelden', dan regelen we het.");
       if (m === "POST") { await unsubscribe(id); return htmlPage("Je bent afgemeld", "Je ontvangt geen berichten meer van Sitemaker op dit adres."); }
       return htmlPage("Afmelden", "Wil je geen berichten meer van Sitemaker ontvangen?", `<form method="post"><button type="submit">Ja, meld mij af</button></form>`);
+    }
+
+    if (path === "site" && m === "GET") {
+      const s = await getSettings();
+      const vat = s.billing.pricesIncludeVat === false ? "excl. btw" : s.billing.pricesIncludeVat === true ? "incl. btw" : "";
+      return json({ vatNote: vat }, 200, { "cache-control": "public, max-age=300" });
     }
 
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");

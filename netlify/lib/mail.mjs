@@ -54,6 +54,7 @@ export async function sendMail({ to, subject, text, html, kind, ref = "", replyT
 }
 
 async function logMail(to, subject, kind, ok, error, ref) {
+  if (kind === "inlogcode") subject = "Je inlogcode: ••••••"; // codes nooit bewaren
   await q("INSERT INTO mail_log (to_email, subject, kind, ok, error, ref) VALUES ($1,$2,$3,$4,$5,$6)",
     [String(to).slice(0, 300), String(subject).slice(0, 300), kind, ok, error, String(ref || "")]).catch(() => {});
 }
