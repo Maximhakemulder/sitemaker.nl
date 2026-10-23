@@ -4,7 +4,7 @@
   const rustig = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // ------------------------------------------------ showcase: voorbeeldsites schuiven als kaarten door
+  // ------------------------------------------------ showcase: de voorste site scrolt door, daarna schuift de volgende naar voren
   const sc = $("#showcase");
   if (sc && !rustig) {
     const kaarten = [...sc.querySelectorAll(".ls")];
@@ -12,24 +12,36 @@
     let volgorde = kaarten.slice(), zichtbaar = true;
     new IntersectionObserver(([e]) => { zichtbaar = e.isIntersecting; }).observe(sc);
     const zet = () => volgorde.forEach((k, i) => { k.classList.remove("s0", "s1", "s2", "s3", "weg"); k.classList.add("s" + Math.min(i, 3)); });
+    const glij = (el, naar, ms) => new Promise((klaar) => {
+      const van = el.scrollTop, t0 = performance.now();
+      const stap = (t) => {
+        const p = Math.min(1, (t - t0) / ms), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        el.scrollTop = van + (naar - van) * e;
+        p < 1 ? requestAnimationFrame(stap) : klaar();
+      };
+      requestAnimationFrame(stap);
+    });
+    zet();
     (async () => {
-      await wacht(1600);
+      await wacht(1200);
       for (;;) {
         if (!zichtbaar || document.hidden) { await wacht(700); continue; }
+        const voor = volgorde[0], venster = voor.querySelector(".ls-venster");
+        await glij(venster, venster.scrollHeight - venster.clientHeight, 5200);
         melding.classList.add("in");
-        await wacht(2600);
+        await wacht(1800);
         melding.classList.remove("in");
-        await wacht(400);
-        const voor = volgorde.shift();
+        await wacht(300);
+        volgorde.shift();
         voor.classList.remove("s0"); voor.classList.add("weg");
         volgorde.push(voor);
         volgorde.slice(0, -1).forEach((k, i) => { k.classList.remove("s0", "s1", "s2", "s3"); k.classList.add("s" + Math.min(i, 3)); });
         await wacht(900);
+        venster.scrollTop = 0;
         voor.classList.remove("weg"); voor.classList.add("s3");
-        await wacht(1400);
+        await wacht(900);
       }
     })();
-    zet();
   }
 
   // ------------------------------------------------ portaal-demo
