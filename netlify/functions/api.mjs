@@ -3,6 +3,7 @@ import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
 import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
+import { saveDetails, startPayment as startPortalPayment, saveIntake, addIntakeFile, deleteIntakeFile, intakeFile } from "../lib/start.mjs";
 import { submitAppointment } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
 import { checkUnsub, unsubscribe } from "../lib/b2b.mjs";
@@ -94,6 +95,17 @@ export default async (req, context) => {
         const form = await req.formData().catch(() => fail(400, "Het formulier kon niet worden gelezen. Is het bestand kleiner dan 4 MB?"));
         return json(await submitChange(user, form));
       }
+      if (path === "portal/start/gegevens" && m === "PUT") return json(await saveDetails(user, await body(req)));
+      if (path === "portal/start/betalen" && m === "POST") return json(await startPortalPayment(user, await body(req), ipOf(req, context)));
+      if (path === "portal/start/informatie" && m === "PUT") return json(await saveIntake(user, await body(req)));
+      if (path === "portal/start/bestanden" && m === "POST") {
+        const form = await req.formData().catch(() => fail(400, "Het bestand kon niet worden gelezen. Is het kleiner dan 4 MB?"));
+        return json(await addIntakeFile(user, form));
+      }
+      if (seg[1] === "start" && seg[2] === "bestanden" && /^\d+$/.test(seg[3] || "")) {
+        if (m === "DELETE") return json(await deleteIntakeFile(user, Number(seg[3])));
+        if (m === "GET") return await intakeFile(user, Number(seg[3]));
+      }
       if (seg[1] === "changes" && seg[3] === "bijlage" && m === "GET") return await changeAttachment(user, Number(seg[2]));
       if (seg[1] === "invoices" && seg[3] === "pdf" && m === "GET") return await invoicePdf(user, Number(seg[2]), { inline: url.searchParams.get("inline") === "1" });
       if (seg[1] === "invoices" && seg[3] === "pay" && m === "POST") {
@@ -133,6 +145,8 @@ export default async (req, context) => {
         case "GET sites/info": return json(hq.sitesInfo());
         case "POST customers/:id/site": return json(await hq.provisionSite(id, await body(req), user));
         case "PUT customers/:id/site": return json(await hq.linkSite(id, await body(req), user));
+        case "GET customers/:id/bestanden/:id": return await intakeFile(user, Number(seg[4]), true);
+        case "PUT customers/:id/start": return json(await hq.setOnboarding(id, await body(req), user));
         case "GET changes/:id/bijlage": return await changeAttachment(user, id, true);
         case "GET invoices": return json({ invoices: await hq.listInvoices() });
         case "POST invoices": return json(await hq.createInvoiceFromForm(await req.formData(), user));

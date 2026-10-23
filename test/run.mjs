@@ -351,6 +351,63 @@ await test("onmogelijk verzoek en ongeldig voorstel gaan naar 'handmatig'", asyn
   assert.equal(ch.find((x) => x.id === b).ai.status, "handmatig"); assert.match(ch.find((x) => x.id === b).ai.reason, /Onbekende afbeelding/);
 });
 
+console.log("Start in het portaal");
+await test("nieuwe klant met startflow: gegevens → akkoord en betalen → melding → informatie", async () => {
+  const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Bakkerij Zon", email: "zon@bakkerij.test", onboarding: true, sendWelcome: true } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const cid = r.data.customer.id;
+  assert.ok(captured.some((m) => m.to === "zon@bakkerij.test" && /start je website/i.test(m.subject)));
+  const kz = await login("zon@bakkerij.test", "portaal");
+  let st = (await call("GET", "portal/state", { cookie: kz })).data;
+  assert.equal(st.start.stage, "gegevens");
+  // betalen kan nog niet
+  assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true } })).status, 400);
+  const fout = await call("PUT", "portal/start/gegevens", { cookie: kz, body: { company: "Bakkerij Zon", contactName: "Zon", phone: "0612345678", street: "Dorpsstraat 1", postcode: "1234ab", city: "Ergens", kvk: "123" } });
+  assert.equal(fout.status, 400); assert.equal(fout.data.field, "kvk");
+  assert.equal((await call("PUT", "portal/start/gegevens", { cookie: kz, body: { company: "Bakkerij Zon B.V.", contactName: "Sanne Zon", phone: "0612345678", street: "Dorpsstraat 1", postcode: "1234ab", city: "Ergens", kvk: "12345678" } })).status, 200);
+  st = (await call("GET", "portal/state", { cookie: kz })).data;
+  assert.equal(st.start.stage, "betalen"); assert.equal(st.start.details.postcode, "1234 AB"); assert.equal(st.customer.company, "Bakkerij Zon B.V.");
+  assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: {} })).status, 400, "zonder akkoord");
+  const pay = await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true } });
+  assert.equal(pay.status, 200, JSON.stringify(pay.data)); assert.ok(pay.data.checkoutUrl);
+  // informatie kan pas na betaling
+  assert.equal((await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "x" } })).status, 400);
+  // Mollie meldt: betaald
+  const { one } = await import("../netlify/lib/core.mjs");
+  const pid = (await one("SELECT mollie_payment_id FROM payments WHERE customer_id = $1 AND kind = 'eerste' ORDER BY id DESC LIMIT 1", [cid])).mollie_payment_id;
+  __fake.payments[pid].status = "paid"; __fake.payments[pid].mandateId = "mdt_1"; __fake.payments[pid].paidAt = new Date().toISOString();
+  const voor = captured.length;
+  assert.equal((await call("POST", "mollie/webhook", { form: new URLSearchParams({ id: pid }), csrf: false, headers: { "content-type": "application/x-www-form-urlencoded" } })).status, 200);
+  assert.ok(captured.slice(voor).some((m) => m.to === "zon@bakkerij.test" && /lever nu je informatie aan/i.test(m.subject)));
+  let ov = (await call("GET", "hq/overview", { cookie: admin })).data;
+  const sk = ov.starters.find((x) => x.id === cid);
+  assert.equal(sk.stage, "informatie"); assert.equal(ov.counts.te_bouwen, 1);
+  // bestanden: logo erbij, ander klant kan hem niet zien
+  const fd = new FormData(); fd.set("kind", "logo"); fd.set("file", new Blob([png], { type: "image/png" }), "logo.png");
+  const up = await call("POST", "portal/start/bestanden", { cookie: kz, form: fd });
+  assert.equal(up.status, 200, JSON.stringify(up.data));
+  assert.equal((await call("GET", `portal/start/bestanden/${up.data.file.id}`, { cookie: k2 })).status, 404);
+  assert.equal((await call("GET", `portal/start/bestanden/${up.data.file.id}`, { cookie: kz })).status, 200);
+  // concept opslaan, dan versturen met ontbrekend veld, dan goed
+  assert.equal((await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Bakkerij", verstuur: false } })).status, 200);
+  const mis = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Bakkerij", verstuur: true } });
+  assert.equal(mis.status, 400); assert.equal(mis.data.field, "omschrijving");
+  const ok = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Ambachtelijke bakkerij in het dorp, al 30 jaar.", diensten: "Brood\nTaart", sitePhone: "0612345678", stijl: "natuur", verstuur: true } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  st = (await call("GET", "portal/state", { cookie: kz })).data;
+  assert.equal(st.start.stage, "bouwen"); assert.ok(st.start.dueAt);
+  const hq = (await call("GET", `hq/customers/${cid}`, { cookie: admin })).data;
+  assert.equal(hq.start.stage, "bouwen"); assert.equal(hq.start.files.length, 1); assert.equal(hq.start.intake.stijl, "natuur"); assert.ok(hq.start.termsAt);
+  assert.equal((await call("GET", `hq/customers/${cid}/bestanden/${up.data.file.id}`, { cookie: admin })).status, 200);
+  // na versturen kan er niets meer bij
+  assert.equal((await call("POST", "portal/start/bestanden", { cookie: kz, form: fd })).status, 400);
+});
+await test("bestaande klanten zien geen startflow", async () => {
+  const st = (await call("GET", "portal/state", { cookie: k2 })).data;
+  assert.equal(st.start, null);
+  assert.equal((await call("PUT", "portal/start/gegevens", { cookie: k2, body: {} })).status, 400);
+});
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

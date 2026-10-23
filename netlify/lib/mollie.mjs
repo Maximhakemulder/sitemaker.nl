@@ -1,4 +1,5 @@
 // Automatische betalingen via Mollie.
+import { markStarted } from "./start.mjs";
 // Stroom: eerste betaling (bouwprijs, sequenceType "first") geeft een incassomachtiging;
 // daarna maakt de webhook het maandabonnement aan. Elke betaalde termijn wordt een factuur.
 import { env, q, one, tx, getSettings, centsToMollie, dayKey, addMonths, publicBase, fail, audit, escH, euro } from "./core.mjs";
@@ -131,6 +132,7 @@ export async function handleWebhook(paymentId) {
       await q("UPDATE payments SET invoice_id = $1 WHERE id = $2", [inv.id, local.id]);
       try { const g = await generateInvoicePdf(inv.id); if (g.ok) await mailInvoice(inv.id); } catch (e) { console.log("[mollie] pdf/mail", e.message); }
     }
+    if (kind === "eerste") await markStarted(c.id).catch((e) => console.log("[start]", e.message));
     if (kind === "eerste" && !c.mollie_subscription_id) {
       try {
         await createSubscription(c, p.mandateId, meta.startDate || c.subscription_start);
@@ -195,7 +197,8 @@ function fakeApi(method, path, body) {
   const id = (p) => `${p}_${(++fake.n).toString(36)}TEST`;
   if (method === "POST" && path === "/customers") return { id: id("cst"), ...body };
   if (method === "POST" && path === "/payments") {
-    const p = { id: id("tr"), status: "open", ...body, createdAt: new Date().toISOString(), _links: { checkout: { href: "https://www.mollie.com/checkout/test" } } };
+    const tid = id("tr");
+    const p = { id: tid, status: "open", ...body, createdAt: new Date().toISOString(), _links: { checkout: { href: env("MOLLIE_FAKE_CHECKOUT") ? `${env("MOLLIE_FAKE_CHECKOUT")}?id=${tid}` : "https://www.mollie.com/checkout/test" } } };
     fake.payments[p.id] = p; return p;
   }
   if (method === "GET" && path.startsWith("/payments/")) return fake.payments[path.split("/")[2]];

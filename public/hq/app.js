@@ -15,6 +15,7 @@
     betaling: { open: ["Open", "s-let"], pending: ["Bezig", "s-let"], authorized: ["Geautoriseerd", "s-info"], paid: ["Betaald", "s-ok"], failed: ["Mislukt", "s-fout"], canceled: ["Geannuleerd", "s-grijs"], expired: ["Verlopen", "s-grijs"] },
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
+    start: { gegevens: ["Vult gegevens in", "s-grijs"], betalen: ["Moet nog betalen", "s-let"], informatie: ["Betaald · levert info aan", "s-info"], bouwen: ["Bouwen!", "s-fout"], klaar: ["Gestart", "s-ok"] },
     voorkeur: { "": "Geen voorkeur", ochtend: "Ochtend", middag: "Middag", avond: "Begin van de avond", bellen: "Wil gebeld worden" },
   };
   const chip = (map, k) => { const [t, c] = map[k] || [k, "s-grijs"]; return html`<span class="status ${c}">${t}</span>`; };
@@ -65,7 +66,7 @@
   }
 
   function zetBadges(c) {
-    badges = { wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt };
+    badges = { klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt };
     app.querySelectorAll("[data-badge]").forEach((el) => { const n = badges[el.dataset.badge]; el.hidden = !n; el.textContent = n || ""; });
   }
 
@@ -90,6 +91,8 @@
     render(main, html`
       <div class="hq-kop"><div><h1>Overzicht</h1><p>${new Date().toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })} · ${maand(d.month)}</p></div>
         <div class="knoppen"><button class="knop knop-actie" id="nieuwe-klant">Nieuwe klant</button></div></div>
+      ${d.starters.length ? html`<section class="paneel nieuwe-klanten"><div class="paneel-kop"><h2>Nieuwe klanten</h2><span class="klein dempen">Starten zelf in het portaal</span></div>
+        <ul class="lijst">${d.starters.map((k) => html`<li class="factuur-rij"><div><a href="#klant/${k.id}"><b>${k.company}</b></a><br><span class="klein dempen">${k.stage === "bouwen" ? `Informatie binnen ${geleden(k.intakeAt)} · online uiterlijk ${tijd(k.dueAt)}` : k.startedAt ? `Betaald ${geleden(k.startedAt)}` : `Aangemaakt ${geleden(k.createdAt)}`}</span></div>${chip(L.start, k.stage)}</li>`)}</ul></section>` : ""}
       <div class="kpis">
         ${kpi(c.klanten, `klanten (${c.live} live, ${c.in_aanbouw} in aanbouw)`, "#klanten")}
         ${kpi(euro(c.mrr_basis), "aan abonnementen per maand", "#betalingen")}
@@ -173,13 +176,14 @@
     const dlg = SM.dialoog("Nieuwe klant", html`<form novalidate>
       <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
       ${klantVelden(voorvul)}
+      <div class="veld"><label class="vinkje"><input type="checkbox" name="onboarding" checked> <span>Klant start zelf in het portaal<small class="hulp">Hij vult zijn gegevens aan, gaat akkoord, betaalt en levert de informatie voor de website aan. Je hoeft nu alleen bedrijfsnaam en e-mail in te vullen.</small></span></label></div>
       <div class="veld"><label class="vinkje"><input type="checkbox" name="sendWelcome" checked> Stuur een welkomstmail met de link naar het portaal</label></div>
       <div class="knoppen"><button class="knop knop-actie" type="submit">Klant aanmaken</button><button class="knop knop-licht" type="button" data-annuleer>Annuleren</button></div></form>`);
     const form = dlg.querySelector("form");
     dlg.querySelector("[data-annuleer]").onclick = () => dlg.close();
     form.addEventListener("submit", async (e) => {
       e.preventDefault(); SM.wisFouten(form);
-      const b = Object.fromEntries(new FormData(form)); b.sendWelcome = form.elements.sendWelcome.checked;
+      const b = Object.fromEntries(new FormData(form)); b.sendWelcome = form.elements.sendWelcome.checked; b.onboarding = form.elements.onboarding.checked;
       if (voorvul.appointmentId) b.appointmentId = voorvul.appointmentId;
       if (voorvul.leadId) b.leadId = voorvul.leadId;
       const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Aanmaken…");
@@ -203,6 +207,7 @@
         <div class="knoppen"><button class="knop knop-licht" id="bewerk">Gegevens bewerken</button><button class="knop knop-licht" id="als-klant">Bekijk als klant</button><button class="knop knop-licht" id="welkom">Welkomstmail sturen</button>${c.siteUrl ? html`<a class="knop knop-licht" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Site openen</a>` : ""}</div></div>
       <div class="klant-raster">
         <div>
+          ${d.start ? startPaneel(d.start, c) : ""}
           <section class="paneel"><h2>Zo ziet de klant het portaal</h2>
             <div class="teller" role="img" aria-label="${u.used} van ${u.limit} wijzigingen gebruikt">${Array.from({ length: u.limit }, (_, i) => html`<span class="${i < u.used ? "gebruikt" : ""}"></span>`)}</div>
             <p class="teller-tekst">Nog ${u.left} van ${u.limit} over<small>${maand(u.month)} · ${d.invoices.length} facturen in het portaal</small></p></section>
@@ -299,6 +304,25 @@
     koppelKopieer(main);
   }
 
+  const INTAKE_LABEL = { omschrijving: "Wat doet het bedrijf", diensten: "Diensten", onderscheid: "Waarom kiezen klanten voor hen", werkgebied: "Werkgebied", doelgroep: "Klanten", openingstijden: "Openingstijden",
+    sitePhone: "Telefoon op de site", siteEmail: "E-mail op de site", siteAddress: "Adres op de site", socials: "Social media", domein: "Domeinnaam", huidigeSite: "Huidige website", stijl: "Stijl", kleuren: "Kleuren", voorbeelden: "Mooie websites", opmerkingen: "Opmerkingen" };
+  function startPaneel(st, c) {
+    const stap = (ok, tekst, wanneer) => html`<li><span class="ic ${ok ? "ja" : "nee"}">${ok ? raw(icon.ok) : "·"}</span><div>${tekst}${wanneer ? html`<small>${tijd(wanneer)}</small>` : ""}</div></li>`;
+    const ingevuld = Object.keys(INTAKE_LABEL).map((k) => [k, (st.intake || {})[k]]).filter(([, v]) => v);
+    return html`<section class="paneel start-klant"><div class="paneel-kop"><h2>Start in het portaal</h2>${chip(L.start, st.stage)}</div>
+      <ul class="checklijst">
+        ${stap(!!st.detailsAt, "Bedrijfsgegevens ingevuld", st.detailsAt)}
+        ${stap(!!st.termsAt, st.termsAt ? `Akkoord voorwaarden en incasso (${st.termsBy})` : "Akkoord voorwaarden en incasso", st.termsAt)}
+        ${stap(!!st.startedAt, "Eerste betaling binnen", st.startedAt)}
+        ${stap(!!st.intakeAt, "Informatie aangeleverd", st.intakeAt)}
+      </ul>
+      ${st.stage === "bouwen" ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>Bouwen:</b> online uiterlijk ${tijd(st.dueAt)}. Zet de site daarna op Live (Gegevens bewerken).</p></div>` : ""}
+      ${ingevuld.length ? html`<details ${st.stage === "bouwen" ? raw("open") : ""}><summary><b>Informatie van de klant</b>${st.intakeAt ? "" : " (concept)"}</summary>
+        <dl class="intake">${ingevuld.map(([k, v]) => html`<dt>${INTAKE_LABEL[k] || k}</dt><dd>${k === "stijl" ? (v === "kies" ? "Laat Sitemaker kiezen" : v) : v}</dd>`)}</dl></details>` : ""}
+      ${st.files.length ? html`<h3 class="sub-kop">Bestanden (${st.files.length})</h3><ul class="lijst">${st.files.map((f) => html`<li class="factuur-rij"><div><b>${f.name}</b><br><span class="klein dempen">${f.kind === "logo" ? "Logo" : "Foto"} · ${SM.bytes(f.size)}</span></div><a class="knop knop-licht knop-klein" href="/api/hq/customers/${c.id}/bestanden/${f.id}">${raw(icon.download)}Download</a></li>`)}</ul>` : ""}
+    </section>`;
+  }
+
   async function siteDialoog(c) {
     const info = await api("hq/sites/info");
     const mist = [!info.github && "GITHUB_TOKEN en GITHUB_ORG", !info.netlify && "NETLIFY_API_TOKEN en NETLIFY_ACCOUNT_SLUG"].filter(Boolean);
@@ -334,7 +358,7 @@
   }
 
   function logTekst(l) {
-    const t = { "klant.aangemaakt": "Klant aangemaakt", "klant.bijgewerkt": "Gegevens bijgewerkt", "klant.welkomstmail": "Welkomstmail verstuurd", "wijziging.ingediend": "Wijziging doorgegeven door klant", "wijziging.status": `Wijziging op ${(L.wijziging[l.detail?.to] || [l.detail?.to])[0]} gezet`, "factuur.aangemaakt": `Factuur ${l.detail?.number || ""} aangemaakt`, "factuur.status": `Factuur ${l.detail?.number || ""} op ${l.detail?.to} gezet`, "factuur.pdf": `PDF geüpload bij ${l.detail?.number || ""}`, "betaling.eerste_gestart": "Betaallink voor eerste betaling gemaakt", "betaling.factuurlink": "Betaallink voor factuur gemaakt", "abonnement.gestart": "Automatisch abonnement gestart", "abonnement.opgezegd": "Abonnement opgezegd", "portaal.gebruiker_toegevoegd": `Portaalgebruiker ${l.detail?.email || ""} toegevoegd`, "portaal.gebruiker_geblokkeerd": `Toegang ${l.detail?.email || ""} geblokkeerd`, "portaal.gebruiker_actief": `Toegang ${l.detail?.email || ""} hersteld`, "site.aangemaakt": `Repo ${l.detail?.repo || ""} aangemaakt`, "site.gekoppeld": `Gekoppeld aan ${l.detail?.repo || ""}`, "wijziging.goedgekeurd": "Voorstel van Claude goedgekeurd en live gezet", "wijziging.opnieuw": "Nieuw voorstel gevraagd aan Claude", "portaal.bekeken_als_klant": "Portaal bekeken als klant" };
+    const t = { "klant.aangemaakt": "Klant aangemaakt", "klant.bijgewerkt": "Gegevens bijgewerkt", "klant.welkomstmail": "Welkomstmail verstuurd", "wijziging.ingediend": "Wijziging doorgegeven door klant", "wijziging.status": `Wijziging op ${(L.wijziging[l.detail?.to] || [l.detail?.to])[0]} gezet`, "factuur.aangemaakt": `Factuur ${l.detail?.number || ""} aangemaakt`, "factuur.status": `Factuur ${l.detail?.number || ""} op ${l.detail?.to} gezet`, "factuur.pdf": `PDF geüpload bij ${l.detail?.number || ""}`, "betaling.eerste_gestart": "Betaallink voor eerste betaling gemaakt", "betaling.factuurlink": "Betaallink voor factuur gemaakt", "abonnement.gestart": "Automatisch abonnement gestart", "abonnement.opgezegd": "Abonnement opgezegd", "portaal.gebruiker_toegevoegd": `Portaalgebruiker ${l.detail?.email || ""} toegevoegd`, "portaal.gebruiker_geblokkeerd": `Toegang ${l.detail?.email || ""} geblokkeerd`, "portaal.gebruiker_actief": `Toegang ${l.detail?.email || ""} hersteld`, "start.gegevens": "Klant heeft bedrijfsgegevens ingevuld", "start.akkoord": "Klant ging akkoord met voorwaarden en incasso", "start.betaald": "Eerste betaling binnen", "start.informatie": "Klant heeft informatie voor de website aangeleverd", "site.aangemaakt": `Repo ${l.detail?.repo || ""} aangemaakt`, "site.gekoppeld": `Gekoppeld aan ${l.detail?.repo || ""}`, "wijziging.goedgekeurd": "Voorstel van Claude goedgekeurd en live gezet", "wijziging.opnieuw": "Nieuw voorstel gevraagd aan Claude", "portaal.bekeken_als_klant": "Portaal bekeken als klant" };
     return t[l.action] || l.action;
   }
 
