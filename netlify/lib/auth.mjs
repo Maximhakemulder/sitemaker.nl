@@ -110,23 +110,55 @@ export function sessionCookie(token, maxAge) {
 }
 export const clearCookie = () => `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isLocal() ? "" : "; Secure"}`;
 
-function tokenFrom(req) {
+// "Bekijk als klant": een aparte cookie, zodat de HQ-sessie blijft bestaan.
+export const ALS_COOKIE = "sm_als";
+function tokenFrom(req, name = COOKIE) {
   const c = req.headers.get("cookie") || "";
-  const m = c.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([A-Za-z0-9_-]{20,})`));
+  const m = c.match(new RegExp(`(?:^|;\\s*)${name}=([A-Za-z0-9_-]{20,})`));
   return m ? m[1] : null;
 }
-
-export async function currentUser(req) {
-  const token = tokenFrom(req);
+async function userForToken(token) {
   if (!token) return null;
-  const u = await one(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-                       WHERE s.token_hash = $1 AND s.expires_at > NOW() AND u.active = TRUE`, [sha256(token)]);
-  return u || null;
+  return (await one(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+                     WHERE s.token_hash = $1 AND s.expires_at > NOW() AND u.active = TRUE`, [sha256(token)])) || null;
 }
 
-export async function logout(req) {
+// Open modus: zolang de mail niet is ingesteld en OPEN_MODE=1, is HQ zonder inloggen te gebruiken.
+export const openMode = () => env("OPEN_MODE") === "1" && !mailReady();
+async function openAdmin() {
+  const email = adminEmails()[0] || "beheer@sitemaker.nl";
+  return one(`INSERT INTO users (email, role, name) VALUES ($1, 'admin', 'Open modus') ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING *`, [email]);
+}
+
+// scope "portaal": eerst een "bekijk als klant"-sessie, anders de gewone. scope "hq": de gewone, of in open modus de beheerder.
+export async function currentUser(req, scope = "hq") {
+  if (scope === "portaal") {
+    const als = await userForToken(tokenFrom(req, ALS_COOKIE));
+    if (als && als.role === "klant") return Object.assign(als, { viaHq: true });
+  }
+  const u = await userForToken(tokenFrom(req));
+  if (scope === "hq" && !isStaff(u) && openMode()) return Object.assign(await openAdmin(), { open: true });
+  return u;
+}
+
+export async function logout(req, scope = "hq") {
+  const als = tokenFrom(req, ALS_COOKIE);
+  if (scope === "portaal" && als) { await q("DELETE FROM sessions WHERE token_hash = $1", [sha256(als)]); return alsCookie("", 0); }
   const token = tokenFrom(req);
   if (token) await q("DELETE FROM sessions WHERE token_hash = $1", [sha256(token)]);
+  return clearCookie();
+}
+
+const alsCookie = (token, maxAge) => `${ALS_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${isLocal() ? "" : "; Secure"}`;
+
+// Een medewerker opent het portaal van een klant, precies zoals de klant het ziet (8 uur geldig, gelogd).
+export async function viewAsCustomer(staff, customerId) {
+  const u = await one("SELECT * FROM users WHERE customer_id = $1 AND role = 'klant' AND active ORDER BY id LIMIT 1", [customerId]);
+  if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
+  const token = randomToken();
+  await q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '8 hours')", [sha256(token), u.id]);
+  await q("INSERT INTO audit_log (user_id, customer_id, action, detail) VALUES ($1, $2, 'portaal.bekeken_als_klant', $3::jsonb)", [staff.id, customerId, JSON.stringify({ email: u.email })]);
+  return { cookie: alsCookie(token, 8 * 3600) };
 }
 
 export const isStaff = (u) => u && (u.role === "medewerker" || u.role === "admin");

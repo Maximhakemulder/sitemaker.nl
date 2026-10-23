@@ -190,5 +190,5 @@
     SM.api("auth/options").then((o) => (o.mail ? stap1() : portal === "hq" && o.key ? sleutel() : geenMail())).catch(stap1);
   });
 
-  SM.uitloggen = async () => { try { await SM.api("auth/logout", { method: "POST" }); } catch {} location.reload(); };
+  SM.uitloggen = async (portaal) => { try { await SM.api("auth/logout" + (portaal === true ? "?portal=1" : ""), { method: "POST" }); } catch {} location.reload(); };
 })();

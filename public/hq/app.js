@@ -50,11 +50,11 @@
         <aside class="hq-zij" id="zij">
           <div class="logo"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker"><b>HQ</b></div>
           <nav class="hq-nav" aria-label="HQ">${NAV.map(([k, t, svg, kop]) => html`${kop ? html`<div class="tussen">${kop}</div>` : ""}<a href="#${k}" data-nav="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${raw(svg)}</svg>${t}<span class="tel" data-badge="${k}" hidden></span></a>`)}</nav>
-          <div class="onder">${me.email}<br>${me.role === "admin" ? "Beheerder" : "Medewerker"} · <button class="knop knop-tekst" id="uit">Uitloggen</button><br><a href="/" target="_blank" rel="noopener" class="knop-tekst knop">Website bekijken</a></div>
+          <div class="onder">${me.open ? html`<b>Open modus</b>` : html`${me.email}<br>${me.role === "admin" ? "Beheerder" : "Medewerker"} · <button class="knop knop-tekst" id="uit">Uitloggen</button>`}<br><a href="/" target="_blank" rel="noopener" class="knop-tekst knop">Website bekijken</a></div>
         </aside>
-        <main class="hq-main" id="inhoud" tabindex="-1"></main>
+        <div class="hq-rechts">${me.open ? html`<div class="open-balk">Open modus: HQ is zonder inloggen bereikbaar. Dit gaat vanzelf dicht zodra de mail is ingesteld.</div>` : ""}<main class="hq-main" id="inhoud" tabindex="-1"></main></div>
       </div>`);
-    app.querySelector("#uit").onclick = SM.uitloggen;
+    if (app.querySelector("#uit")) app.querySelector("#uit").onclick = () => SM.uitloggen();
     const zij = app.querySelector("#zij"), mk = app.querySelector("#menu");
     mk.onclick = () => { const o = zij.classList.toggle("open"); mk.setAttribute("aria-expanded", String(o)); };
     zij.addEventListener("click", (e) => { if (e.target.closest("a")) { zij.classList.remove("open"); mk.setAttribute("aria-expanded", "false"); } });
@@ -197,7 +197,7 @@
     render(main, html`
       <div class="klant-kop"><div><a class="terug" href="#klanten">Alle klanten</a><h1>${c.company}</h1>
         <p class="dempen">${c.contactName ? c.contactName + " · " : ""}${c.email} ${chip(L.site, c.siteStatus)} ${chip(L.abo, c.billingStatus)}</p></div>
-        <div class="knoppen"><button class="knop knop-licht" id="bewerk">Gegevens bewerken</button><button class="knop knop-licht" id="welkom">Welkomstmail sturen</button>${c.siteUrl ? html`<a class="knop knop-licht" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Site openen</a>` : ""}</div></div>
+        <div class="knoppen"><button class="knop knop-licht" id="bewerk">Gegevens bewerken</button><button class="knop knop-licht" id="als-klant">Bekijk als klant</button><button class="knop knop-licht" id="welkom">Welkomstmail sturen</button>${c.siteUrl ? html`<a class="knop knop-licht" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Site openen</a>` : ""}</div></div>
       <div class="klant-raster">
         <div>
           <section class="paneel"><h2>Zo ziet de klant het portaal</h2>
@@ -243,6 +243,9 @@
         try { await api("hq/customers/" + id, { method: "PUT", body: Object.fromEntries(new FormData(form)) }); dlg.close(); toast("Opgeslagen"); herlaad(); }
         catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
       });
+    };
+    main.querySelector("#als-klant").onclick = async () => {
+      try { await api(`hq/customers/${id}/als-klant`, { method: "POST" }); window.open("/portaal/", "_blank", "noopener"); } catch (err) { toast(err.message, "fout"); }
     };
     main.querySelector("#welkom").onclick = async (e) => {
       SM.bezig(e.target, true, "Versturen…");

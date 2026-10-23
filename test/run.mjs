@@ -251,6 +251,20 @@ await test("sleutel-login werkt alleen zolang mail niet is ingesteld, en alleen 
   assert.equal((await call("GET", "hq/overview", { cookie: ok.cookie.split(";")[0] })).status, 200);
   process.env.MAIL_TRANSPORT = "capture";
 });
+await test("open modus: HQ zonder inloggen, alleen zonder mail; bekijk-als-klant werkt los van HQ-sessie", async () => {
+  process.env.OPEN_MODE = "1";
+  assert.equal((await call("GET", "hq/overview")).status, 401);
+  delete process.env.MAIL_TRANSPORT;
+  const ov = await call("GET", "hq/overview"); assert.equal(ov.status, 200);
+  assert.equal((await call("GET", "portal/state")).status, 401, "portaal blijft dicht");
+  const als = await call("POST", `hq/customers/${c1}/als-klant`);
+  const c = als.cookie.split(";")[0]; assert.match(c, /^sm_als=/);
+  const st = await call("GET", "portal/state", { cookie: c });
+  assert.equal(st.data.customer.company, "Testklant Een"); assert.equal(st.data.user.viaHq, true);
+  assert.equal((await call("GET", "hq/overview", { cookie: c })).status, 200, "HQ blijft werken naast bekijk-als-klant");
+  delete process.env.OPEN_MODE; process.env.MAIL_TRANSPORT = "capture";
+  assert.equal((await call("GET", "hq/overview", { cookie: c })).status, 401);
+});
 
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();

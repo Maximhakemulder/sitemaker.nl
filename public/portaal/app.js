@@ -13,7 +13,7 @@
   SM.onLoggedOut = () => start();
 
   async function start() {
-    try { const me = await api("auth/me"); if (me.user && me.user.role === "klant") return laad(); } catch {}
+    try { const me = await api("auth/me?portal=1"); if (me.user && me.user.role === "klant") return laad(); } catch {}
     const r = await SM.inloggen(app, { portal: "portaal", kop: "Inloggen op je klantenportaal", titel: "Je website, je wijzigingen en je facturen op één plek.", tekst: "Geef wijzigingen door, volg de status en vind je facturen terug." });
     if (r.role !== "klant") { location.href = "/hq/"; return; }
     laad();
@@ -38,8 +38,10 @@
         <a href="#wijzigingen" data-tab="wijzigingen">Wijzigingen</a>
         <a href="#facturen" data-tab="facturen">Facturen</a>
       </div></nav>
+      ${state.user.viaHq ? html`<div class="open-balk">Je bekijkt dit portaal zoals ${c.company} het ziet. <button class="knop knop-tekst" id="terug">Terug naar HQ</button></div>` : ""}
       <main class="p-main" id="inhoud" tabindex="-1"></main>`);
-    app.querySelector("#uit").onclick = SM.uitloggen;
+    app.querySelector("#uit").onclick = () => SM.uitloggen(true);
+    app.querySelector("#terug")?.addEventListener("click", async () => { try { await api("auth/logout?portal=1", { method: "POST" }); } catch {} location.href = "/hq/#klant/" + c.id; });
   }
 
   window.addEventListener("hashchange", () => { if (state) route(); });

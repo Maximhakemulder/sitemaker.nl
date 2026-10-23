@@ -1,7 +1,7 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
-import { requestCode, verifyCode, loginWithKey, keyLoginOpen, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
+import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
 import { submitAppointment } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
@@ -69,11 +69,11 @@ export default async (req, context) => {
       const { user, cookie } = await loginWithKey(b.email, b.key, ipOf(req, context));
       return json({ ok: true, role: user.role }, 200, { "set-cookie": cookie });
     }
-    if (path === "auth/logout" && m === "POST") { await logout(req); return json({ ok: true }, 200, { "set-cookie": clearCookie() }); }
+    if (path === "auth/logout" && m === "POST") { const scope = url.searchParams.get("portal") === "1" ? "portaal" : "hq"; return json({ ok: true }, 200, { "set-cookie": await logout(req, scope) }); }
 
-    const user = await currentUser(req);
+    const user = await currentUser(req, seg[0] === "portal" || url.searchParams.get("portal") === "1" ? "portaal" : "hq");
     if (path === "auth/options") return json({ mail: mailReady(), key: keyLoginOpen() });
-    if (path === "auth/me") return json({ user: user ? { email: user.email, name: user.name, role: user.role } : null });
+    if (path === "auth/me") return json({ user: user ? { email: user.email, name: user.name, role: user.role, open: !!user.open, viaHq: !!user.viaHq } : null, open: openMode() });
 
     // ------------------------------------------------ klantenportaal
     if (seg[0] === "portal") {
@@ -107,6 +107,7 @@ export default async (req, context) => {
         case "PUT customers/:id": return json(await hq.updateCustomer(id, await body(req), user));
         case "POST customers/:id/users": return json(await hq.addPortalUser(id, await body(req), user));
         case "PUT customers/:id/users/:id": return json(await hq.setPortalUser(id, Number(seg[4]), await body(req), user));
+        case "POST customers/:id/als-klant": { const r = await viewAsCustomer(user, id); return json({ url: "/portaal/" }, 200, { "set-cookie": r.cookie }); }
         case "POST customers/:id/welcome": return json(await hq.sendWelcome(id, user));
         case "POST customers/:id/payment": return json(await hq.startPayment(id, await body(req), user));
         case "POST customers/:id/cancel": requireAdmin(user); return json(await hq.stopSubscription(id, user));

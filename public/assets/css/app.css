@@ -269,3 +269,7 @@ a.kpi:hover { border-color: #BFC7DB; }
 @media (max-width: 640px) { .wijziging-form .rij3 { grid-template-columns: 1fr; } .wijziging-form .vinkje { min-height: 0; } }
 .melding .knop { margin-top: 8px; }
 dialog h3 { margin: 20px 0 8px; }
+
+.open-balk { background: var(--let-zacht); color: var(--let); font-weight: 600; font-size: 14px; padding: 10px 16px; text-align: center; }
+.open-balk .knop-tekst { color: var(--let); font-size: 14px; min-height: 0; }
+.hq-rechts { min-width: 0; }

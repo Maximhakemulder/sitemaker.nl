@@ -57,7 +57,7 @@ export async function portalState(user) {
     one("SELECT checkout_url, amount_cents FROM payments WHERE customer_id = $1 AND kind = 'eerste' AND status = 'open' AND checkout_url IS NOT NULL ORDER BY id DESC LIMIT 1", [c.id]),
   ]);
   return {
-    user: { email: user.email, name: user.name, role: user.role },
+    user: { email: user.email, name: user.name, role: user.role, viaHq: !!user.viaHq },
     customer: publicCustomer(c),
     offer: OFFER,
     usage, canSubmit: canSubmit(c),
