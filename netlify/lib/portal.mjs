@@ -64,7 +64,6 @@ export async function portalState(user) {
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: mollieReady(),
-    vatNote: await getSettings().then((s) => (s.billing.pricesIncludeVat === false ? "excl. btw" : s.billing.pricesIncludeVat === true ? "incl. btw" : "")),
     pendingFirstPayment: openPay ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,
   };
 }

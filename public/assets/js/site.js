@@ -3,11 +3,6 @@
   const $ = (s, el = document) => el.querySelector(s);
   const jaar = $("#jaar"); if (jaar) jaar.textContent = new Date().getFullYear();
 
-  // Btw-vermelding bij de prijzen, zoals ingesteld in Sitemaker HQ
-  fetch("/api/site").then((r) => r.json()).then((d) => {
-    if (d.vatNote) document.querySelectorAll("[data-btw]").forEach((el) => (el.textContent = " " + d.vatNote));
-  }).catch(() => {});
-
   // Menu op mobiel
   const knop = $(".menuknop"), menu = $("#menu");
   knop?.addEventListener("click", () => {

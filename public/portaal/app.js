@@ -73,7 +73,7 @@
       <div class="p-groet"><h1>Hallo ${c.contactName || c.company}</h1>
         <p>${c.siteUrl ? html`Je website: <a href="${c.siteUrl}" target="_blank" rel="noopener">${c.siteUrl.replace(/^https?:\/\//, "")}</a> ${label(SITE, c.siteStatus)}` : html`Je website ${label(SITE, c.siteStatus)}`}</p></div>
       ${betaald ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Bedankt! Je betaling wordt verwerkt. Zodra hij binnen is, verschijnt de factuur hieronder.</p></div>` : ""}
-      ${state.pendingFirstPayment ? html`<div class="melding melding-let">${raw(icon.let)}<div><p><b>Rond je eerste betaling af.</b> Met de betaling van ${euro(state.pendingFirstPayment.amountCents)}${state.vatNote ? " (incl. btw)" : ""} start je abonnement en de automatische maandbetaling.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div></div>` : ""}
+      ${state.pendingFirstPayment ? html`<div class="melding melding-let">${raw(icon.let)}<div><p><b>Rond je eerste betaling af.</b> Met de betaling van ${euro(state.pendingFirstPayment.amountCents)} start je abonnement en de automatische maandbetaling.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div></div>` : ""}
       <div class="p-raster">
         <div>
           <section class="paneel" aria-labelledby="t-teller">
@@ -93,7 +93,7 @@
             <h2 id="t-abo">Je abonnement</h2>
             <dl class="gegevens">
               <dt>Status</dt><dd>${label(ABO, c.billingStatus)}</dd>
-              <dt>Per maand</dt><dd class="nummers">${euro(c.monthlyCents)}${state.vatNote ? " " + state.vatNote : ""}</dd>
+              <dt>Per maand</dt><dd class="nummers">${euro(c.monthlyCents)}</dd>
               <dt>Inbegrepen</dt><dd>Hosting en ${state.offer.changesPerMonth} wijzigingen per maand</dd>
               ${c.subscriptionStart ? html`<dt>Sinds</dt><dd>${datumLang(c.subscriptionStart)}</dd>` : ""}
               ${c.deliveredAt ? html`<dt>Website online</dt><dd>${datumLang(c.deliveredAt)}</dd>` : ""}

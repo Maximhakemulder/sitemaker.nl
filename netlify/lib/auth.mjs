@@ -75,13 +75,33 @@ export async function verifyCode(rawEmail, rawCode, portal) {
     const user = await t.one("SELECT * FROM users WHERE email = $1 AND active = TRUE", [email]);
     if (!user) fail(403, "Dit account is niet actief.");
     if (portal === "hq" && user.role === "klant") fail(403, "Dit account heeft geen toegang tot HQ.");
-    const token = randomToken();
-    const days = SESSION_DAYS[user.role] || 14;
-    await t.q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, NOW() + ($3 || ' days')::interval)", [sha256(token), user.id, String(days)]);
-    await t.q("UPDATE users SET last_login_at = NOW() WHERE id = $1", [user.id]);
-    await t.q("DELETE FROM sessions WHERE expires_at < NOW()");
-    return { user, cookie: sessionCookie(token, days * 86400) };
+    return createSession(t, user);
   });
+}
+
+async function createSession(t, user) {
+  const token = randomToken();
+  const days = SESSION_DAYS[user.role] || 14;
+  await t.q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, NOW() + ($3 || ' days')::interval)", [sha256(token), user.id, String(days)]);
+  await t.q("UPDATE users SET last_login_at = NOW() WHERE id = $1", [user.id]);
+  await t.q("DELETE FROM sessions WHERE expires_at < NOW()");
+  return { user, cookie: sessionCookie(token, days * 86400) };
+}
+
+// Zolang de mail nog niet is ingesteld: beheerders loggen in op HQ met ADMIN_LOGIN_KEY.
+// Zodra de mail werkt, gaat deze route vanzelf dicht.
+export const keyLoginOpen = () => !mailReady() && env("ADMIN_LOGIN_KEY").length >= 16;
+export async function loginWithKey(rawEmail, rawKey, ip) {
+  if (!keyLoginOpen()) fail(403, "Inloggen met een toegangssleutel is niet (meer) mogelijk. Gebruik de code per mail.");
+  const email = cleanEmail(rawEmail);
+  const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM login_codes WHERE ip = $1 AND created_at > NOW() - INTERVAL '1 hour'", [ip]);
+  if (n >= 10) fail(429, "Te veel pogingen. Probeer het over een uur opnieuw.");
+  await q("INSERT INTO login_codes (email, code_hash, ip, expires_at, used) VALUES ($1, 'sleutel', $2, NOW(), TRUE)", [email, ip]);
+  const a = Buffer.from(sha256(String(rawKey || ""))), b = Buffer.from(sha256(env("ADMIN_LOGIN_KEY")));
+  if (!adminEmails().includes(email) || !crypto.timingSafeEqual(a, b)) fail(400, "E-mailadres of toegangssleutel klopt niet.");
+  const user = await findUser(email);
+  if (!user?.active || user.role === "klant") fail(403, "Dit account heeft geen toegang tot HQ.");
+  return tx((t) => createSession(t, user));
 }
 
 function isLocal() { return env("SM_INSECURE_COOKIE") === "1"; }

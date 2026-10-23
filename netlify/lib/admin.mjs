@@ -52,7 +52,6 @@ export function setupStatus(s) {
     { key: "admins", ok: !!env("ADMIN_EMAILS"), label: "Beheerders", hint: "Zet ADMIN_EMAILS (komma-gescheiden) in Netlify." },
     { key: "secret", ok: !!env("AUTH_SECRET"), label: "Beveiligingssleutel", hint: "Zet AUTH_SECRET (lange willekeurige tekst) in Netlify." },
     { key: "company", ok: companyComplete(s.company), label: "Bedrijfsgegevens voor facturen", hint: "Vul ze in bij Instellingen." },
-    { key: "vat", ok: vatModeSet(s), label: "Btw-keuze (prijzen incl. of excl. btw)", hint: "Kies bij Instellingen › Facturatie." },
     { key: "mollie", ok: mollieReady(), label: `Mollie (automatische betalingen)${mollieMode() === "test" ? " · testmodus" : ""}`, hint: "Zet MOLLIE_API_KEY in Netlify." },
     { key: "scout", ok: scoutReady(), label: "Outscraper (B2B-scout)", hint: "Optioneel: OUTSCRAPER_API_KEY." },
     { key: "ai", ok: aiReady(), label: "AI-openingszinnen (B2B)", hint: "Optioneel: zet de Netlify AI Gateway aan." },

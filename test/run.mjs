@@ -238,6 +238,20 @@ await test("uitloggen beëindigt de sessie", async () => {
   assert.equal((await call("GET", "portal/state", { cookie: k1 })).status, 401);
 });
 
+console.log("Inloggen zonder mail");
+await test("sleutel-login werkt alleen zolang mail niet is ingesteld, en alleen voor beheerders", async () => {
+  process.env.ADMIN_LOGIN_KEY = "een-lange-test-sleutel-123";
+  assert.equal((await call("POST", "auth/key", { body: { email: "maxim@sitemaker.test", key: "een-lange-test-sleutel-123" } })).status, 403); // mail staat aan (capture)
+  delete process.env.MAIL_TRANSPORT;
+  assert.equal((await call("GET", "auth/options")).data.key, true);
+  assert.equal((await call("POST", "auth/key", { body: { email: "maxim@sitemaker.test", key: "fout" } })).status, 400);
+  assert.equal((await call("POST", "auth/key", { body: { email: "jan@een.test", key: "een-lange-test-sleutel-123" } })).status, 400);
+  const ok = await call("POST", "auth/key", { body: { email: "maxim@sitemaker.test", key: "een-lange-test-sleutel-123" } });
+  assert.equal(ok.status, 200);
+  assert.equal((await call("GET", "hq/overview", { cookie: ok.cookie.split(";")[0] })).status, 200);
+  process.env.MAIL_TRANSPORT = "capture";
+});
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

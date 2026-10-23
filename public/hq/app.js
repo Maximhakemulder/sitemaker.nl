@@ -216,7 +216,7 @@
               ${c.subscriptionStart ? html`<dt>Eerste termijn</dt><dd>${datumLang(c.subscriptionStart)}</dd>` : ""}
               ${mollieSub && !mollieSub.error ? html`<dt>Mollie</dt><dd>${mollieSub.status}${mollieSub.nextPaymentDate ? ` · volgende afschrijving ${datum(mollieSub.nextPaymentDate)}` : ""}</dd>` : ""}
               ${mollieSub?.error ? html`<dt>Mollie</dt><dd class="dempen">${mollieSub.error}</dd>` : ""}</dl>
-            <p class="klein dempen">Bedragen zonder btw; wat Mollie afschrijft hangt af van je btw-instelling.</p>
+            <p class="klein dempen">Dit zijn de bedragen die de klant betaalt.</p>
             <div class="knoppen">
               ${["geen", "handmatig", "opgezegd", "wacht_op_betaling"].includes(c.billingStatus) ? html`<button class="knop knop-actie knop-klein" id="mollie-start">${c.billingStatus === "wacht_op_betaling" ? "Nieuwe betaallink" : "Automatisch incasseren"}</button>` : ""}
               ${c.mollieSubscriptionId && c.billingStatus !== "opgezegd" && isAdmin() ? html`<button class="knop knop-gevaar knop-klein" id="mollie-stop">Abonnement opzeggen</button>` : ""}
@@ -623,9 +623,9 @@
             <div class="rij2">${v("email", "E-mail", co.email, { type: "email" })}${v("phone", "Telefoon", co.phone, { opt: "optioneel" })}</div>
             <button class="knop" type="submit">Opslaan</button></form>
           <form class="paneel" id="f-fact" novalidate><h2>Facturatie en btw</h2>
-            <fieldset class="veld"><legend class="label"><b>De prijzen €299,95 en €69,95 zijn…</b></legend>
-              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="false" ${bi.pricesIncludeVat === false ? raw("checked") : ""}> exclusief btw (klant betaalt €69,95 + btw)</label>
-              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="true" ${bi.pricesIncludeVat === true ? raw("checked") : ""}> inclusief btw (klant betaalt €69,95)</label>
+            <fieldset class="veld"><legend class="label"><b>Btw op de factuur</b></legend><p class="hulp">Op de website en in het portaal staat geen btw. Op de factuur wordt de btw wel uitgesplitst.</p>
+              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="false" ${bi.pricesIncludeVat === false ? raw("checked") : ""}> Klant betaalt €69,95 + btw</label>
+              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="true" ${bi.pricesIncludeVat === true ? raw("checked") : ""}> Klant betaalt €69,95 (btw zit erin; standaard)</label>
               ${bi.pricesIncludeVat == null ? html`<div class="hulp">Nog niet gekozen. Automatische betalingen starten pas als dit is ingesteld.</div>` : ""}</fieldset>
             <div class="rij3"><div class="veld"><label for="s-vat">Btw-tarief</label><select id="s-vat" name="vatRate">${[21, 9, 0].map((r) => html`<option value="${r}" ${r === bi.vatRate ? raw("selected") : ""}>${r}%</option>`)}</select></div>
               ${v("paymentTermDays", "Betaaltermijn (dagen)", bi.paymentTermDays, { type: "number" })}${v("invoicePrefix", "Factuurprefix", bi.invoicePrefix)}</div>

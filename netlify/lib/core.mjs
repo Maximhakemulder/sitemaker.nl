@@ -72,8 +72,8 @@ export const DEFAULT_SETTINGS = {
     email: "", phone: "", website: "https://sitemaker.nl",
   },
   billing: {
-    // null = nog niet gekozen. Moet gekozen zijn vóór automatische betalingen en facturen.
-    pricesIncludeVat: null,
+    // De prijzen op de site (€299,95 / €69,95) zijn wat de klant betaalt; btw wordt alleen op de factuur uitgesplitst.
+    pricesIncludeVat: true,
     vatRate: 21,
     paymentTermDays: 14,
     invoicePrefix: "SM",

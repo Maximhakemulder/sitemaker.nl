@@ -170,7 +170,24 @@
       form.addEventListener("submit", (e) => { e.preventDefault(); verstuur(); });
       form.querySelector("[data-opnieuw]").addEventListener("click", stap1);
     };
-    stap1();
+    const sleutel = () => {
+      SM.render(root, SM.html`<div class="inlog">${merk}<div class="inlog-vak"><form novalidate>
+        <h2>${kop}</h2><p class="dempen">De mail is nog niet ingesteld. Log als beheerder in met de toegangssleutel uit Netlify (ADMIN_LOGIN_KEY).</p>
+        <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="veld"><label for="k-email">E-mailadres</label><input id="k-email" name="email" type="email" autocomplete="username" required></div>
+        <div class="veld"><label for="k-key">Toegangssleutel</label><input id="k-key" name="key" type="password" autocomplete="current-password" required></div>
+        <button class="knop knop-actie" type="submit">Inloggen</button></form></div></div>`);
+      const form = root.querySelector("form");
+      form.elements.email.focus();
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const knop = form.querySelector("button"); SM.bezig(knop, true, "Inloggen…");
+        try { klaar(await SM.api("auth/key", { method: "POST", body: { email: form.elements.email.value.trim(), key: form.elements.key.value } })); }
+        catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+      });
+    };
+    const geenMail = () => SM.render(root, SM.html`<div class="inlog">${merk}<div class="inlog-vak"><div><h2>${kop}</h2><p class="dempen">Inloggen per mail is nog niet beschikbaar. ${portal === "hq" ? "Zet ADMIN_LOGIN_KEY in Netlify om als beheerder in te loggen met een toegangssleutel." : "Neem contact op met Sitemaker."}</p></div></div></div>`);
+    SM.api("auth/options").then((o) => (o.mail ? stap1() : portal === "hq" && o.key ? sleutel() : geenMail())).catch(stap1);
   });
 
   SM.uitloggen = async () => { try { await SM.api("auth/logout", { method: "POST" }); } catch {} location.reload(); };
