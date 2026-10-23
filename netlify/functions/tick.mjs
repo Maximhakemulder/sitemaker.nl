@@ -3,6 +3,7 @@
 import { withLock, one, q } from "../lib/core.mjs";
 import { sendBatch, scanInbox, runScout, runResearch } from "../lib/b2b.mjs";
 import { runChecks } from "../lib/uptime.mjs";
+import { retryStuck, autoReady } from "../lib/sites.mjs";
 
 export default async () => {
   const started = Date.now();
@@ -10,6 +11,7 @@ export default async () => {
   const step = async (name, fn, ttl = 20000) => { try { return await withLock(name, fn, ttl); } catch (e) { console.log(`[tick] ${name}:`, e.message); } };
 
   await step("uptime", () => runChecks({ max: 8 }));
+  if (autoReady()) await step("ai-retry", () => retryStuck());
   if (left() > 9000) await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(8000, left() - 3000) }));
   const last = (await one("SELECT value FROM settings WHERE key = 'inbox_scan'"))?.value;
   if (left() > 8000 && (!last || Date.now() - Date.parse(last.at) > 30 * 60000)) {

@@ -1,0 +1,48 @@
+{
+  "thema": "natuur",
+  "kleuren": { "primair": "", "accent": "" },
+  "bedrijf": {
+    "naam": "Groen & Zo",
+    "telefoon": "",
+    "email": "",
+    "whatsapp": "",
+    "adres": "",
+    "plaats": "",
+    "kvk": ""
+  },
+  "seo": {
+    "titel": "Groen & Zo | Hovenier",
+    "omschrijving": "Tuinontwerp, aanleg en onderhoud door het hele jaar."
+  },
+  "hero": {
+    "label": "Hoveniers in de regio",
+    "titel": "Een tuin om in te leven.",
+    "tekst": "Van eerste schets tot het onderhoud door het jaar heen.",
+    "knop": { "tekst": "Plan een tuinbezoek", "link": "#contact" },
+    "foto": "afbeeldingen/hero.jpg"
+  },
+  "diensten": {
+    "titel": "Wat we doen",
+    "items": [
+      { "titel": "Tuinontwerp", "tekst": "Een plan dat past bij jou en je tuin.", "prijs": "" },
+      { "titel": "Aanleg", "tekst": "Bestrating, beplanting en verlichting.", "prijs": "" },
+      { "titel": "Onderhoud", "tekst": "Het hele jaar een verzorgde tuin.", "prijs": "" }
+    ]
+  },
+  "over": {
+    "titel": "Over ons",
+    "tekst": "Wij zijn een team van vakmensen met liefde voor groen. We werken netjes, denken mee en houden ons aan afspraken.",
+    "foto": "afbeeldingen/over.jpg"
+  },
+  "fotos": ["afbeeldingen/foto-1.jpg", "afbeeldingen/over.jpg"],
+  "openingstijden": [
+    { "dag": "Maandag t/m vrijdag", "tijd": "08:00 - 17:00" },
+    { "dag": "Zaterdag", "tijd": "Op afspraak" },
+    { "dag": "Zondag", "tijd": "Gesloten" }
+  ],
+  "contact": {
+    "titel": "Zin in een nieuwe tuin?",
+    "tekst": "Bel, mail of app ons. We komen graag langs voor advies.",
+    "knop": { "tekst": "Neem contact op", "link": "" }
+  }
+}

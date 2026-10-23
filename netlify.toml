@@ -6,6 +6,8 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  # het startsjabloon voor klantsites gaat mee, zodat HQ nieuwe repo's kan vullen
+  included_files = ["templates/klantsite/**"]
 
 # Beveiliging voor alle pagina's.
 [[headers]]

@@ -13,7 +13,20 @@ const files = await fs.mkdtemp(path.join(os.tmpdir(), "sm-files-"));
 Object.assign(process.env, {
   SM_DB_URL: cs, MAIL_TRANSPORT: "capture", SM_LOCAL_FILES: files, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: "maxim@sitemaker.test",
   AUTH_SECRET: "test-secret", PUBLIC_BASE_URL: "https://sitemaker.test", MOLLIE_FAKE: "1", MOLLIE_API_KEY: "test_x", B2B_ANY_TIME: "1",
+  GITHUB_FAKE: "1", GITHUB_TOKEN: "x", GITHUB_ORG: "sitemaker-sites", NETLIFY_FAKE: "1", NETLIFY_API_TOKEN: "x", NETLIFY_ACCOUNT_SLUG: "team", NETLIFY_GITHUB_INSTALLATION_ID: "1",
+  AI_FAKE: "1", SM_INLINE_AI: "1",
 });
+// Nep-Claude: past openingstijden aan, weigert webshops, verwerkt opmerkingen en kan een foute afbeelding voorstellen.
+globalThis.__aiFake = ({ prompt }) => {
+  const c = JSON.parse(prompt.slice(prompt.indexOf("Huidige content.json:") + 21));
+  if (/webshop/i.test(prompt)) return JSON.stringify({ kan: false, reden: "Een webshop valt buiten het aanbod." });
+  if (/rare foto/i.test(prompt)) { c.hero.foto = "afbeeldingen/bestaat-niet.jpg"; return JSON.stringify({ kan: true, samenvatting: "x", content: c }); }
+  if (/openingstijden/i.test(prompt)) c.openingstijden[0].tijd = "08:00 - 18:00";
+  if (/Opmerking van de beheerder/.test(prompt)) c.hero.titel = "Nieuwe titel na opmerking";
+  const foto = prompt.match(/pad "(afbeeldingen\/wijziging-\d+\.\w+)"/);
+  if (foto) c.over.foto = foto[1];
+  return "Hier is het voorstel:\n```json\n" + JSON.stringify({ kan: true, samenvatting: "Openingstijden aangepast.", content: c }) + "\n```";
+};
 const { default: api } = await import("../netlify/functions/api.mjs");
 const { captured } = await import("../netlify/lib/mail.mjs");
 const { handleWebhook, __fake } = await import("../netlify/lib/mollie.mjs");
@@ -280,6 +293,62 @@ await test("reviews: alleen gepubliceerde op de site, geverifieerd alleen met kl
   const pub = await call("GET", "reviews");
   assert.equal(pub.data.count, 1); assert.equal(pub.data.reviews[0].verified, true);
   assert.equal((await call("POST", "hq/reviews", { cookie: k2 || admin, body: { name: "x", body: "kort", rating: 9 } })).status, k2 ? 403 : 400);
+});
+
+console.log("Klantsites en automatische verwerking");
+const { __ghFake } = await import("../netlify/lib/github.mjs");
+await test("site aanmaken: repo met sjabloon en Netlify-project", async () => {
+  const r = await call("POST", `hq/customers/${c2}/site`, { cookie: admin, body: { thema: "stoer" } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(r.data.repo, "sitemaker-sites/site-testklant-twee");
+  const repo = __ghFake.repos["sitemaker-sites/site-testklant-twee"];
+  const files = repo.commits[repo.refs.main].files;
+  assert.ok(files["build.mjs"] && files["netlify.toml"] && files["afbeeldingen/hero.jpg"]);
+  const content = JSON.parse(files["content.json"]);
+  assert.equal(content.bedrijf.naam, "Testklant Twee"); assert.equal(content.thema, "stoer");
+  assert.equal((await call("POST", `hq/customers/${c2}/site`, { cookie: admin, body: {} })).status, 409);
+});
+let wijz;
+await test("wijziging met foto wordt automatisch een voorstel met voorbeeldlink", async () => {
+  const f = new FormData(); f.set("description", "Graag de openingstijden aanpassen naar 8 tot 18 uur en deze foto bij Over ons."); f.set("file", new Blob([png], { type: "image/png" }), "team.png");
+  const r = await call("POST", "portal/changes", { cookie: k2, form: f });
+  assert.equal(r.status, 200, JSON.stringify(r.data)); wijz = r.data.change.id;
+  const lijst = await call("GET", "hq/changes?status=open", { cookie: admin });
+  const w = lijst.data.changes.find((x) => x.id === wijz);
+  assert.equal(w.ai.status, "voorstel", JSON.stringify(w.ai));
+  assert.ok(w.ai.diff.some((d) => d.veld === "openingstijden[0].tijd" && d.nieuw === "08:00 - 18:00"));
+  assert.ok(w.ai.diff.some((d) => d.veld === "over.foto" && /wijziging-\d+\.png/.test(d.nieuw)));
+  assert.match(w.ai.previewUrl, /^https:\/\/deploy-preview-1--/);
+  assert.equal(w.status, "in_behandeling");
+  const st = await call("GET", "portal/state", { cookie: k2 });
+  assert.equal(st.data.changes[0].ai, undefined, "klant ziet geen interne AI-gegevens");
+});
+await test("opnieuw met opmerking geeft een nieuw voorstel", async () => {
+  const r = await call("POST", `hq/changes/${wijz}/opnieuw`, { cookie: admin, body: { feedback: "Maak de kop ook nieuw." } });
+  assert.equal(r.status, 200);
+  const w = (await call("GET", "hq/changes?status=open", { cookie: admin })).data.changes.find((x) => x.id === wijz);
+  assert.equal(w.ai.status, "voorstel"); assert.ok(w.ai.diff.some((d) => d.veld === "hero.titel")); assert.equal(w.ai.attempts, 2);
+});
+await test("goedkeuren zet het live, markeert verwerkt en mailt de klant", async () => {
+  const voor = captured.length;
+  const r = await call("POST", `hq/changes/${wijz}/goedkeuren`, { cookie: admin, body: {} });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const repo = __ghFake.repos["sitemaker-sites/site-testklant-twee"];
+  const live = JSON.parse(repo.commits[repo.refs.main].files["content.json"]);
+  assert.equal(live.openingstijden[0].tijd, "08:00 - 18:00"); assert.equal(live.hero.titel, "Nieuwe titel na opmerking");
+  assert.ok(repo.commits[repo.refs.main].files[`afbeeldingen/wijziging-${wijz}.png`]);
+  const st = await call("GET", "portal/state", { cookie: k2 });
+  assert.equal(st.data.changes.find((x) => x.id === wijz).status, "verwerkt");
+  assert.ok(captured.slice(voor).some((m) => m.to === "piet@twee.test" && /verwerkt/.test(m.subject)));
+  assert.equal((await call("POST", `hq/changes/${wijz}/goedkeuren`, { cookie: admin, body: {} })).status, 400);
+});
+await test("onmogelijk verzoek en ongeldig voorstel gaan naar 'handmatig'", async () => {
+  const mk = async (t) => { const f = new FormData(); f.set("description", t); return (await call("POST", "portal/changes", { cookie: k2, form: f })).data.change.id; };
+  const a = await mk("Kunnen jullie er een webshop van maken?");
+  const b = await mk("Zet er een rare foto in de header.");
+  const ch = (await call("GET", "hq/changes?status=open", { cookie: admin })).data.changes;
+  assert.equal(ch.find((x) => x.id === a).ai.status, "handmatig"); assert.match(ch.find((x) => x.id === a).ai.reason, /webshop/);
+  assert.equal(ch.find((x) => x.id === b).ai.status, "handmatig"); assert.match(ch.find((x) => x.id === b).ai.reason, /Onbekende afbeelding/);
 });
 
 console.log(`\n${passed} tests geslaagd.`);

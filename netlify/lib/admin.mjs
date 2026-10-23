@@ -6,6 +6,10 @@ import { putFile, sniffOk } from "./files.mjs";
 import { sendMail, brandHtml, mailReady } from "./mail.mjs";
 import { mollieReady, mollieMode, startFirstPayment, payInvoiceLink, cancelSubscription, subscriptionInfo, mailPaymentLink } from "./mollie.mjs";
 import { checkNow } from "./uptime.mjs";
+import { THEMAS, autoReady, provisionSite, linkSite, approveChange, redoChange, manualChange, queueChange } from "./sites.mjs";
+import { githubReady } from "./github.mjs";
+import { netlifyReady, netlifyLinkReady } from "./netlifyapi.mjs";
+import { aiReady as claudeReady } from "./ai.mjs";
 import { addLead, parseCsv, mailPreview, researchLead, runScout, scoutReady, aiReady, LEAD_STATUSES, unsubscribe } from "./b2b.mjs";
 
 const SITE_STATUSES = ["in_aanbouw", "live", "gepauzeerd", "opgezegd"];
@@ -27,6 +31,8 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM change_requests WHERE status IN ('ontvangen','in_behandeling')) AS open_wijzigingen,
       (SELECT COUNT(*)::int FROM change_requests WHERE status IN ('ontvangen','in_behandeling') AND created_at < NOW() - INTERVAL '${OFFER.changeHours} hours') AS te_laat,
       (SELECT COUNT(*)::int FROM change_requests WHERE month = $1) AS wijzigingen_maand,
+      (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'voorstel') AS voorstellen,
+      (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'handmatig' AND status IN ('ontvangen','in_behandeling')) AS handmatig,
       (SELECT COUNT(*)::int FROM appointments WHERE status = 'nieuw') AS nieuwe_aanvragen,
       (SELECT COUNT(*)::int FROM invoices WHERE status = 'open') AS open_facturen,
       (SELECT COALESCE(SUM(amount_cents),0)::int FROM invoices WHERE status = 'open') AS open_bedrag,
@@ -40,7 +46,7 @@ export async function overview() {
   const s = await getSettings();
   return {
     counts, month,
-    todo: todo.map((r) => ({ ...publicChange(r), company: r.company, customerId: r.customer_id })),
+    todo: todo.map((r) => ({ ...hqChange(r), company: r.company, customerId: r.customer_id })),
     appointments: appts.map(publicAppointment),
     setup: setupStatus(s),
   };
@@ -53,6 +59,9 @@ export function setupStatus(s) {
     { key: "secret", ok: !!env("AUTH_SECRET"), label: "Beveiligingssleutel", hint: "Zet AUTH_SECRET (lange willekeurige tekst) in Netlify." },
     { key: "company", ok: companyComplete(s.company), label: "Bedrijfsgegevens voor facturen", hint: "Vul ze in bij Instellingen." },
     { key: "mollie", ok: mollieReady(), label: `Mollie (automatische betalingen)${mollieMode() === "test" ? " · testmodus" : ""}`, hint: "Zet MOLLIE_API_KEY in Netlify." },
+    { key: "github", ok: githubReady(), label: "GitHub (repo per klant)", hint: "Zet GITHUB_TOKEN en GITHUB_ORG in Netlify." },
+    { key: "netlify", ok: netlifyLinkReady(), label: "Netlify-projecten per klant", hint: "Zet NETLIFY_API_TOKEN, NETLIFY_ACCOUNT_SLUG en NETLIFY_GITHUB_INSTALLATION_ID." },
+    { key: "claude", ok: claudeReady(), label: "Claude verwerkt wijzigingen", hint: "Zet de Netlify AI Gateway aan (of ANTHROPIC_API_KEY)." },
     { key: "scout", ok: scoutReady(), label: "Outscraper (B2B-scout)", hint: "Optioneel: OUTSCRAPER_API_KEY." },
     { key: "ai", ok: aiReady(), label: "AI-openingszinnen (B2B)", hint: "Optioneel: zet de Netlify AI Gateway aan." },
   ];
@@ -71,6 +80,7 @@ export async function listCustomers() {
 function adminCustomer(c) {
   return {
     ...publicCustomer(c), phone: c.phone, address: c.address, kvk: c.kvk, vatNumber: c.vat_number, notes: c.notes,
+    site: { repo: c.site_repo, netlifyName: c.site_netlify_name, theme: c.site_theme, previewBase: c.site_netlify_name ? `https://${c.site_netlify_name}.netlify.app` : "" },
     mollieCustomerId: c.mollie_customer_id, mollieSubscriptionId: c.mollie_subscription_id,
     check: c.check_at ? { at: c.check_at, ok: c.check_ok, code: c.check_code, ms: c.check_ms, fails: c.check_fails, error: c.check_error } : null,
     createdAt: c.created_at,
@@ -91,7 +101,7 @@ export async function getCustomer(id) {
   return {
     customer: adminCustomer(c), usage,
     users: users.map((u) => ({ id: u.id, email: u.email, name: u.name, active: u.active, lastLoginAt: u.last_login_at })),
-    changes: changes.map(publicChange), invoices: invoices.map(publicInvoice),
+    changes: changes.map(hqChange), invoices: invoices.map(publicInvoice),
     payments: payments.map(publicPayment), log,
     subscription: await subscriptionInfo(c),
   };
@@ -184,12 +194,13 @@ export async function sendWelcome(customerId, user) {
 }
 
 // ---------------------------------------------------------------- wijzigingen
+const hqChange = (r) => ({ ...publicChange(r), ai: { status: r.ai_status, summary: r.ai_summary, reason: r.ai_reason, diff: r.ai_diff || [], feedback: r.ai_feedback, attempts: r.ai_attempts, prUrl: r.pr_url, previewUrl: r.preview_url, updatedAt: r.ai_updated_at } });
 export async function listChanges({ status } = {}) {
   const where = status && STATUS_LABEL[status] ? "WHERE cr.status = $1" : status === "open" ? "WHERE cr.status IN ('ontvangen','in_behandeling')" : "";
   const rows = await q(`SELECT cr.*, c.company, u.email AS by_email FROM change_requests cr JOIN customers c ON c.id = cr.customer_id LEFT JOIN users u ON u.id = cr.user_id
                         ${where} ORDER BY CASE WHEN cr.status IN ('ontvangen','in_behandeling') THEN 0 ELSE 1 END, cr.created_at ${status === "open" || !status ? "ASC" : "DESC"} LIMIT 300`,
     status && STATUS_LABEL[status] ? [status] : []);
-  return rows.map((r) => ({ ...publicChange(r), company: r.company, customerId: r.customer_id, byEmail: r.by_email }));
+  return rows.map((r) => ({ ...hqChange(r), company: r.company, customerId: r.customer_id, byEmail: r.by_email }));
 }
 
 export async function updateChange(id, b, user) {
@@ -421,6 +432,8 @@ export async function leadPreview(id, kind) {
 
 export const scoutNow = () => runScout({ force: true });
 export { addLead };
+export const sitesInfo = () => ({ themas: THEMAS, github: githubReady(), netlify: netlifyReady(), netlifyLink: netlifyLinkReady(), ai: claudeReady(), auto: autoReady() });
+export { provisionSite, linkSite, approveChange, redoChange, manualChange, queueChange };
 
 // ---------------------------------------------------------------- instellingen en team (admin)
 export async function getAdminSettings() {
