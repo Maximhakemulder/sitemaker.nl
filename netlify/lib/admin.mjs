@@ -1,5 +1,6 @@
 // Sitemaker HQ: alles wat medewerkers beheren. Rollen: medewerker en admin (admin mag ook instellingen, team en abonnementen opzeggen).
 import { q, one, tx, OFFER, getSettings, saveSetting, DEFAULT_SETTINGS, str, cleanEmail, EMAIL_RE, normUrl, monthKey, dayKey, euro, escH, publicBase, fail, audit, env } from "./core.mjs";
+import { startStage, deliveryDue, hqStart } from "./start.mjs";
 import { publicCustomer, publicChange, publicInvoice, changeUsage, mailChangeStatus, STATUS_LABEL, freeSlot } from "./portal.mjs";
 import { createInvoice, generateInvoicePdf, mailInvoice, partsFromGross, priceParts, companyComplete, vatModeSet } from "./billing.mjs";
 import { putFile, sniffOk } from "./files.mjs";
@@ -34,6 +35,7 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'voorstel') AS voorstellen,
       (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'handmatig' AND status IN ('ontvangen','in_behandeling')) AS handmatig,
       (SELECT COUNT(*)::int FROM appointments WHERE status = 'nieuw') AS nieuwe_aanvragen,
+      (SELECT COUNT(*)::int FROM customers WHERE onboarding AND started_at IS NOT NULL AND site_status = 'in_aanbouw') AS te_bouwen,
       (SELECT COUNT(*)::int FROM invoices WHERE status = 'open') AS open_facturen,
       (SELECT COALESCE(SUM(amount_cents),0)::int FROM invoices WHERE status = 'open') AS open_bedrag,
       (SELECT COALESCE(SUM(amount_cents),0)::int FROM invoices WHERE status = 'betaald' AND to_char(paid_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM') = $1) AS ontvangen_maand,
@@ -43,11 +45,13 @@ export async function overview() {
   const todo = await q(`SELECT cr.*, c.company FROM change_requests cr JOIN customers c ON c.id = cr.customer_id
                         WHERE cr.status IN ('ontvangen','in_behandeling') ORDER BY cr.created_at LIMIT 20`);
   const appts = await q("SELECT * FROM appointments WHERE status = 'nieuw' ORDER BY created_at DESC LIMIT 10");
+  const starters = await q("SELECT * FROM customers WHERE onboarding AND site_status = 'in_aanbouw' ORDER BY intake_at IS NULL, intake_at, started_at IS NULL, started_at, created_at DESC LIMIT 20");
   const s = await getSettings();
   return {
     counts, month,
     todo: todo.map((r) => ({ ...hqChange(r), company: r.company, customerId: r.customer_id })),
     appointments: appts.map(publicAppointment),
+    starters: starters.map((c) => ({ id: c.id, company: c.company, email: c.email, stage: startStage(c), createdAt: c.created_at, startedAt: c.started_at, intakeAt: c.intake_at, dueAt: deliveryDue(c.intake_at) })),
     setup: setupStatus(s),
   };
 }
@@ -79,6 +83,7 @@ export async function listCustomers() {
 
 function adminCustomer(c) {
   return {
+    startStage: startStage(c), intakeAt: c.intake_at, startDue: deliveryDue(c.intake_at),
     ...publicCustomer(c), phone: c.phone, address: c.address, kvk: c.kvk, vatNumber: c.vat_number, notes: c.notes,
     site: { repo: c.site_repo, netlifyName: c.site_netlify_name, theme: c.site_theme, previewBase: c.site_netlify_name ? `https://${c.site_netlify_name}.netlify.app` : "" },
     mollieCustomerId: c.mollie_customer_id, mollieSubscriptionId: c.mollie_subscription_id,
@@ -99,7 +104,7 @@ export async function getCustomer(id) {
     changeUsage(id),
   ]);
   return {
-    customer: adminCustomer(c), usage,
+    customer: adminCustomer(c), usage, start: await hqStart(c),
     users: users.map((u) => ({ id: u.id, email: u.email, name: u.name, active: u.active, lastLoginAt: u.last_login_at })),
     changes: changes.map(hqChange), invoices: invoices.map(publicInvoice),
     payments: payments.map(publicPayment), log,
@@ -129,9 +134,9 @@ export async function createCustomer(b, user) {
   const exists = await one("SELECT role FROM users WHERE email = $1", [f.email]);
   if (exists) fail(409, exists.role === "klant" ? "Dit e-mailadres hoort al bij een andere klant." : "Dit e-mailadres is van een medewerker.", { field: "email" });
   const c = await tx(async (t) => {
-    const c = await t.one(`INSERT INTO customers (company, contact_name, email, phone, address, kvk, vat_number, site_url, site_status, delivered_at, notes, appointment_id, lead_id)
-                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
-      [f.company, f.contact_name, f.email, f.phone, f.address, f.kvk, f.vat_number, f.siteUrl, f.site_status, f.delivered_at, f.notes, b.appointmentId || null, b.leadId || null]);
+    const c = await t.one(`INSERT INTO customers (company, contact_name, email, phone, address, kvk, vat_number, site_url, site_status, delivered_at, notes, appointment_id, lead_id, onboarding)
+                           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [f.company, f.contact_name, f.email, f.phone, f.address, f.kvk, f.vat_number, f.siteUrl, f.site_status, f.delivered_at, f.notes, b.appointmentId || null, b.leadId || null, b.onboarding === true]);
     await t.q("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3)", [f.email, f.contact_name, c.id]);
     if (b.appointmentId) await t.q("UPDATE appointments SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.appointmentId]);
     if (b.leadId) await t.q("UPDATE leads SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.leadId]);
@@ -152,6 +157,14 @@ export async function updateCustomer(id, b, user) {
   if (!c) fail(404, "Klant niet gevonden.");
   await audit(user.id, id, "klant.bijgewerkt", {});
   return { customer: adminCustomer(c) };
+}
+
+// Startflow in het portaal aan/uit zetten (bijv. voor een klant die al via HQ is gestart).
+export async function setOnboarding(customerId, b, user) {
+  const c = await one("UPDATE customers SET onboarding = $2, updated_at = NOW() WHERE id = $1 RETURNING id", [customerId, b.onboarding === true]);
+  if (!c) fail(404, "Klant niet gevonden.");
+  await audit(user.id, customerId, b.onboarding ? "start.aan" : "start.uit", {});
+  return { ok: true };
 }
 
 export async function addPortalUser(customerId, b, user) {
@@ -178,7 +191,18 @@ export async function sendWelcome(customerId, user) {
   const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
   const link = `${publicBase()}/portaal/`;
-  const res = await sendMail({
+  const st = startStage(c);
+  const res = st && st !== "klaar" && st !== "bouwen" ? await sendMail({
+    to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: start je website in je portaal",
+    text: `Beste ${c.contact_name || c.company},\n\nLeuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen: ${link}\n\n1. Vul je bedrijfsgegevens aan\n2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch\n3. Lever de informatie voor je website aan (teksten, logo en foto's)\n\nDaarna staat je website binnen ${OFFER.deliveryText} online.\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\nMet vriendelijke groet,\nSitemaker`,
+    html: brandHtml({
+      title: "Welkom bij Sitemaker",
+      intro: [`Beste ${escH(c.contact_name || c.company)},`, "Leuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen:",
+        `1. Vul je bedrijfsgegevens aan<br>2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch<br>3. Lever de informatie voor je website aan`],
+      button: { label: "Start in je portaal", href: link },
+      after: [`Daarna staat je website binnen <b>${OFFER.deliveryText}</b> online.`, `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`],
+    }),
+  }) : await sendMail({
     to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: je klantenportaal staat klaar",
     text: `Beste ${c.contact_name || c.company},\n\nWelkom bij Sitemaker! Je klantenportaal staat klaar: ${link}\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\nIn het portaal:\n- geef je elke maand tot ${OFFER.changesPerMonth} wijzigingen door (wij verwerken ze binnen ${OFFER.changeHours} uur)\n- volg je de status van je wijzigingen\n- vind je al je facturen\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({

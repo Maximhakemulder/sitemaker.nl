@@ -5,6 +5,7 @@ import { putFile, getFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, s
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady } from "./mollie.mjs";
 import { queueChange, autoReady } from "./sites.mjs";
+import { startState } from "./start.mjs";
 
 export const STATUS_LABEL = { ontvangen: "Ontvangen", in_behandeling: "In behandeling", verwerkt: "Verwerkt", afgewezen: "Niet uitgevoerd" };
 
@@ -65,7 +66,8 @@ export async function portalState(user) {
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: mollieReady(),
-    pendingFirstPayment: openPay ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,
+    start: await startState(c),
+    pendingFirstPayment: openPay && !c.onboarding ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,
   };
 }
 

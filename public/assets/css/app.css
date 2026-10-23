@@ -314,3 +314,54 @@ dialog h3 { margin: 20px 0 8px; }
 .ai-diff .nieuw { font-weight: 600; }
 .ai-blok .knoppen { margin-top: 10px; }
 .ai-blok code { font-size: 13px; }
+
+/* Start in het portaal */
+.p-intro { margin: -6px 0 18px; color: var(--grijs); font-size: 17px; }
+.start-stappen { list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: s; }
+.start-stappen li { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: var(--r-klein); background: var(--wit); border: 1px solid var(--lijn); color: var(--grijs); font-weight: 600; font-size: 15px; line-height: 1.25; }
+.start-stappen .nr { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--achter); font-weight: 800; color: var(--paars); }
+.start-stappen .nr svg { width: 16px; height: 16px; }
+.start-stappen li.klaar { color: var(--paars); }
+.start-stappen li.klaar .nr { background: var(--paars); color: var(--wit); }
+.start-stappen li.nu { color: var(--paars); border-color: var(--paars); box-shadow: inset 0 -3px 0 var(--koraal); }
+.start-stappen li.nu .nr { background: var(--koraal); color: var(--wit); }
+@media (max-width: 720px) {
+  .start-stappen { grid-template-columns: 1fr; gap: 6px; }
+  .start-stappen li:not(.nu) { padding: 8px 12px; font-size: 14px; }
+  .start-stappen li:not(.nu) .nr { width: 24px; height: 24px; font-size: 13px; }
+}
+.start-paneel h2 { margin-top: 0; }
+.start-paneel fieldset { border-top: 1px solid var(--lijn); padding-top: 18px; margin-top: 8px; }
+.start-paneel fieldset legend { font-weight: 800; font-size: 18px; padding-top: 18px; float: left; width: 100%; margin-bottom: 10px; }
+.start-paneel fieldset legend + * { clear: both; }
+.veld .hulp.boven { margin: -2px 0 8px; }
+.prijs-blok { background: var(--ijs); border-radius: var(--r-klein); padding: 6px 16px; margin: 6px 0 14px; }
+.prijs-blok .regel { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 12px 0; }
+.prijs-blok .regel + .regel { border-top: 1px solid rgba(28, 7, 71, .12); }
+.prijs-blok .regel > span { font-weight: 600; }
+.prijs-blok small { display: block; font-weight: 400; color: var(--grijs); font-size: 14px; margin-top: 2px; }
+.prijs-blok b { font-size: 20px; text-align: right; white-space: nowrap; }
+.prijs-blok b small { display: block; font-size: 13px; }
+.stijl-keuze { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 6px; }
+.stijl-optie { display: flex; gap: 10px; align-items: center; padding: 12px; border: 1.5px solid var(--lijn); border-radius: var(--r-klein); cursor: pointer; font-weight: 600; font-size: 15px; background: var(--wit); }
+.stijl-optie input { accent-color: var(--paars); width: 18px; height: 18px; margin: 0; flex: none; }
+.stijl-optie:has(input:checked) { border-color: var(--paars); background: var(--paars-zacht); }
+.stijl-optie:has(input:focus-visible) { outline: 3px solid #0CC0DF; outline-offset: 2px; }
+.upload-rij { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.upload-knop { position: relative; }
+.upload-knop:has(input:focus-visible) { outline: 3px solid #0CC0DF; outline-offset: 2px; }
+.bestanden > li.bestand { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+.bestand .naam { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.bestand.bezig { opacity: .6; }
+.start-bouwen { background: var(--ijs); border-color: transparent; margin-bottom: 16px; }
+.start-bouwen h2 { margin-top: 0; }
+.start-klant .regel { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.start-klant dl.intake dt { font-weight: 700; margin-top: 10px; }
+.start-klant dl.intake dd { margin: 2px 0 0; white-space: pre-wrap; }
+.vinkje small.hulp { display: block; font-weight: 400; margin-top: 2px; }
+.checklijst small { display: block; color: var(--grijs); font-size: 13px; }
+.checklijst .ic svg { width: 13px; height: 13px; }
+.nieuwe-klanten { margin-bottom: 16px; border-color: var(--paars); }
+.start-klant details { margin-top: 14px; }
+.start-klant summary { cursor: pointer; }
+.prijs-blok .regel:first-child { border-top: 0; }

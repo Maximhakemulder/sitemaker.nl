@@ -28,3 +28,9 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - Maxim keurt goed in HQ › Wijzigingen → merge naar main → live, status Verwerkt, mail naar klant. Max 5 voorstellen per wijziging. `tick` pakt vastgelopen voorstellen opnieuw op.
 - Sleutels: `GITHUB_TOKEN` (fine-grained: Administration + Contents + Pull requests, read/write op de organisatie), `GITHUB_ORG`, `NETLIFY_API_TOKEN`, `NETLIFY_ACCOUNT_SLUG`, `NETLIFY_GITHUB_INSTALLATION_ID` (optioneel; anders repo met de hand koppelen in Netlify), `ANTHROPIC_API_KEY` (of AI Gateway), optioneel `AI_MODEL`.
 - Tests gebruiken `GITHUB_FAKE`, `NETLIFY_FAKE`, `AI_FAKE` + `globalThis.__aiFake` en `SM_INLINE_AI=1`.
+
+## Start in het portaal (nieuwe klanten)
+- HQ › Nieuwe klant met vinkje "Klant start zelf in het portaal" (`customers.onboarding`). Alleen bedrijfsnaam + e-mail nodig; welkomstmail noemt de 3 stappen.
+- Portaal (`netlify/lib/start.mjs`, `startStage`): gegevens (KvK 8 cijfers, adres, telefoon) → akkoord voorwaarden + incasso (`terms_at/ip/by`) en eerste Mollie-betaling → webhook zet `started_at` (`markStarted`, mail aan klant) → informatie aanleveren (`intake` JSONB + `intake_files`, max 20 bestanden van 4 MB, concept opslaan kan) → `intake_at`: klok van 2 werkdagen (`deliveryDue`).
+- HQ: paneel "Nieuwe klanten" op Overzicht, badge op Klanten (= betaald en nog in aanbouw), paneel "Start in het portaal" bij de klant met antwoorden en downloads.
+- Lokaal: `scripts/dev.mjs` heeft een nep-betaalpagina (`/__dev/betaal`) die de nep-Mollie-betaling op betaald zet.
