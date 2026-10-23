@@ -274,3 +274,29 @@ dialog h3 { margin: 20px 0 8px; }
 .open-balk .knop-tekst { color: var(--let); font-size: 14px; min-height: 0; }
 .hq-rechts { min-width: 0; }
 .kies-klant { width: min(400px, 100%); } .kies-klant .lijst li { padding: 6px 0; border: 0; } .kies-klant .knop { width: 100%; justify-content: flex-start; }
+
+/* Portaal-overzicht, opgeruimd */
+.p-titel { margin-bottom: 18px; }
+.p-melding { align-items: center; }
+.p-melding p { flex: 1; margin: 0; }
+.p-melding .knop { margin: 0; }
+.site-kaart { display: flex; align-items: center; gap: 14px; background: var(--wit); border: 1px solid var(--lijn); border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px; }
+.site-icoon { width: 44px; height: 44px; border-radius: 12px; background: var(--paars); display: grid; place-items: center; flex: none; }
+.site-icoon img { width: 26px; height: auto; }
+.site-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.site-info b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.teller-rij { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.teller-rij .teller-tekst { margin: 0; }
+.sub-kop { font-size: 14px; color: var(--grijs); margin: 22px 0 6px; font-weight: 700; }
+.meer { display: inline-block; margin-top: 12px; font-weight: 700; font-size: 15px; }
+.paneel.compact h2 { font-size: 18px; margin-bottom: 10px; }
+.regel { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--lijn); font-size: 15px; }
+.regel > span:first-child { color: var(--grijs); }
+.w-kort .wijziging-kop b { font-size: 15px; }
+.w-stappen { list-style: none; margin: 10px 0 2px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.w-stappen li { position: relative; padding-top: 12px; font-size: 12px; font-weight: 700; color: #A9A3BF; }
+.w-stappen li::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px; border-radius: 3px; background: #E7E9F1; }
+.w-stappen li.klaar { color: var(--ok); } .w-stappen li.klaar::before { background: var(--ok); }
+.w-stappen li.nu { color: var(--paars); } .w-stappen li.nu::before { background: linear-gradient(90deg, var(--cyaan), #6C4CF1); }
+@media (max-width: 820px) { .teller-rij .knop { width: 100%; } }
+.wijziging-kop .klein { white-space: nowrap; flex: none; }

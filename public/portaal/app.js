@@ -85,45 +85,61 @@
   const nextMonth = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m, 15).toLocaleDateString("nl-NL", { month: "long" }); };
 
   // ------------------------------------------------ overzicht
+  const titelVan = (w) => w.page || (w.description.split(/[.!?\n]/)[0].slice(0, 60) + (w.description.length > 60 ? "…" : ""));
+  const STAPPEN = ["ontvangen", "in_behandeling", "verwerkt"];
+  function voortgang(w) {
+    if (w.status === "afgewezen") return html`<div class="w-stappen"><span class="status s-grijs">Niet uitgevoerd</span></div>`;
+    const n = STAPPEN.indexOf(w.status);
+    return html`<ol class="w-stappen" aria-label="Status: ${WIJZIGING[w.status][0]}">${["Ontvangen", "In behandeling", "Verwerkt"].map((t, i) => html`<li class="${i < n ? "klaar" : i === n ? (w.status === "verwerkt" ? "klaar" : "nu") : ""}">${t}</li>`)}</ol>`;
+  }
+
   function overzicht(main) {
     const c = state.customer, u = state.usage;
     const open = state.changes.filter((x) => x.status === "ontvangen" || x.status === "in_behandeling");
+    const recentKlaar = state.changes.filter((x) => x.status === "verwerkt").slice(0, 2);
     const openFacturen = state.invoices.filter((i) => i.status === "open" || i.status === "vervallen");
+    const laatste = state.invoices[0];
     const betaald = new URLSearchParams(location.search).get("betaling");
+    const host = (c.siteUrl || "").replace(/^https?:\/\//, "");
     render(main, html`
-      <div class="p-groet"><h1>Hallo ${c.contactName || c.company}</h1>
-        <p>${c.siteUrl ? html`Je website: <a href="${c.siteUrl}" target="_blank" rel="noopener">${c.siteUrl.replace(/^https?:\/\//, "")}</a> ${label(SITE, c.siteStatus)}` : html`Je website ${label(SITE, c.siteStatus)}`}</p></div>
-      ${betaald ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Bedankt! Je betaling wordt verwerkt. Zodra hij binnen is, verschijnt de factuur hieronder.</p></div>` : ""}
-      ${state.pendingFirstPayment ? html`<div class="melding melding-let">${raw(icon.let)}<div><p><b>Rond je eerste betaling af.</b> Met de betaling van ${euro(state.pendingFirstPayment.amountCents)} start je abonnement en de automatische maandbetaling.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div></div>` : ""}
+      <h1 class="p-titel">Hallo ${c.contactName || c.company}</h1>
+      ${betaald ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Bedankt! Je betaling wordt verwerkt. Zodra hij binnen is, staat de factuur hier.</p></div>` : ""}
+      ${state.pendingFirstPayment ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p><b>Rond je eerste betaling af</b> om je abonnement te starten.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div>` : ""}
+
+      <section class="site-kaart" aria-label="Je website">
+        <div class="site-icoon" aria-hidden="true"><img src="/assets/brand/mark.png" alt=""></div>
+        <div class="site-info"><span class="dempen klein">Je website</span><b>${host || "Nog in aanbouw"}</b></div>
+        ${label(SITE, c.siteStatus)}
+        ${c.siteUrl ? html`<a class="knop knop-licht knop-klein" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Bekijk</a>` : ""}
+      </section>
+
       <div class="p-raster">
         <div>
           <section class="paneel" aria-labelledby="t-teller">
-            <h2 id="t-teller">Wijzigingen deze maand</h2>
-            ${teller(u)}${tellerTekst(u)}
-            ${state.canSubmit.ok
-              ? (u.left > 0 ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a><p class="klein dempen">We verwerken elke wijziging binnen ${state.offer.changeHours} uur.</p>` : html`<p class="dempen">Is het dringend? Neem dan contact met ons op.</p>`)
-              : html`<div class="melding melding-let">${raw(icon.let)}<p>${state.canSubmit.reason}</p></div>`}
-          </section>
-          <section class="paneel" aria-labelledby="t-lopend">
-            <div class="paneel-kop"><h2 id="t-lopend">Lopende wijzigingen</h2>${state.changes.length ? html`<a href="#wijzigingen">Alles bekijken</a>` : ""}</div>
-            ${open.length ? html`<ul class="lijst">${open.map(wijzigingKort)}</ul>` : html`<p class="dempen">Er staan geen wijzigingen open.</p>`}
+            <div class="paneel-kop"><h2 id="t-teller">Wijzigingen</h2><span class="klein dempen">${maand(u.month)}</span></div>
+            ${teller(u)}
+            <div class="teller-rij">
+              <p class="teller-tekst">${u.left > 0 ? `Nog ${u.left} van ${u.limit} over` : `Alle ${u.limit} gebruikt`}<small>${u.left > 0 ? `Verwerkt binnen ${state.offer.changeHours} uur` : `Vanaf 1 ${nextMonth(u.month)} weer ${u.limit} nieuwe`}</small></p>
+              ${state.canSubmit.ok && u.left > 0 ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}
+            </div>
+            ${!state.canSubmit.ok ? html`<div class="melding melding-let">${raw(icon.let)}<p>${state.canSubmit.reason}</p></div>` : ""}
+            ${open.length ? html`<h3 class="sub-kop">Lopend</h3><ul class="lijst">${open.map(wijzigingKort)}</ul>` : ""}
+            ${!open.length && recentKlaar.length ? html`<h3 class="sub-kop">Laatst verwerkt</h3><ul class="lijst">${recentKlaar.map(wijzigingKort)}</ul>` : ""}
+            ${state.changes.length ? html`<a class="meer" href="#wijzigingen">Alle wijzigingen</a>` : ""}
           </section>
         </div>
         <div>
-          <section class="paneel" aria-labelledby="t-abo">
-            <h2 id="t-abo">Je abonnement</h2>
-            <dl class="gegevens">
-              <dt>Status</dt><dd>${label(ABO, c.billingStatus)}</dd>
-              <dt>Per maand</dt><dd class="nummers">${euro(c.monthlyCents)}</dd>
-              <dt>Inbegrepen</dt><dd>Hosting en ${state.offer.changesPerMonth} wijzigingen per maand</dd>
-              ${c.subscriptionStart ? html`<dt>Sinds</dt><dd>${datumLang(c.subscriptionStart)}</dd>` : ""}
-              ${c.deliveredAt ? html`<dt>Website online</dt><dd>${datumLang(c.deliveredAt)}</dd>` : ""}
-            </dl>
+          <section class="paneel compact" aria-labelledby="t-abo">
+            <h2 id="t-abo">Abonnement</h2>
+            <div class="regel"><span>Status</span>${label(ABO, c.billingStatus)}</div>
+            <div class="regel"><span>Per maand</span><b class="nummers">${euro(c.monthlyCents)}</b></div>
+            ${c.subscriptionStart ? html`<div class="regel"><span>Sinds</span><span>${datumLang(c.subscriptionStart)}</span></div>` : ""}
           </section>
-          <section class="paneel" aria-labelledby="t-fact">
-            <div class="paneel-kop"><h2 id="t-fact">Facturen</h2>${state.invoices.length ? html`<a href="#facturen">Alle facturen</a>` : ""}</div>
+          <section class="paneel compact" aria-labelledby="t-fact">
+            <h2 id="t-fact">Facturen</h2>
             ${openFacturen.length ? html`<ul class="lijst">${openFacturen.map(factuurRij)}</ul>`
-              : state.invoices.length ? html`<p class="dempen">Alles is betaald. Je laatste factuur: ${state.invoices[0].number} van ${datum(state.invoices[0].date)}.</p>` : html`<p class="dempen">Je hebt nog geen facturen.</p>`}
+              : laatste ? html`<div class="regel"><span>${laatste.number}</span>${label(FACTUUR, laatste.status)}</div><p class="klein dempen">Alles is betaald.</p>` : html`<p class="dempen">Nog geen facturen.</p>`}
+            ${state.invoices.length ? html`<a class="meer" href="#facturen">Alle facturen</a>` : ""}
           </section>
         </div>
       </div>`);
@@ -131,18 +147,15 @@
   }
 
   function wijzigingKort(w) {
-    const over = SM.over(w.dueAt);
-    return html`<li><div class="wijziging-kop"><b>${w.page || "Wijziging"}</b>${label(WIJZIGING, w.status)}</div>
-      <p class="wijziging-tekst">${w.description.length > 140 ? w.description.slice(0, 140) + "…" : w.description}</p>
-      <div class="wijziging-meta"><span>Doorgegeven ${tijd(w.createdAt)}</span>${over ? html`<span>Klaar binnen ${over}</span>` : ""}</div></li>`;
+    return html`<li class="w-kort"><div class="wijziging-kop"><b>${titelVan(w)}</b><span class="klein dempen">${tijd(w.createdAt)}</span></div>${voortgang(w)}</li>`;
   }
 
   // ------------------------------------------------ wijzigingen
   function wijzigingen(main) {
     const u = state.usage;
     render(main, html`
-      <div class="hq-kop"><div><h1>Wijzigingen</h1><p>${u.left > 0 ? `Je kunt deze maand nog ${u.left} van de ${u.limit} wijzigingen doorgeven.` : `Je hebt deze maand alle ${u.limit} wijzigingen gebruikt.`}</p></div>
-        ${state.canSubmit.ok && u.left > 0 ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div>
+      <div class="hq-kop"><div><h1>Wijzigingen</h1></div>
+        <div class="knoppen"><span class="status ${u.left > 0 ? "s-info" : "s-grijs"}">${u.left} van ${u.limit} over</span>${state.canSubmit.ok && u.left > 0 ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div></div>
       <section class="paneel">
         ${state.changes.length ? html`<ul class="lijst">${state.changes.map(wijzigingLang)}</ul>`
           : html`<div class="leeg"><h3>Nog geen wijzigingen</h3><p>Wil je iets aanpassen op je website? Geef het door, dan verwerken we het binnen ${state.offer.changeHours} uur.</p>${state.canSubmit.ok ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div>`}
@@ -151,14 +164,14 @@
   function wijzigingLang(w) {
     const over = SM.over(w.dueAt), open = w.status === "ontvangen" || w.status === "in_behandeling";
     return html`<li>
-      <div class="wijziging-kop"><b>${w.page || "Wijziging"}</b>${label(WIJZIGING, w.status)}</div>
+      <div class="wijziging-kop"><b>${titelVan(w)}</b><span class="klein dempen">${tijd(w.createdAt)}</span></div>
       <p class="wijziging-tekst">${w.description}</p>
+      ${voortgang(w)}
       <div class="wijziging-meta">
-        <span>Doorgegeven ${tijd(w.createdAt)}</span>
         ${open && over ? html`<span>Klaar binnen ${over}</span>` : ""}
         ${w.doneAt && w.status === "verwerkt" ? html`<span>Verwerkt ${tijd(w.doneAt)}</span>` : ""}
-        ${!w.counts ? html`<span>Telt niet mee voor je ${state.offer.changesPerMonth} wijzigingen</span>` : ""}
-        ${w.attachment ? html`<a href="/api/portal/changes/${w.id}/bijlage">${w.attachment.name}</a>` : ""}
+        ${!w.counts ? html`<span>Telt niet mee</span>` : ""}
+        ${w.attachment ? html`<a href="/api/portal/changes/${w.id}/bijlage">${raw(icon.download)} ${w.attachment.name}</a>` : ""}
       </div>
       ${w.staffNote ? html`<div class="notitie"><b>Sitemaker:</b> ${w.staffNote}</div>` : ""}
     </li>`;
@@ -169,7 +182,7 @@
     const u = state.usage;
     if (!state.canSubmit.ok || u.left <= 0) { location.hash = "#wijzigingen"; return; }
     render(main, html`
-      <div class="hq-kop"><div><h1>Wijziging doorgeven</h1><p>Je gebruikt hiermee 1 van je ${u.limit} wijzigingen in ${maand(u.month)}. Daarna heb je er nog ${u.left - 1} over.</p></div></div>
+      <div class="hq-kop"><div><h1>Wijziging doorgeven</h1><p>We verwerken hem binnen ${state.offer.changeHours} uur. Daarna heb je deze maand nog ${u.left - 1} over.</p></div></div>
       <section class="paneel">
         <form id="w-form" novalidate>
           <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
