@@ -257,12 +257,17 @@ await test("open modus: HQ zonder inloggen, alleen zonder mail; bekijk-als-klant
   delete process.env.MAIL_TRANSPORT;
   const ov = await call("GET", "hq/overview"); assert.equal(ov.status, 200);
   assert.equal((await call("GET", "portal/state")).status, 401, "portaal blijft dicht");
+  const ok = await call("GET", "auth/open-klanten"); assert.ok(ok.data.klanten.length >= 1);
+  const oa = await call("POST", "auth/open-als", { body: { customerId: c2 } });
+  assert.equal((await call("GET", "portal/state", { cookie: oa.cookie.split(";")[0] })).data.customer.company, "Testklant Twee");
   const als = await call("POST", `hq/customers/${c1}/als-klant`);
   const c = als.cookie.split(";")[0]; assert.match(c, /^sm_als=/);
   const st = await call("GET", "portal/state", { cookie: c });
   assert.equal(st.data.customer.company, "Testklant Een"); assert.equal(st.data.user.viaHq, true);
   assert.equal((await call("GET", "hq/overview", { cookie: c })).status, 200, "HQ blijft werken naast bekijk-als-klant");
   delete process.env.OPEN_MODE; process.env.MAIL_TRANSPORT = "capture";
+  assert.equal((await call("GET", "auth/open-klanten")).status, 403);
+  assert.equal((await call("POST", "auth/open-als", { body: { customerId: c2 } })).status, 403);
   assert.equal((await call("GET", "hq/overview", { cookie: c })).status, 401);
 });
 
