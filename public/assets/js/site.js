@@ -12,10 +12,11 @@
   });
   menu?.addEventListener("click", (e) => { if (e.target.closest("a")) { menu.classList.remove("open"); knop?.setAttribute("aria-expanded", "false"); } });
 
-  // Vaste knop onderin verbergen zodra het formulier in beeld is
-  const cta = $("#mobiel-cta"), vak = $("#kennismaking");
-  if (cta && vak && "IntersectionObserver" in window) {
-    new IntersectionObserver(([e]) => cta.classList.toggle("weg", e.isIntersecting), { threshold: 0.1 }).observe(vak);
+  // Vaste knop onderin: pas tonen na de hero, en weg zodra het formulier in beeld is
+  const cta = $("#mobiel-cta"), vak = $("#kennismaking"), hero = $(".hero");
+  if (cta && "IntersectionObserver" in window) {
+    if (hero) new IntersectionObserver(([e]) => cta.classList.toggle("zichtbaar", !e.isIntersecting), { threshold: 0 }).observe(hero);
+    if (vak) new IntersectionObserver(([e]) => cta.classList.toggle("weg", e.isIntersecting), { threshold: 0.05 }).observe(vak);
   }
 
   // Aanvraagformulier
