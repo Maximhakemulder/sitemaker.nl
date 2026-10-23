@@ -14,6 +14,7 @@
     lead: { kandidaat: ["Te onderzoeken", "s-grijs"], nieuw: ["Klaar om te mailen", "s-info"], goedgekeurd: ["In de wachtrij", "s-let"], verstuurd: ["Verstuurd", "s-info"], opvolging_goedgekeurd: ["Opvolging in wachtrij", "s-let"], opgevolgd: ["Opgevolgd", "s-info"], reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Afgemeld", "s-grijs"], overgeslagen: ["Overgeslagen", "s-grijs"], fout: ["Fout", "s-fout"] },
     betaling: { open: ["Open", "s-let"], pending: ["Bezig", "s-let"], authorized: ["Geautoriseerd", "s-info"], paid: ["Betaald", "s-ok"], failed: ["Mislukt", "s-fout"], canceled: ["Geannuleerd", "s-grijs"], expired: ["Verlopen", "s-grijs"] },
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
+    ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
     voorkeur: { "": "Geen voorkeur", ochtend: "Ochtend", middag: "Middag", avond: "Begin van de avond", bellen: "Wil gebeld worden" },
   };
   const chip = (map, k) => { const [t, c] = map[k] || [k, "s-grijs"]; return html`<span class="status ${c}">${t}</span>`; };
@@ -92,6 +93,7 @@
       <div class="kpis">
         ${kpi(c.klanten, `klanten (${c.live} live, ${c.in_aanbouw} in aanbouw)`, "#klanten")}
         ${kpi(euro(c.mrr_basis), "aan abonnementen per maand", "#betalingen")}
+        ${c.voorstellen ? kpi(c.voorstellen, "voorstellen van Claude klaar om goed te keuren", "#wijzigingen/voorstel", true) : ""}
         ${kpi(c.open_wijzigingen, c.te_laat ? `open wijzigingen, ${c.te_laat} over de 48 uur` : "open wijzigingen", "#wijzigingen", c.te_laat > 0)}
         ${kpi(c.nieuwe_aanvragen, "nieuwe aanvragen via de website", "#aanvragen", c.nieuwe_aanvragen > 0)}
         ${kpi(euro(c.ontvangen_maand), "ontvangen deze maand", "#facturen")}
@@ -113,9 +115,9 @@
   }
   function todoRij(w) {
     const over = SM.over(w.dueAt);
-    return html`<li><div class="wijziging-kop"><a href="#klant/${w.customerId}"><b>${w.company}</b></a>${chip(L.wijziging, w.status)}</div>
+    return html`<li><div class="wijziging-kop"><a href="#klant/${w.customerId}"><b>${w.company}</b></a>${w.ai?.status ? chip(L.ai, w.ai.status) : chip(L.wijziging, w.status)}</div>
       <p class="wijziging-tekst">${w.description.length > 160 ? w.description.slice(0, 160) + "…" : w.description}</p>
-      <div class="wijziging-meta"><span>${tijd(w.createdAt)}</span>${over ? html`<span>Nog ${over}</span>` : html`<span class="status s-fout">Over de 48 uur</span>`}<a href="#wijzigingen">Afhandelen</a></div></li>`;
+      <div class="wijziging-meta"><span>${tijd(w.createdAt)}</span>${over ? html`<span>Nog ${over}</span>` : html`<span class="status s-fout">Over de 48 uur</span>`}<a href="#wijzigingen${w.ai?.status === "voorstel" ? "/voorstel" : ""}">${w.ai?.status === "voorstel" ? "Bekijken en goedkeuren" : "Afhandelen"}</a></div></li>`;
   }
 
   // ================================================ KLANTEN
@@ -226,6 +228,15 @@
             <dl class="gegevens"><dt>Adres</dt><dd>${c.siteUrl ? html`<a href="${c.siteUrl}" target="_blank" rel="noopener">${c.siteUrl}</a>` : html`<span class="dempen">Nog niet ingevuld</span>`}</dd>
               <dt>Status</dt><dd>${chip(L.site, c.siteStatus)}</dd>${c.deliveredAt ? html`<dt>Online sinds</dt><dd>${datumLang(c.deliveredAt)}</dd>` : ""}
               <dt>Bereikbaar</dt><dd>${c.check ? html`<span class="mini-site"><span class="punt ${c.check.ok ? "ok" : "fout"}"></span>${c.check.ok ? `Online (${c.check.ms} ms)` : `Niet bereikbaar: ${c.check.error}`}</span><span class="klein dempen">Gecontroleerd ${geleden(c.check.at)}</span>` : html`<span class="dempen">${c.siteStatus === "live" ? "Wordt binnen 15 minuten gecontroleerd" : "Wordt gecontroleerd zodra de site live staat"}</span>`}</dd></dl></section>
+          <section class="paneel"><h2>Bron en automatische wijzigingen</h2>
+            ${c.site?.repo ? html`<dl class="gegevens"><dt>GitHub</dt><dd><a href="https://github.com/${c.site.repo}" target="_blank" rel="noopener">${c.site.repo}</a></dd>
+                <dt>Netlify</dt><dd>${c.site.netlifyName ? html`<a href="${c.site.previewBase}" target="_blank" rel="noopener">${c.site.netlifyName}.netlify.app</a>` : html`<span class="dempen">Nog niet gekoppeld</span>`}</dd>
+                ${c.site.theme ? html`<dt>Stijl</dt><dd>${c.site.theme}</dd>` : ""}</dl>
+              <p class="klein dempen">Wijzigingen van deze klant gaan eerst naar Claude. Jij keurt elk voorstel goed voordat het live gaat.</p>
+              ${!c.site.netlifyName ? html`<p class="klein">Koppel de repo nog in Netlify (Add new project › GitHub › ${c.site.repo}, build-commando <code>node build.mjs</code>, map <code>dist</code>) en vul daarna hier de projectnaam in.</p>` : ""}
+              <div class="knoppen"><button class="knop knop-licht knop-klein" id="site-koppel">Koppeling aanpassen</button></div>`
+            : html`<p class="dempen">Nog geen eigen repo. Maak de site aan vanuit het Sitemaker-sjabloon (eigen GitHub-repo en eigen Netlify-project), of koppel een bestaande repo.</p>
+              <div class="knoppen"><button class="knop knop-actie knop-klein" id="site-maak">Website aanmaken</button><button class="knop knop-licht knop-klein" id="site-koppel">Bestaande site koppelen</button></div>`}</section>
           <section class="paneel"><div class="paneel-kop"><h2>Portaaltoegang</h2><button class="knop knop-licht knop-klein" id="gebruiker">Gebruiker toevoegen</button></div>
             <ul class="lijst">${d.users.map((g) => html`<li class="factuur-rij"><div><b>${g.email}</b>${g.active ? "" : html` <span class="status s-grijs">Geblokkeerd</span>`}<br><span class="klein dempen">${g.lastLoginAt ? "Laatst ingelogd " + geleden(g.lastLoginAt) : "Nog niet ingelogd"}</span></div><div><button class="knop knop-tekst knop-klein" data-toegang="${g.id}" data-actief="${g.active ? "0" : "1"}">${g.active ? "Blokkeren" : "Toegang geven"}</button></div></li>`)}</ul></section>
           <section class="paneel"><h2>Gegevens</h2><dl class="gegevens">
@@ -281,13 +292,49 @@
       try { await api(`hq/customers/${id}/cancel`, { method: "POST" }); toast("Abonnement opgezegd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     });
     main.querySelector("#factuur-nieuw").onclick = () => factuurDialoog(c.id);
+    main.querySelector("#site-maak")?.addEventListener("click", () => siteDialoog(c));
+    main.querySelector("#site-koppel")?.addEventListener("click", () => koppelDialoog(c));
     koppelWijzigingen(main);
     koppelFacturen(main);
     koppelKopieer(main);
   }
 
+  async function siteDialoog(c) {
+    const info = await api("hq/sites/info");
+    const mist = [!info.github && "GITHUB_TOKEN en GITHUB_ORG", !info.netlify && "NETLIFY_API_TOKEN en NETLIFY_ACCOUNT_SLUG"].filter(Boolean);
+    const dlg = SM.dialoog("Website aanmaken", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+      ${!info.github ? html`<div class="melding melding-let">${raw(icon.let)}<p>Zet eerst ${mist.join(" en ")} in Netlify (Project configuration › Environment variables). Daarna kan HQ repo's aanmaken.</p></div>` : ""}
+      <p>HQ maakt voor ${c.company} een eigen privé-repo op GitHub met het Sitemaker-sjabloon, gevuld met de bedrijfsgegevens${info.netlify ? ", en een eigen Netlify-project" : ""}.${info.netlify && !info.netlifyLink ? " Zonder NETLIFY_GITHUB_INSTALLATION_ID koppel je de repo daarna nog één keer met de hand in Netlify." : ""}</p>
+      <div class="veld"><label for="s-thema">Stijl om mee te beginnen</label><select id="s-thema" name="thema">${Object.entries(info.themas).map(([k, t]) => html`<option value="${k}">${t}</option>`)}</select></div>
+      <button class="knop knop-actie" type="submit" ${info.github ? "" : raw("disabled")}>Aanmaken</button></form>`);
+    const form = dlg.querySelector("form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(form);
+      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Repo en project maken…");
+      try {
+        const r = await api(`hq/customers/${c.id}/site`, { method: "POST", body: { thema: form.elements.thema.value } });
+        dlg.close(); toast(r.needsLink ? "Repo aangemaakt. Koppel hem nog in Netlify." : "Repo en Netlify-project aangemaakt"); herlaad();
+      } catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+    });
+  }
+  async function koppelDialoog(c) {
+    const info = await api("hq/sites/info");
+    const dlg = SM.dialoog("Site koppelen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+      <p class="dempen">De repo moet het Sitemaker-sjabloon gebruiken (content.json en build.mjs), anders kan Claude de wijzigingen niet verwerken.</p>
+      <div class="veld"><label for="s-repo">GitHub-repo</label><input id="s-repo" name="repo" required placeholder="sitemaker-sites/site-kapsalon" value="${c.site?.repo || ""}"><div class="fout" data-fout-voor="repo"></div></div>
+      <div class="veld"><label for="s-nf">Netlify-projectnaam</label><input id="s-nf" name="netlifyName" placeholder="kapsalon-noor" value="${c.site?.netlifyName || ""}"><div class="hulp">Het deel vóór .netlify.app. Nodig voor de voorbeeldlinks.</div></div>
+      <div class="veld"><label for="s-th">Stijl</label><select id="s-th" name="thema"><option value="">Ongewijzigd</option>${Object.entries(info.themas).map(([k, t]) => html`<option value="${k}" ${k === c.site?.theme ? raw("selected") : ""}>${t}</option>`)}</select></div>
+      <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+    const form = dlg.querySelector("form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(form);
+      try { await api(`hq/customers/${c.id}/site`, { method: "PUT", body: Object.fromEntries(new FormData(form)) }); dlg.close(); toast("Koppeling opgeslagen"); herlaad(); }
+      catch (err) { SM.toonFouten(form, err); }
+    });
+  }
+
   function logTekst(l) {
-    const t = { "klant.aangemaakt": "Klant aangemaakt", "klant.bijgewerkt": "Gegevens bijgewerkt", "klant.welkomstmail": "Welkomstmail verstuurd", "wijziging.ingediend": "Wijziging doorgegeven door klant", "wijziging.status": `Wijziging op ${(L.wijziging[l.detail?.to] || [l.detail?.to])[0]} gezet`, "factuur.aangemaakt": `Factuur ${l.detail?.number || ""} aangemaakt`, "factuur.status": `Factuur ${l.detail?.number || ""} op ${l.detail?.to} gezet`, "factuur.pdf": `PDF geüpload bij ${l.detail?.number || ""}`, "betaling.eerste_gestart": "Betaallink voor eerste betaling gemaakt", "betaling.factuurlink": "Betaallink voor factuur gemaakt", "abonnement.gestart": "Automatisch abonnement gestart", "abonnement.opgezegd": "Abonnement opgezegd", "portaal.gebruiker_toegevoegd": `Portaalgebruiker ${l.detail?.email || ""} toegevoegd`, "portaal.gebruiker_geblokkeerd": `Toegang ${l.detail?.email || ""} geblokkeerd`, "portaal.gebruiker_actief": `Toegang ${l.detail?.email || ""} hersteld` };
+    const t = { "klant.aangemaakt": "Klant aangemaakt", "klant.bijgewerkt": "Gegevens bijgewerkt", "klant.welkomstmail": "Welkomstmail verstuurd", "wijziging.ingediend": "Wijziging doorgegeven door klant", "wijziging.status": `Wijziging op ${(L.wijziging[l.detail?.to] || [l.detail?.to])[0]} gezet`, "factuur.aangemaakt": `Factuur ${l.detail?.number || ""} aangemaakt`, "factuur.status": `Factuur ${l.detail?.number || ""} op ${l.detail?.to} gezet`, "factuur.pdf": `PDF geüpload bij ${l.detail?.number || ""}`, "betaling.eerste_gestart": "Betaallink voor eerste betaling gemaakt", "betaling.factuurlink": "Betaallink voor factuur gemaakt", "abonnement.gestart": "Automatisch abonnement gestart", "abonnement.opgezegd": "Abonnement opgezegd", "portaal.gebruiker_toegevoegd": `Portaalgebruiker ${l.detail?.email || ""} toegevoegd`, "portaal.gebruiker_geblokkeerd": `Toegang ${l.detail?.email || ""} geblokkeerd`, "portaal.gebruiker_actief": `Toegang ${l.detail?.email || ""} hersteld`, "site.aangemaakt": `Repo ${l.detail?.repo || ""} aangemaakt`, "site.gekoppeld": `Gekoppeld aan ${l.detail?.repo || ""}`, "wijziging.goedgekeurd": "Voorstel van Claude goedgekeurd en live gezet", "wijziging.opnieuw": "Nieuw voorstel gevraagd aan Claude", "portaal.bekeken_als_klant": "Portaal bekeken als klant" };
     return t[l.action] || l.action;
   }
 
@@ -321,14 +368,29 @@
 
   // ================================================ WIJZIGINGEN
   let wijzigingFilter = "open";
-  async function wijzigingen(main) {
-    const { changes } = await api("hq/changes?status=" + (wijzigingFilter === "alle" ? "" : wijzigingFilter));
-    const f = [["open", "Open"], ["ontvangen", "Ontvangen"], ["in_behandeling", "In behandeling"], ["verwerkt", "Verwerkt"], ["afgewezen", "Niet uitgevoerd"], ["alle", "Alle"]];
+  async function wijzigingen(main, sub) {
+    if (sub === "voorstel") { wijzigingFilter = "voorstel"; history.replaceState(null, "", "#wijzigingen"); }
+    const api_f = wijzigingFilter === "alle" ? "" : wijzigingFilter === "voorstel" ? "open" : wijzigingFilter;
+    let { changes } = await api("hq/changes?status=" + api_f);
+    if (wijzigingFilter === "voorstel") changes = changes.filter((w) => w.ai?.status === "voorstel");
+    const klaar = changes.filter((w) => w.ai?.status === "voorstel");
+    const f = [["voorstel", "Klaar voor goedkeuring"], ["open", "Open"], ["ontvangen", "Ontvangen"], ["in_behandeling", "In behandeling"], ["verwerkt", "Verwerkt"], ["afgewezen", "Niet uitgevoerd"], ["alle", "Alle"]];
     render(main, html`
-      <div class="hq-kop"><div><h1>Wijzigingen</h1><p>Elke wijziging moet binnen 48 uur verwerkt zijn. Zet hem op Verwerkt, dan krijgt de klant automatisch een mail.</p></div></div>
+      <div class="hq-kop"><div><h1>Wijzigingen</h1><p>Claude maakt bij elke wijziging een voorstel op een voorbeeldsite. Jij kijkt het na en keurt goed; dan staat het live en krijgt de klant een mail. Alles binnen 48 uur.</p></div>
+        ${klaar.length > 1 ? html`<button class="knop knop-actie" id="alles-goed">Alle ${klaar.length} voorstellen goedkeuren</button>` : ""}</div>
       <div class="filters" role="group" aria-label="Filter">${f.map(([k, t]) => html`<button aria-pressed="${k === wijzigingFilter}" data-f="${k}">${t}</button>`)}</div>
-      <section class="paneel">${changes.length ? html`<ul class="lijst">${changes.map((w) => wijzigingItem(w, true))}</ul>` : html`<div class="leeg"><h3>Niets in deze lijst</h3><p>${wijzigingFilter === "open" ? "Alle wijzigingen zijn verwerkt." : "Er zijn geen wijzigingen met deze status."}</p></div>`}</section>`);
+      <section class="paneel">${changes.length ? html`<ul class="lijst">${changes.map((w) => wijzigingItem(w, true))}</ul>` : html`<div class="leeg"><h3>Niets in deze lijst</h3><p>${wijzigingFilter === "open" ? "Alle wijzigingen zijn verwerkt." : wijzigingFilter === "voorstel" ? "Er wachten geen voorstellen op goedkeuring." : "Er zijn geen wijzigingen met deze status."}</p></div>`}</section>`);
     main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { wijzigingFilter = b.dataset.f; wijzigingen(main); }));
+    main.querySelector("#alles-goed")?.addEventListener("click", async (e) => {
+      if (!(await SM.bevestig(`${klaar.length} voorstellen goedkeuren?`, "Alle voorstellen in deze lijst gaan live en de klanten krijgen een mail. Heb je de voorbeeldsites bekeken?", "Alles goedkeuren"))) return;
+      SM.bezig(e.target, true, "Live zetten…");
+      try {
+        const r = await api("hq/changes/goedkeuren", { method: "POST", body: { ids: klaar.map((w) => w.id) } });
+        const mis = r.results.filter((x) => !x.ok);
+        toast(mis.length ? `${r.results.length - mis.length} live gezet, ${mis.length} mislukt: ${mis[0].error}` : `${r.results.length} wijzigingen live gezet`, mis.length ? "fout" : "ok");
+      } catch (err) { toast(err.message, "fout"); }
+      herlaad();
+    });
     koppelWijzigingen(main);
   }
 
@@ -342,6 +404,7 @@
         ${open ? (over ? html`<span>Deadline over ${over}</span>` : html`<span class="status s-fout">Over de 48 uur</span>`) : ""}
         ${w.attachment ? html`<a href="/api/hq/changes/${w.id}/bijlage">${raw(icon.download)} ${w.attachment.name} (${SM.bytes(w.attachment.size)})</a>` : ""}
         ${!w.counts ? html`<span>Telt niet mee</span>` : ""}</div>
+      ${aiBlok(w, open)}
       <form class="wijziging-form" novalidate>
         <div class="rij3">
           <div class="veld"><label for="ws-${w.id}">Status</label><select id="ws-${w.id}" name="status">${opties(L.wijziging, w.status)}</select></div>
@@ -351,7 +414,59 @@
         <div class="knoppen"><button class="knop knop-klein" type="submit">Opslaan</button><label class="vinkje klein"><input type="checkbox" name="notify" checked> Klant mailen bij Verwerkt of Niet uitgevoerd</label></div>
       </form></li>`;
   }
+  // Leesbare naam voor een veld uit content.json, bijv. "openingstijden[0].tijd" → "Openingstijden 1 · tijd".
+  const VELD = { thema: "Stijl", bedrijf: "Bedrijf", seo: "Zoekmachines", hero: "Bovenaan", diensten: "Diensten", over: "Over ons", fotos: "Foto's", openingstijden: "Openingstijden", contact: "Contact",
+    naam: "naam", titel: "kop", tekst: "tekst", label: "label", foto: "foto", knop: "knop", items: "", omschrijving: "omschrijving", telefoon: "telefoon", email: "e-mail", adres: "adres", tijd: "tijd", dag: "dag", plaats: "plaats" };
+  const veldNaam = (v) => String(v).replace(/\.items\[/g, "[").split(".").map((d, i) => { const m = d.match(/^(\w+)(?:\[(\d+)\])?$/); if (!m) return d; const n = VELD[m[1]] ?? m[1]; return (i ? n : n.charAt(0).toUpperCase() + n.slice(1)) + (m[2] != null ? " " + (Number(m[2]) + 1) : ""); }).filter(Boolean).join(" · ");
+
+  // Het voorstel van Claude bij een wijziging.
+  function aiBlok(w, open) {
+    const a = w.ai || {};
+    const kort = (v) => { const t = v == null || v === "" ? "–" : typeof v === "string" ? v : JSON.stringify(v); return t.length > 220 ? t.slice(0, 220) + "…" : t; };
+    if (!a.status) return open ? html`<div class="ai-blok ai-leeg"><button class="knop knop-licht knop-klein" type="button" data-ai="verwerk">Laat Claude een voorstel maken</button></div>` : "";
+    const kop = html`<div class="ai-kop"><b>Claude</b>${chip(L.ai, a.status)}${a.attempts > 1 ? html`<span class="klein dempen">voorstel ${a.attempts}</span>` : ""}${a.updatedAt ? html`<span class="klein dempen">${geleden(a.updatedAt)}</span>` : ""}</div>`;
+    if (a.status === "wachtrij" || a.status === "bezig") return html`<div class="ai-blok">${kop}<p class="klein">Claude past de site aan op een aparte voorbeeldversie. Dat duurt meestal een paar minuten; ververs de pagina straks.</p></div>`;
+    if (a.status === "voorstel") return html`<div class="ai-blok ai-voorstel">${kop}
+      ${a.summary ? html`<p class="ai-samenvatting">${a.summary}</p>` : ""}
+      ${a.diff?.length ? html`<div class="tabel-wrap"><table class="tabel ai-diff"><thead><tr><th>Onderdeel</th><th>Was</th><th>Wordt</th></tr></thead><tbody>${a.diff.slice(0, 30).map((d) => html`<tr><td class="klein" title="${d.veld}">${veldNaam(d.veld)}</td><td class="oud">${kort(d.oud)}</td><td class="nieuw">${kort(d.nieuw)}</td></tr>`)}</tbody></table></div>${a.diff.length > 30 ? html`<p class="klein dempen">En nog ${a.diff.length - 30} kleine aanpassingen; zie de pull request.</p>` : ""}` : ""}
+      ${a.feedback ? html`<p class="klein dempen">Jouw opmerking: ${a.feedback}</p>` : ""}
+      <div class="knoppen">${a.previewUrl ? html`<a class="knop knop-licht knop-klein" href="${a.previewUrl}" target="_blank" rel="noopener">${raw(icon.open)}Voorbeeld bekijken</a>` : ""}
+        <button class="knop knop-actie knop-klein" type="button" data-ai="goedkeuren">Goedkeuren en live zetten</button>
+        <button class="knop knop-licht knop-klein" type="button" data-ai="opnieuw">Opnieuw, met opmerking</button>
+        <button class="knop knop-tekst knop-klein" type="button" data-ai="handmatig">Zelf afhandelen</button>
+        ${a.prUrl ? html`<a class="knop knop-tekst knop-klein" href="${a.prUrl}" target="_blank" rel="noopener">Pull request</a>` : ""}</div>
+      ${a.previewUrl ? html`<p class="klein dempen">De voorbeeldsite staat meestal binnen een minuut klaar.</p>` : ""}</div>`;
+    if (a.status === "goedgekeurd") return html`<div class="ai-blok">${kop}${a.summary ? html`<p class="klein">${a.summary}</p>` : ""}${a.prUrl ? html`<a class="klein" href="${a.prUrl}" target="_blank" rel="noopener">Bekijk de wijziging op GitHub</a>` : ""}</div>`;
+    return html`<div class="ai-blok ai-${a.status}">${kop}<p class="klein">${a.status === "fout" ? "Er ging iets mis: " : "Claude doet dit niet automatisch: "}${a.reason || "geen reden opgegeven."}</p>
+      ${open ? html`<div class="knoppen"><button class="knop knop-licht knop-klein" type="button" data-ai="verwerk">Claude opnieuw laten proberen</button></div>` : ""}</div>`;
+  }
+
   function koppelWijzigingen(main) {
+    main.querySelectorAll("[data-wijziging] [data-ai]").forEach((b) => b.addEventListener("click", async () => {
+      const id = b.closest("[data-wijziging]").dataset.wijziging, actie = b.dataset.ai;
+      if (actie === "opnieuw") {
+        const dlg = SM.dialoog("Opnieuw, met opmerking", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+          <p class="dempen">Claude maakt een nieuw voorstel en houdt rekening met wat je hier schrijft.</p>
+          <div class="veld"><label for="ai-fb">Wat moet anders?</label><textarea id="ai-fb" name="feedback" rows="4" required placeholder="Bijvoorbeeld: laat de kop staan, pas alleen de openingstijden aan."></textarea><div class="fout" data-fout-voor="feedback"></div></div>
+          <button class="knop knop-actie" type="submit">Nieuw voorstel maken</button></form>`);
+        const form = dlg.querySelector("form");
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault(); SM.wisFouten(form);
+          const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Bezig…");
+          try { await api(`hq/changes/${id}/opnieuw`, { method: "POST", body: { feedback: form.elements.feedback.value } }); dlg.close(); toast("Claude maakt een nieuw voorstel"); herlaad(); }
+          catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+        });
+        return;
+      }
+      if (actie === "handmatig" && !(await SM.bevestig("Zelf afhandelen?", "Het voorstel van Claude vervalt. Je past de site zelf aan en zet de wijziging daarna op Verwerkt.", "Zelf afhandelen"))) return;
+      SM.bezig(b, true, actie === "goedkeuren" ? "Live zetten…" : "Bezig…");
+      try {
+        const r = await api(`hq/changes/${id}/${actie}`, { method: "POST", body: {} });
+        if (actie === "verwerk" && !r.queued) toast("Kan niet: deze klant heeft nog geen gekoppelde site, of Claude is al bezig.", "fout");
+        else toast({ goedkeuren: "Live gezet. De klant krijgt een mail.", verwerk: "Claude gaat aan de slag", handmatig: "Je handelt deze wijziging zelf af" }[actie]);
+      } catch (err) { toast(err.message, "fout"); }
+      herlaad();
+    }));
     main.querySelectorAll("[data-wijziging] form").forEach((form) => form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = form.closest("[data-wijziging]").dataset.wijziging;
@@ -496,7 +611,7 @@
       <div class="hq-kop"><div><h1>Sites</h1><p>Alle klantsites. Live sites worden elke 15 minuten gecontroleerd; bij twee mislukte controles op rij krijg je een mail.</p></div></div>
       <section class="paneel">${sites.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Klant</th><th>Adres</th><th>Status</th><th>Bereikbaar</th><th class="acties"></th></tr></thead><tbody>
         ${sites.map((s) => html`<tr><td><a href="#klant/${s.id}"><b>${s.company}</b></a></td><td>${s.siteUrl ? html`<a href="${s.siteUrl}" target="_blank" rel="noopener">${s.siteUrl.replace(/^https?:\/\//, "")}</a>` : html`<span class="dempen">–</span>`}</td>
-          <td>${chip(L.site, s.siteStatus)}</td>
+          <td>${chip(L.site, s.siteStatus)}${s.site?.repo ? html`<br><span class="klein dempen">Automatisch via ${s.site.repo.split("/")[1]}</span>` : ""}</td>
           <td>${s.check ? html`<span class="mini-site"><span class="punt ${s.check.ok ? "ok" : "fout"}"></span>${s.check.ok ? `${s.check.ms} ms` : s.check.error}</span><span class="klein dempen">${geleden(s.check.at)}</span>` : html`<span class="dempen">Nog niet gecontroleerd</span>`}</td>
           <td class="acties">${s.siteUrl ? html`<button class="knop knop-licht knop-klein" data-check="${s.id}">Nu controleren</button>` : ""}</td></tr>`)}</tbody></table></div>`
         : html`<div class="leeg"><h3>Nog geen sites</h3><p>Vul bij een klant het website-adres in en zet de site op Live.</p></div>`}</section>`);

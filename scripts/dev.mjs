@@ -19,7 +19,7 @@ Object.assign(process.env, {
 const { default: api } = await import("../netlify/functions/api.mjs");
 const { captured } = await import("../netlify/lib/mail.mjs");
 let seen = 0;
-setInterval(() => { while (seen < captured.length) { const m = captured[seen++]; console.log(`\n[mail] aan ${m.to}: ${m.subject}`); } }, 500);
+setInterval(() => { while (seen < captured.length) { const m = captured[seen++]; console.log(`\n[mail] aan ${m.to}: ${m.subject}`); const code = String(m.text || "").match(/\b\d{6}\b/); if (code && /code/i.test(m.subject)) console.log(`[mail] code: ${code[0]}`); } }, 500);
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".txt": "text/plain" };
 http.createServer(async (req, res) => {

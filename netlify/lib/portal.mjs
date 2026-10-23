@@ -4,6 +4,7 @@ import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase, 
 import { putFile, getFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady } from "./mollie.mjs";
+import { queueChange, autoReady } from "./sites.mjs";
 
 export const STATUS_LABEL = { ontvangen: "Ontvangen", in_behandeling: "In behandeling", verwerkt: "Verwerkt", afgewezen: "Niet uitgevoerd" };
 
@@ -119,6 +120,7 @@ export async function submitChange(user, form) {
     }
   }
   await audit(user.id, res.c.id, "wijziging.ingediend", { id: res.row.id });
+  if (autoReady()) await queueChange(res.row.id).catch((e) => console.log("[ai] wachtrij", e.message));
   const pending = [];
   pending.push(notifyStaff(`Nieuwe wijziging: ${res.c.company}`, [`${res.c.company} heeft een wijziging doorgegeven${page ? ` (pagina: ${page})` : ""}:`, description.slice(0, 600), `Te verwerken binnen ${OFFER.changeHours} uur.`], `/hq/#wijzigingen/${res.row.id}`).catch(() => {}));
   pending.push(sendMail({

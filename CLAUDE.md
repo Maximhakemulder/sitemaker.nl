@@ -21,3 +21,10 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - Commits op naam van Maximhakemulder (267295406+Maximhakemulder@users.noreply.github.com).
 - Lokaal: `npm test` (lokale Postgres via @netlify/database-dev, mail in het geheugen, nep-Mollie). Nooit echte mails of betalingen vanuit tests.
 - Deploy previews delen Blobs met productie: test daar niet met uploads van echte klanten.
+
+## Klantsites en automatische wijzigingen
+- Elke klantsite = eigen privé GitHub-repo (`GITHUB_ORG/site-<naam>`) + eigen Netlify-project, gemaakt vanuit `templates/klantsite` (alle tekst in `content.json`, `build.mjs` zonder dependencies, thema's elegant/stoer/natuur/zacht). HQ › klant › "Website aanmaken".
+- Wijziging ingediend → `queueChange` → `verwerk-background` (15 min) → Claude past alleen `content.json` aan op branch `wijziging-<id>` → pull request → Netlify deploy preview (`deploy-preview-<pr>--<site>.netlify.app`). Kan/mag het niet (webshop, onbekende afbeelding, geen verschil) → `ai_status = handmatig`.
+- Maxim keurt goed in HQ › Wijzigingen → merge naar main → live, status Verwerkt, mail naar klant. Max 5 voorstellen per wijziging. `tick` pakt vastgelopen voorstellen opnieuw op.
+- Sleutels: `GITHUB_TOKEN` (fine-grained: Administration + Contents + Pull requests, read/write op de organisatie), `GITHUB_ORG`, `NETLIFY_API_TOKEN`, `NETLIFY_ACCOUNT_SLUG`, `NETLIFY_GITHUB_INSTALLATION_ID` (optioneel; anders repo met de hand koppelen in Netlify), `ANTHROPIC_API_KEY` (of AI Gateway), optioneel `AI_MODEL`.
+- Tests gebruiken `GITHUB_FAKE`, `NETLIFY_FAKE`, `AI_FAKE` + `globalThis.__aiFake` en `SM_INLINE_AI=1`.

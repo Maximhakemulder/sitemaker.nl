@@ -125,6 +125,14 @@ export default async (req, context) => {
         case "POST customers/:id/check": return json(await hq.checkSiteNow(id));
         case "GET changes": return json({ changes: await hq.listChanges({ status: url.searchParams.get("status") || "" }) });
         case "PUT changes/:id": return json(await hq.updateChange(id, await body(req), user));
+        case "POST changes/:id/goedkeuren": return json(await hq.approveChange(id, user, { notify: (await body(req)).notify !== false }));
+        case "POST changes/:id/opnieuw": return json(await hq.redoChange(id, (await body(req)).feedback || "", user));
+        case "POST changes/:id/handmatig": return json(await hq.manualChange(id, user));
+        case "POST changes/:id/verwerk": return json(await hq.queueChange(id));
+        case "POST changes/goedkeuren": { const ids = ((await body(req)).ids || []).map(Number).slice(0, 100); const res = []; for (const i of ids) { try { await hq.approveChange(i, user); res.push({ id: i, ok: true }); } catch (e) { res.push({ id: i, ok: false, error: e.message }); } } return json({ results: res }); }
+        case "GET sites/info": return json(hq.sitesInfo());
+        case "POST customers/:id/site": return json(await hq.provisionSite(id, await body(req), user));
+        case "PUT customers/:id/site": return json(await hq.linkSite(id, await body(req), user));
         case "GET changes/:id/bijlage": return await changeAttachment(user, id, true);
         case "GET invoices": return json({ invoices: await hq.listInvoices() });
         case "POST invoices": return json(await hq.createInvoiceFromForm(await req.formData(), user));
