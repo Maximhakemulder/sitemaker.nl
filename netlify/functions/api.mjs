@@ -1,13 +1,13 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
-import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
+import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
 import { submitAppointment } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
 import { checkUnsub, unsubscribe } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
-import { one, getSettings } from "../lib/core.mjs";
+import { one, q, getSettings } from "../lib/core.mjs";
 import * as hq from "../lib/admin.mjs";
 import { publishedReviews, listReviews, saveReview, deleteReview } from "../lib/reviews.mjs";
 
@@ -75,7 +75,15 @@ export default async (req, context) => {
     if (path === "auth/logout" && m === "POST") { const scope = url.searchParams.get("portal") === "1" ? "portaal" : "hq"; return json({ ok: true }, 200, { "set-cookie": await logout(req, scope) }); }
 
     const user = await currentUser(req, seg[0] === "portal" || url.searchParams.get("portal") === "1" ? "portaal" : "hq");
-    if (path === "auth/options") return json({ mail: mailReady(), key: keyLoginOpen() });
+    if (path === "auth/options") return json({ mail: mailReady(), key: keyLoginOpen(), open: openMode() });
+    if (path === "auth/open-klanten" && m === "GET") {
+      if (!openMode()) fail(403, "Het portaal staat niet open.");
+      return json({ klanten: await q("SELECT c.id, c.company FROM customers c WHERE EXISTS (SELECT 1 FROM users u WHERE u.customer_id = c.id AND u.active) ORDER BY c.company") });
+    }
+    if (path === "auth/open-als" && m === "POST") {
+      const r = await openPortalAs(Number((await body(req)).customerId));
+      return json({ ok: true }, 200, { "set-cookie": r.cookie });
+    }
     if (path === "auth/me") return json({ user: user ? { email: user.email, name: user.name, role: user.role, open: !!user.open, viaHq: !!user.viaHq } : null, open: openMode() });
 
     // ------------------------------------------------ klantenportaal

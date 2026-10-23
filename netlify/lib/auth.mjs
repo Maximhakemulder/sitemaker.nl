@@ -152,6 +152,11 @@ export async function logout(req, scope = "hq") {
 const alsCookie = (token, maxAge) => `${ALS_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${isLocal() ? "" : "; Secure"}`;
 
 // Een medewerker opent het portaal van een klant, precies zoals de klant het ziet (8 uur geldig, gelogd).
+export async function openPortalAs(customerId) {
+  if (!openMode()) fail(403, "Het portaal staat niet open.");
+  return viewAsCustomer(await openAdmin(), customerId);
+}
+
 export async function viewAsCustomer(staff, customerId) {
   const u = await one("SELECT * FROM users WHERE customer_id = $1 AND role = 'klant' AND active ORDER BY id LIMIT 1", [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");

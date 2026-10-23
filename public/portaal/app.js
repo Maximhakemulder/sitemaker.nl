@@ -14,9 +14,28 @@
 
   async function start() {
     try { const me = await api("auth/me?portal=1"); if (me.user && me.user.role === "klant") return laad(); } catch {}
+    try {
+      const o = await api("auth/options");
+      if (o.open) return kiesKlant();
+    } catch {}
     const r = await SM.inloggen(app, { portal: "portaal", kop: "Inloggen op je klantenportaal", titel: "Je website, je wijzigingen en je facturen op één plek.", tekst: "Geef wijzigingen door, volg de status en vind je facturen terug." });
     if (r.role !== "klant") { location.href = "/hq/"; return; }
     laad();
+  }
+
+  // Open modus (zolang de mail niet is ingesteld): kies welke klant je wilt bekijken.
+  async function kiesKlant() {
+    const { klanten } = await api("auth/open-klanten");
+    render(app, html`<div class="inlog"><div class="inlog-merk"><img class="logo" src="/assets/brand/logo-wit.png" alt="Sitemaker"><div><h1>Klantenportaal</h1><p>Open modus: zolang de mail niet is ingesteld kun je hier zonder inloggen elk klantportaal bekijken.</p></div><img class="blok" src="/assets/brand/mark.png" alt=""></div>
+      <div class="inlog-vak"><div class="kies-klant">
+        <h2>Welke klant wil je bekijken?</h2>
+        ${klanten.length ? html`<ul class="lijst">${klanten.map((k) => html`<li><button class="knop knop-licht" data-klant="${k.id}">${k.company}</button></li>`)}</ul>`
+          : html`<p class="dempen">Er zijn nog geen klanten. Maak er een aan in HQ, dan verschijnt hij hier.</p><a class="knop knop-actie" href="/hq/#klanten">Naar HQ</a>`}
+      </div></div></div>`);
+    app.querySelectorAll("[data-klant]").forEach((b) => b.addEventListener("click", async () => {
+      SM.bezig(b, true, "Openen…");
+      try { await api("auth/open-als", { method: "POST", body: { customerId: Number(b.dataset.klant) } }); laad(); } catch (e) { SM.toast(e.message, "fout"); SM.bezig(b, false); }
+    }));
   }
 
   async function laad() {
