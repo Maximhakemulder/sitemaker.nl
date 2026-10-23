@@ -478,3 +478,34 @@ p { margin: 0 0 1em; }
 }
 @media (max-width: 380px) { .hero h1 { font-size: 34px; } .allin-bedrag { font-size: 38px; } .mobiel-cta .prijsje { display: none; } .mobiel-cta .knop { margin: 0; width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .band-rij, .hero-blokken span { animation: none; } }
+
+/* Reviews (Trustpilot-stijl) */
+.reviews-kop { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 24px; }
+.reviews-score { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; color: var(--grijs); font-size: 16px; }
+.reviews-score b { color: var(--paars); font-size: 20px; }
+.sterren { display: inline-flex; gap: 3px; }
+.sterren i { width: 22px; height: 22px; background: #00B67A; display: grid; place-items: center; border-radius: 3px; }
+.sterren i.uit { background: #DCDCE6; }
+.sterren i::before { content: ""; width: 15px; height: 15px; background: #FFF; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.sterren.klein i { width: 18px; height: 18px; } .sterren.klein i::before { width: 12px; height: 12px; }
+.reviews-pijlen { display: flex; gap: 8px; }
+.reviews-pijlen button { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--wit); color: var(--paars); box-shadow: 0 6px 18px rgba(28,7,71,.1); cursor: pointer; display: grid; place-items: center; }
+.reviews-pijlen button:hover { background: var(--paars); color: var(--wit); }
+.reviews-pijlen svg { width: 20px; height: 20px; }
+.reviews-rij { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 32px) / 3); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 4px 4px 16px; margin: -4px; scrollbar-width: none; }
+.reviews-rij::-webkit-scrollbar { display: none; }
+.review { scroll-snap-align: start; background: var(--wit); border-radius: var(--r); padding: 22px; box-shadow: 0 8px 24px rgba(28,7,71,.06); display: flex; flex-direction: column; gap: 10px; }
+.review-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.review-datum { font-size: 13px; color: var(--grijs); }
+.review h3 { font-size: 17px; }
+.review p { margin: 0; color: var(--grijs); font-size: 15px; flex: 1; }
+.review-wie { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--lijn); }
+.review-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--t-lila); color: var(--paars); font-weight: 800; display: grid; place-items: center; flex: none; }
+.review-wie b { display: block; font-size: 15px; }
+.review-wie small { color: var(--grijs); font-size: 13px; }
+.geverifieerd { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #00875A; margin-left: auto; white-space: nowrap; }
+.geverifieerd::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: #00B67A url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 9px no-repeat; }
+.voorbeeld-balk { background: #FFF3DC; color: #7A4A00; font-weight: 700; font-size: 14px; padding: 10px 14px; border-radius: 12px; margin-bottom: 14px; }
+@media (max-width: 1060px) { .reviews-rij { grid-auto-columns: calc((100% - 16px) / 2); } }
+@media (max-width: 700px) { .reviews-rij { grid-auto-columns: 86%; gap: 12px; } .reviews-pijlen { display: none; } .review { padding: 18px; } }
+.g-galerij div { overflow: hidden; } .g-galerij div > img { height: 170px; min-height: 0; }

@@ -266,6 +266,17 @@ await test("open modus: HQ zonder inloggen, alleen zonder mail; bekijk-als-klant
   assert.equal((await call("GET", "hq/overview", { cookie: c })).status, 401);
 });
 
+console.log("Reviews");
+await test("reviews: alleen gepubliceerde op de site, geverifieerd alleen met klant", async () => {
+  assert.equal((await call("GET", "reviews")).data.count, 0);
+  const a = await call("POST", "hq/reviews", { cookie: admin, body: { name: "Jan", body: "Heel tevreden over de nieuwe website.", rating: 5, customerId: c1, published: true } });
+  assert.equal(a.status, 200, JSON.stringify(a.data));
+  await call("POST", "hq/reviews", { cookie: admin, body: { name: "Verborgen", body: "Deze staat nog niet online.", rating: 4 } });
+  const pub = await call("GET", "reviews");
+  assert.equal(pub.data.count, 1); assert.equal(pub.data.reviews[0].verified, true);
+  assert.equal((await call("POST", "hq/reviews", { cookie: k2 || admin, body: { name: "x", body: "kort", rating: 9 } })).status, k2 ? 403 : 400);
+});
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

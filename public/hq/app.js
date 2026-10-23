@@ -38,6 +38,7 @@
     ["betalingen", "Betalingen", '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
     ["b2b", "B2B-mail", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
+    ["reviews", "Reviews", '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'],
     ["instellingen", "Instellingen", '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>', "Beheer"],
     ["team", "Team", '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6Z"/>'],
     ["mails", "Verstuurde mails", '<path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/>'],
@@ -73,7 +74,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, instellingen, team, mails }[pagina] || overzicht;
+    const fn = { overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, reviews, instellingen, team, mails }[pagina] || overzicht;
     try { await fn(main, id); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
   }
@@ -607,6 +608,46 @@
     form.querySelector("[data-afspraak]")?.addEventListener("click", () => act("afspraak", "Op afspraak gezet"));
     form.querySelector("[data-afmelden]").addEventListener("click", async () => { if (await SM.bevestig("Nooit meer mailen?", `${l.email || l.company} komt op de afmeldlijst en krijgt geen B2B-mail meer.`, "Afmelden")) act("afmelden", "Afgemeld"); });
     form.querySelector("[data-klant]")?.addEventListener("click", () => { dlg.close(); klantDialoog({ company: l.company, email: l.email, phone: l.phone, siteUrl: l.website, notes: l.notes, leadId: l.id }); });
+  }
+
+  // ================================================ REVIEWS
+  async function reviews(main) {
+    const [{ reviews: lijst }, { customers }] = await Promise.all([api("hq/reviews"), api("hq/customers")]);
+    const st = (n) => "★".repeat(n) + "☆".repeat(5 - n);
+    render(main, html`
+      <div class="hq-kop"><div><h1>Reviews</h1><p>Echte reviews van klanten. Gepubliceerde reviews verschijnen op de website; gekoppeld aan een klant = "Geverifieerde klant".</p></div><button class="knop knop-actie" id="nieuw">Review toevoegen</button></div>
+      <p class="klein dempen">De opmaak op de website bekijken met invulteksten: <a href="/?reviews=voorbeeld#reviews" target="_blank" rel="noopener">voorbeeldweergave</a>.</p>
+      <section class="paneel">${lijst.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Review</th><th>Sterren</th><th>Klant</th><th>Status</th><th></th></tr></thead><tbody>
+        ${lijst.map((r) => html`<tr><td><b>${r.name}</b>${r.company ? html` · ${r.company}` : ""}<br><span class="klein dempen">${r.body.length > 120 ? r.body.slice(0, 120) + "…" : r.body}</span></td>
+          <td class="nowrap">${st(r.rating)}</td><td>${r.klant ? html`<span class="status s-ok">Geverifieerd</span><br><span class="klein dempen">${r.klant}</span>` : html`<span class="dempen">Niet gekoppeld</span>`}</td>
+          <td>${r.published ? html`<span class="status s-ok">Op de website</span>` : html`<span class="status s-grijs">Verborgen</span>`}</td>
+          <td class="acties"><button class="knop knop-tekst knop-klein" data-bewerk="${r.id}">Bewerken</button><button class="knop knop-tekst knop-klein" data-weg="${r.id}">Verwijderen</button></td></tr>`)}</tbody></table></div>`
+        : html`<div class="leeg"><h3>Nog geen reviews</h3><p>Voeg de reviews toe die je van klanten krijgt. Zolang er geen gepubliceerde review is, staat het reviewblok niet op de website.</p></div>`}</section>`);
+    const dialoog = (r = {}) => {
+      const dlg = SM.dialoog(r.id ? "Review bewerken" : "Review toevoegen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="rij2"><div class="veld"><label for="r-naam">Naam</label><input id="r-naam" name="name" value="${r.name || ""}"><div class="fout" data-fout-voor="name"></div></div>
+          <div class="veld"><label for="r-bedrijf">Bedrijf <span class="opt">(optioneel)</span></label><input id="r-bedrijf" name="company" value="${r.company || ""}"></div></div>
+        <div class="rij2"><div class="veld"><label for="r-st">Sterren</label><select id="r-st" name="rating">${[5, 4, 3, 2, 1].map((n) => html`<option value="${n}" ${n === (r.rating || 5) ? raw("selected") : ""}>${n} ${n === 1 ? "ster" : "sterren"}</option>`)}</select><div class="fout" data-fout-voor="rating"></div></div>
+          <div class="veld"><label for="r-datum">Datum</label><input id="r-datum" name="date" type="date" value="${r.date || new Date().toISOString().slice(0, 10)}"></div></div>
+        <div class="veld"><label for="r-titel">Titel <span class="opt">(optioneel)</span></label><input id="r-titel" name="title" value="${r.title || ""}"></div>
+        <div class="veld"><label for="r-tekst">Review (letterlijk zoals de klant hem gaf)</label><textarea id="r-tekst" name="body">${r.body || ""}</textarea><div class="fout" data-fout-voor="body"></div></div>
+        <div class="veld"><label for="r-klant">Koppelen aan klant</label><select id="r-klant" name="customerId"><option value="">Niet koppelen (geen "geverifieerd")</option>${customers.map((c) => html`<option value="${c.id}" ${c.id === r.customerId ? raw("selected") : ""}>${c.company}</option>`)}</select></div>
+        <div class="rij2"><div class="veld"><label for="r-bron">Bron <span class="opt">(bijv. Google)</span></label><input id="r-bron" name="source" value="${r.source || ""}"></div><div class="veld"><label for="r-url">Link naar origineel <span class="opt">(optioneel)</span></label><input id="r-url" name="sourceUrl" value="${r.sourceUrl || ""}"></div></div>
+        <div class="veld"><label class="vinkje"><input type="checkbox" name="published" ${r.published ? raw("checked") : ""}> Op de website tonen</label></div>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const b = Object.fromEntries(new FormData(form)); b.published = form.elements.published.checked;
+        try { await api(r.id ? "hq/reviews/" + r.id : "hq/reviews", { method: r.id ? "PUT" : "POST", body: b }); dlg.close(); toast("Review opgeslagen"); herlaad(); } catch (err) { SM.toonFouten(form, err); }
+      });
+    };
+    main.querySelector("#nieuw").onclick = () => dialoog();
+    main.querySelectorAll("[data-bewerk]").forEach((b) => b.addEventListener("click", () => dialoog(lijst.find((r) => String(r.id) === b.dataset.bewerk))));
+    main.querySelectorAll("[data-weg]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig("Review verwijderen?", "De review verdwijnt uit HQ en van de website.", "Verwijderen"))) return;
+      try { await api("hq/reviews/" + b.dataset.weg, { method: "DELETE" }); toast("Verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    }));
   }
 
   // ================================================ INSTELLINGEN
