@@ -4,6 +4,14 @@
 // Werkmap: $CONCEPT_WERK of /tmp/concepten
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+
+// Achter een proxy (cloudomgeving): Node gebruikt de proxy alleen met NODE_USE_ENV_PROXY; start dan opnieuw met de juiste instellingen.
+if ((process.env.HTTPS_PROXY || process.env.https_proxy) && !process.env.NODE_USE_ENV_PROXY) {
+  const ca = ["/root/.ccr/ca-bundle.crt", "/etc/ssl/certs/ca-certificates.crt"].find((f) => fs.existsSync(f));
+  const r = spawnSync(process.execPath, ["--no-warnings", ...process.argv.slice(1)], { stdio: "inherit", env: { ...process.env, NODE_USE_ENV_PROXY: "1", ...(ca && !process.env.NODE_EXTRA_CA_CERTS ? { NODE_EXTRA_CA_CERTS: ca } : {}) } });
+  process.exit(r.status ?? 1);
+}
 
 const BASE = (process.env.SITEMAKER_URL || "https://sitemaker-46to.netlify.app").replace(/\/+$/, "");
 const KEY = process.env.SITEMAKER_TAAK_SLEUTEL || "";
