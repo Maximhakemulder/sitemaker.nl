@@ -52,10 +52,36 @@ export function compose(lead, kind, s) {
   const body = fillTemplate(t.body, lead, s) + footer;
   return { subject, body };
 }
-function textToHtml(text) {
-  const linkify = (s) => escH(s).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}" style="color:#1C0747">${u}</a>`);
+// Meten (B2B): links lopen via een ondertekende doorstuurlink (/api/t/k), een onzichtbaar plaatje meet het openen (/api/t/o).
+// De afmeldlink wordt nooit omgezet. Uit te zetten met settings.b2b.meten { opens, kliks }.
+const trackSig = (s) => crypto.createHmac("sha256", env("AUTH_SECRET", "sitemaker-local-dev")).update(`trk:${s}`).digest("base64url").slice(0, 22);
+export const trackLink = (leadId, mail, url) => { const u = Buffer.from(url).toString("base64url"); return `${publicBase()}/api/t/k?l=${leadId}&m=${mail}&u=${u}&s=${trackSig(`${leadId}:${mail}:${u}`)}`; };
+export const trackPixel = (leadId, mail) => `${publicBase()}/api/t/o?l=${leadId}&m=${mail}&s=${trackSig(`${leadId}:${mail}:o`)}`;
+export function checkTrack({ l, m, u, s }) {
+  const want = trackSig(u !== undefined ? `${l}:${m}:${u}` : `${l}:${m}:o`);
+  const a = Buffer.from(String(s || "")), b = Buffer.from(want);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function textToHtml(text, meet = null) {
+  const linkify = (s) => escH(s).replace(/https?:\/\/[^\s<]+/g, (u) => {
+    const echt = u.replace(/&amp;/g, "&");
+    const href = meet?.kliks && !echt.includes("/api/b2b/afmelden") ? trackLink(meet.leadId, meet.mail, echt) : echt;
+    return `<a href="${escH(href)}" style="color:#1C0747">${u}</a>`;
+  });
+  const pixel = meet?.opens ? `<img src="${escH(trackPixel(meet.leadId, meet.mail))}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px">` : "";
   return `<!doctype html><html lang="nl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#1C0747">
-${text.split(/\n\n/).map((p) => `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`).join("")}</body></html>`;
+${text.split(/\n\n/).map((p) => `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`).join("")}${pixel}</body></html>`;
+}
+// Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
+const SCANNER = /bot|crawl|spider|preview|scanner|safelinks|barracuda|mimecast|proofpoint|curl|python|go-http|headless/i;
+export async function recordTrack({ l, m, u, ua = "" }) {
+  const lead = Number(l); if (!lead) return false;
+  const mail = m === "opvolging" ? "opvolging" : "eerste";
+  if (SCANNER.test(ua)) return false;
+  const sent = await one("SELECT MAX(created_at) AS at FROM mail_log WHERE ref = $1 AND kind = $2 AND ok", [`lead:${lead}`, `b2b-${mail}`]);
+  if (!sent?.at || Date.now() - new Date(sent.at).getTime() < 60000) return false;
+  await q("INSERT INTO mail_events (lead_id, mail, soort, url) VALUES ($1,$2,$3,$4)", [lead, mail, u !== undefined ? "klik" : "open", u !== undefined ? str(Buffer.from(String(u), "base64url").toString(), 500) : ""]).catch(() => {});
+  return true;
 }
 
 // ---------------------------------------------------------------- versturen (vanuit tick)
@@ -83,7 +109,7 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
     const kind = lead.status === "opvolging_goedgekeurd" ? "opvolging" : "eerste";
     const { subject, body } = compose(lead, kind, s);
     const res = await sendMail({
-      to: lead.email, subject, text: body, html: textToHtml(body), kind: `b2b-${kind}`, ref: `lead:${lead.id}`,
+      to: lead.email, subject, text: body, html: textToHtml(body, { leadId: lead.id, mail: kind, opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false }), kind: `b2b-${kind}`, ref: `lead:${lead.id}`,
       fromName: `${s.b2b.senderName || ""} | Sitemaker`.replace(/^ \| /, ""),
       headers: { "List-Unsubscribe": `<${unsubUrl(lead.id)}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
       inReplyTo: kind === "opvolging" ? lead.message_id || undefined : undefined,
@@ -125,7 +151,7 @@ export async function scanInbox({ days = 14, max = 150 } = {}) {
         const inReply = (msg.envelope?.inReplyTo || "").trim();
         if (/mailer-daemon|postmaster/i.test(from)) {
           const hit = [...byEmail.keys()].find((e) => src.toLowerCase().includes(e));
-          if (hit) { await q("UPDATE leads SET status = 'fout', error = 'Mail kwam niet aan (bounce).', updated_at = NOW() WHERE id = $1 AND status <> 'fout'", [byEmail.get(hit).id]); bounces++; }
+          if (hit) { await q("UPDATE leads SET status = 'fout', error = 'Mail kwam niet aan (bounce).', bounced_at = COALESCE(bounced_at, NOW()), updated_at = NOW() WHERE id = $1 AND status <> 'fout'", [byEmail.get(hit).id]); bounces++; }
           continue;
         }
         const lead = byMsg.get(inReply) || byEmail.get(from);
@@ -147,6 +173,7 @@ export async function scanInbox({ days = 14, max = 150 } = {}) {
         const stop = /\b(afmelden|uitschrijven|geen interesse|niet meer mailen|stop)\b/i.test(body.slice(0, 200));
         await q(`UPDATE leads SET status = $2, reply_at = $3, reply_snippet = $4, updated_at = NOW() WHERE id = $1 AND status NOT IN ('reactie','afspraak','klant','afgemeld')`,
           [lead.id, stop ? "afgemeld" : "reactie", msg.envelope?.date || new Date(), body]);
+        if (/\b(spam|ongevraagd|klacht)\b/i.test(body.slice(0, 300))) await q("UPDATE leads SET klacht_at = COALESCE(klacht_at, NOW()) WHERE id = $1", [lead.id]);
         if (stop) await q("INSERT INTO suppressions (email, reason) VALUES ($1, 'reactie: stop') ON CONFLICT DO NOTHING", [lead.email.toLowerCase()]);
         replies++;
       }

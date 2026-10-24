@@ -534,6 +534,7 @@ export async function saveAdminSettings(b, user) {
       scout: { active: x.scout?.active ?? cur.scout.active, perDay: Math.min(100, Math.max(5, Number(x.scout?.perDay ?? cur.scout.perDay) || 20)),
         categories: list(x.scout?.categories ?? cur.scout.categories), places: list(x.scout?.places ?? cur.scout.places) },
       ai: { research: x.ai?.research ?? cur.ai.research },
+      meten: { opens: x.meten?.opens ?? cur.meten?.opens ?? true, kliks: x.meten?.kliks ?? cur.meten?.kliks ?? true },
       concepten: {
         auto: x.concepten?.auto ?? cur.concepten?.auto ?? true,
         perDag: Math.min(200, Math.max(0, Number(x.concepten?.perDag ?? cur.concepten?.perDag ?? 20) || 0)),

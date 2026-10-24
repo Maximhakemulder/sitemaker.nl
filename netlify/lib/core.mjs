@@ -89,7 +89,8 @@ export const DEFAULT_SETTINGS = {
   notify: { email: "" },
   b2b: {
     senderName: "",
-    dailyMax: 40,
+    dailyMax: 15, // rustig opbouwen: week 1–2 15, week 3–4 25, daarna 40
+    meten: { opens: true, kliks: true },
     followupDays: 5,
     sendHours: [8, 17],
     scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "fysiotherapeut"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
