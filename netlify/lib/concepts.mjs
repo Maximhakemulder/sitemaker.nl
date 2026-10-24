@@ -186,26 +186,35 @@ function svgSize(buf) {
 
 // Sfeerbeelden (stock) als hun eigen site te weinig goede foto's heeft. Pexels: gratis te gebruiken, ook commercieel.
 // Alleen met PEXELS_API_KEY. In het concept en in HQ staat welke foto's sfeerbeelden zijn.
-export const stockReady = () => !!env("PEXELS_API_KEY");
+// Of Pixabay (PIXABAY_API_KEY): ook gratis en commercieel te gebruiken; we downloaden de foto's zelf (geen hotlinken).
+export const stockReady = () => !!(env("PEXELS_API_KEY") || env("PIXABAY_API_KEY"));
+async function zoekStock(zoek, aantal) {
+  try {
+    if (env("PEXELS_API_KEY")) {
+      const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${aantal}&orientation=landscape&locale=nl-NL`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
+      if (r.ok) return ((await r.json()).photos || []).map((p) => ({ src: p.src?.large2x || p.src?.large, alt: p.alt, url: p.url, door: p.photographer }));
+    }
+    if (env("PIXABAY_API_KEY")) {
+      const r = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(env("PIXABAY_API_KEY"))}&q=${encodeURIComponent(zoek)}&lang=nl&image_type=photo&orientation=horizontal&safesearch=true&min_width=1200&per_page=${Math.max(3, aantal)}`, { signal: AbortSignal.timeout(6000) });
+      if (r.ok) return ((await r.json()).hits || []).map((p) => ({ src: p.largeImageURL || p.webformatURL, alt: p.tags, url: p.pageURL, door: p.user }));
+    }
+  } catch {}
+  return [];
+}
 async function stockFotos(conceptId, zoek, nodig, start) {
   if (!stockReady() || !zoek || nodig <= 0) return [];
-  let data;
-  try {
-    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${Math.min(15, nodig + 4)}&orientation=landscape&locale=nl-NL`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
-    if (!r.ok) return [];
-    data = await r.json();
-  } catch { return []; }
+  const gevonden = await zoekStock(zoek, Math.min(15, nodig + 4));
   const out = [];
-  for (const p of data.photos || []) {
+  for (const p of gevonden) {
     if (out.length >= nodig) break;
-    const r = await get(p.src?.large2x || p.src?.large, { binary: true, max: 3500000, timeout: 6000 });
+    const r = p.src && await get(p.src, { binary: true, max: 3500000, timeout: 6000 });
     const size = r?.buf && imageSize(r.buf);
     if (!size) continue;
     const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
     const name = `foto-${start + out.length + 1}.${ext}`;
     const key = `concepts/${conceptId}/${name}`;
     await putFile(key, r.buf, { type: size.type, name });
-    out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: str(p.alt, 120), logo: false, stock: true, bron: p.url, fotograaf: str(p.photographer, 80) });
+    out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: str(p.alt, 120), logo: false, stock: true, bron: p.url, fotograaf: str(p.door, 80) });
   }
   return out;
 }
