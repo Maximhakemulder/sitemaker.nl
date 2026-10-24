@@ -173,8 +173,8 @@ Regels:
 - 3 tot 6 diensten, elk met een korte uitleg (max. 25 woorden). Prijs alleen als die letterlijk op hun site staat.
 - "over": 2-4 zinnen over het bedrijf, alleen uit hun tekst.
 - Foto's: kies alleen uit de lijst met beschikbare afbeeldingen (pad "afbeeldingen/…"). Hero = de mooiste, sfeervolle foto. Gebruik een foto maar één keer. Geen foto's beschikbaar = laat foto-velden leeg.
-- Kies een thema dat past bij de branche en sfeer: elegant (luxe, beauty, donker), stoer (bouw, installatie, techniek), natuur (tuin, zorg, ambacht, lokaal), zacht (modern, praktijk, coaching, zakelijk).
-- kleuren.primair/accent: alleen een huisstijlkleur uit de lijst gebruiken als die goed past; anders leeg laten.
+- Het concept moet herkenbaar voelen als HUN bedrijf: neem de sfeer en huisstijl van hun huidige site over. Kies het thema dat daar het dichtst bij ligt: elegant (luxe, beauty, donker), stoer (bouw, installatie, techniek), natuur (tuin, zorg, ambacht, lokaal), zacht (modern, praktijk, coaching, zakelijk).
+- kleuren.primair: hun belangrijkste huisstijlkleur uit de lijst (meestal de eerste die bij hun logo/knoppen past). kleuren.accent: een tweede huisstijlkleur als die er is. Laat alleen leeg als er geen bruikbare kleur in de lijst staat.
 - Openingstijden alleen als ze in de tekst staan.
 - Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
 Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
@@ -392,17 +392,17 @@ export async function conceptForCustomer(customer) {
 
 // Galerij in HQ.
 export async function listConcepts({ filter = "" } = {}) {
-  const where = { klaar: "c.status = 'klaar'", bekeken: "c.views > 0", bezig: "c.status IN ('wachtrij','bezig')", overgeslagen: "c.status IN ('overgeslagen','fout')" }[filter] || "TRUE";
-  const rows = await q(`SELECT c.*, l.company, l.city, l.category, l.status AS lead_status, l.website, l.phone FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE ${where}
+  const where = { beoordelen: "c.status = 'klaar' AND l.status = 'nieuw'", klaar: "c.status = 'klaar'", bekeken: "c.views > 0", bezig: "c.status IN ('wachtrij','bezig')", overgeslagen: "c.status IN ('overgeslagen','fout')" }[filter] || "TRUE";
+  const rows = await q(`SELECT c.*, l.company, l.city, l.category, l.status AS lead_status, l.website, l.phone, l.email FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE ${where}
                         ORDER BY (c.views > 0) DESC, c.last_view_at DESC NULLS LAST, COALESCE(c.ready_at, c.created_at) DESC LIMIT 300`);
   const counts = (await q("SELECT status, COUNT(*)::int AS n, SUM(CASE WHEN views > 0 THEN 1 ELSE 0 END)::int AS b FROM concepts GROUP BY status"));
-  const tel = { alle: 0, klaar: 0, bekeken: 0, bezig: 0, overgeslagen: 0 };
+  const tel = { alle: 0, klaar: 0, bekeken: 0, bezig: 0, overgeslagen: 0, beoordelen: (await one("SELECT COUNT(*)::int AS n FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status = 'nieuw'")).n };
   for (const r of counts) { tel.alle += r.n; tel.bekeken += r.b; if (r.status === "klaar") tel.klaar += r.n; else if (["wachtrij", "bezig"].includes(r.status)) tel.bezig += r.n; else tel.overgeslagen += r.n; }
   return {
     counts: tel,
     concepts: rows.map((c) => {
       const hero = (c.content?.hero?.foto || "").replace(/^afbeeldingen\//, "");
-      return { ...publicConcept(c), leadId: c.lead_id, company: c.company, city: c.city, category: c.category, leadStatus: c.lead_status, website: c.website, phone: c.phone,
+      return { ...publicConcept(c), leadId: c.lead_id, email: c.email, company: c.company, city: c.city, category: c.category, leadStatus: c.lead_status, website: c.website, phone: c.phone,
         titel: c.content?.hero?.titel || "", heroImg: hero && c.token ? `/api/voorbeeld/${c.token}/afbeeldingen/${hero}` : "", hqUrl: c.token ? `/voorbeeld/${c.token}?hq=1` : "" };
     }),
   };
