@@ -112,14 +112,14 @@ export async function scanInbox({ days = 14, max = 150 } = {}) {
   const byEmail = new Map(leads.map((l) => [l.email.toLowerCase(), l]));
   const byMsg = new Map();
   for (const l of leads) { if (l.message_id) byMsg.set(l.message_id, l); if (l.followup_id) byMsg.set(l.followup_id, l); }
-  let replies = 0, bounces = 0;
+  let replies = 0, bounces = 0, tickets = 0;
   try {
     await client.connect();
     const lock = await client.getMailboxLock("INBOX");
     try {
       const since = new Date(Date.now() - days * 86400000);
       const uids = (await client.search({ since }, { uid: true })) || [];
-      for await (const msg of client.fetch(uids.slice(-max), { envelope: true, source: { maxLength: 20000 } }, { uid: true })) {
+      for await (const msg of client.fetch(uids.slice(-max), { envelope: true, source: { maxLength: 60000 } }, { uid: true })) {
         const from = msg.envelope?.from?.[0]?.address?.toLowerCase() || "";
         const src = msg.source?.toString("utf8") || "";
         const inReply = (msg.envelope?.inReplyTo || "").trim();
@@ -129,7 +129,20 @@ export async function scanInbox({ days = 14, max = 150 } = {}) {
           continue;
         }
         const lead = byMsg.get(inReply) || byEmail.get(from);
-        if (!lead) continue;
+        if (!lead) {
+          // Geen B2B-reactie: is het een klant, dan wordt het een klantvraag (Emma).
+          if (from && from !== (m.user || "").toLowerCase() && !/no-?reply|notifications?@/i.test(from)) {
+            try {
+              const { simpleParser } = await import("mailparser");
+              const { ticketFromMail } = await import("./service.mjs");
+              const p = await simpleParser(src);
+              const body = String(p.text || "").split(/\n(?:Op .{5,120} schreef|On .{5,120} wrote|-{2,} ?Oorspronkelijk bericht|From: )/)[0].trim();
+              const t = await ticketFromMail({ from, naam: msg.envelope?.from?.[0]?.name || "", subject: msg.envelope?.subject || "", body: body || "(lege mail)", messageId: (msg.envelope?.messageId || "").trim(), inReplyTo: inReply });
+              if (t) tickets++;
+            } catch (e) { console.log("[inbox] klantvraag", e.message); }
+          }
+          continue;
+        }
         const body = src.split(/\r?\n\r?\n/).slice(1).join("\n\n").replace(/=\r?\n/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 400);
         const stop = /\b(afmelden|uitschrijven|geen interesse|niet meer mailen|stop)\b/i.test(body.slice(0, 200));
         await q(`UPDATE leads SET status = $2, reply_at = $3, reply_snippet = $4, updated_at = NOW() WHERE id = $1 AND status NOT IN ('reactie','afspraak','klant','afgemeld')`,
@@ -143,7 +156,7 @@ export async function scanInbox({ days = 14, max = 150 } = {}) {
     try { client.close(); } catch {}
     return { error: e.authenticationFailed ? "Inloggen op de inbox lukt niet." : `Inbox niet bereikbaar (${e.code || e.message})` };
   }
-  return { replies, bounces };
+  return { replies, bounces, tickets };
 }
 
 // ---------------------------------------------------------------- scout (Outscraper, Google Maps)

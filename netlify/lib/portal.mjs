@@ -52,11 +52,12 @@ export const publicInvoice = (i) => ({
 export async function portalState(user) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [user.customer_id]);
   if (!c) fail(404, "Klant niet gevonden.");
-  const [usage, changes, invoices, openPay] = await Promise.all([
+  const [usage, changes, invoices, openPay, dom] = await Promise.all([
     changeUsage(c.id),
     q("SELECT * FROM change_requests WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [c.id]),
     q("SELECT * FROM invoices WHERE customer_id = $1 ORDER BY invoice_date DESC, id DESC LIMIT 200", [c.id]),
     one("SELECT checkout_url, amount_cents FROM payments WHERE customer_id = $1 AND kind = 'eerste' AND status = 'open' AND checkout_url IS NOT NULL ORDER BY id DESC LIMIT 1", [c.id]),
+    one("SELECT 1 AS x FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' LIMIT 1", [c.id]),
   ]);
   return {
     user: { email: user.email, name: user.name, role: user.role, viaHq: !!user.viaHq },
@@ -67,6 +68,8 @@ export async function portalState(user) {
     invoices: invoices.map(publicInvoice),
     payOnline: mollieReady(),
     start: await startState(c),
+    domeinGekozen: !!dom || (!!c.site_url && !/\.netlify\.app/.test(c.site_url)),
+    opzegging: c.opzeg_status === "aangevraagd" ? c.opzeg_einde : null,
     pendingFirstPayment: openPay && !c.onboarding ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,
   };
 }

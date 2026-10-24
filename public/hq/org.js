@@ -3,7 +3,7 @@
    komt uit /api/hq/team. status: "live" = draait, "opbouw" = wacht op een koppeling. */
 window.SM_ORG = [
   {
-    key: "directie", floor: 6, name: "Directie", color: "#1C0747", status: "live", manager: "directeur",
+    key: "directie", floor: 7, name: "Directie", color: "#1C0747", status: "live", manager: "directeur",
     desc: "De directeur leest elke ochtend de briefings van alle afdelingsmanagers en zet voor jou op een rij wat aandacht nodig heeft.",
     people: [
       { key: "jij", person: "Maxim", role: "Eigenaar", look: { hair: 0x2b1d14, acc: "none" }, color: 0, does: ["Neemt de beslissingen", "Keurt concepten, mails en wijzigingen goed"] },
@@ -13,7 +13,7 @@ window.SM_ORG = [
     tasks: ["Elke ochtend na 8:00 de directiebriefing", "Prioriteiten en beslissingen voor jou klaarzetten"],
   },
   {
-    key: "marketing", floor: 5, name: "Marketing & Design", color: "#FF5757", status: "opbouw", manager: "marketeer",
+    key: "marketing", floor: 6, name: "Marketing & Design", color: "#FF5757", status: "opbouw", manager: "marketeer",
     desc: "Meta-advertenties bewaken en elke week nieuwe statische advertenties maken.",
     people: [
       { key: "marketeer", person: "Lisa", role: "Performance marketeer", look: { hair: 0x7a3b22, acc: "headset" }, color: 1,
@@ -24,7 +24,7 @@ window.SM_ORG = [
     tasks: ["Elke ochtend: Meta-rapport (Lisa)", "Elke maandag: 5 statics met Kive, klaar in Canva (Milo)"],
   },
   {
-    key: "b2b", floor: 4, name: "B2B Verkoop", color: "#6C4CF1", status: "live", manager: "verkoopmanager", page: "concepten",
+    key: "b2b", floor: 5, name: "B2B Verkoop", color: "#6C4CF1", status: "live", manager: "verkoopmanager", page: "concepten",
     desc: "Bedrijven vinden, hun website bekijken, een concept-website maken en mailen. Jij drukt alleen op versturen.",
     people: [
       { key: "verkoopmanager", person: "Noah", role: "Verkoopmanager", look: { hair: 0x5a3b25, acc: "none" }, color: 2, does: ["Stuurt het B2B-team aan", "Brieft jou elke ochtend over verkoop"] },
@@ -36,7 +36,7 @@ window.SM_ORG = [
     tasks: ["Elke werkdag nieuwe bedrijven zoeken (Joep)", "Mailadres en openingszin per lead (Fleur)", "Concept-website per lead (Sam)", "Mails versturen en inbox lezen (Ties)"],
   },
   {
-    key: "projecten", floor: 3, name: "Projecten", color: "#0CC0DF", status: "live", manager: "projectmanager", page: "wijzigingen",
+    key: "projecten", floor: 4, name: "Projecten", color: "#0CC0DF", status: "live", manager: "projectmanager", page: "wijzigingen",
     desc: "Nieuwe websites binnen 48 uur (2 werkdagen) opleveren en de 4 wijzigingen per maand binnen 48 uur verwerken.",
     people: [
       { key: "projectmanager", person: "Iris", role: "Projectmanager", look: { hair: 0x7a3b22, acc: "bun" }, color: 2, does: ["Bewaakt alle wijzigingen en de 48 uur", "Zet voorstellen klaar om goed te keuren"] },
@@ -46,13 +46,22 @@ window.SM_ORG = [
     tasks: ["Wijzigingen binnen 48 uur (Iris en Daan)", "Nieuwe sites binnen 2 werkdagen na aanleveren (Lotte)"],
   },
   {
-    key: "klantenservice", floor: 2, name: "Klantenservice", color: "#22C3B5", status: "live", manager: "service",
-    desc: "Nieuwe klanten door hun start helpen, kennismakingen plannen en zorgen dat niemand vastloopt.",
+    key: "domeinen", floor: 3, name: "Domeinen", color: "#D94F8A", status: "live", manager: "domeinen", page: "domeinen",
+    desc: "Zorgt dat elke klantsite op zijn eigen domeinnaam draait: eigen beheer, verhuizen of nieuw registreren.",
     people: [
-      { key: "service", person: "Emma", role: "Klantenservice", look: { hair: 0x5a3b25, acc: "headset" }, color: 3, does: ["Volgt nieuwe klanten in hun start", "Signaleert wie vastloopt bij gegevens, betalen of aanleveren"] },
+      { key: "domeinen", person: "Dirk", role: "Domeinbeheerder", look: { hair: 0x5a3b25, acc: "glasses" }, color: 7,
+        does: ["Helpt klanten kiezen: domein zelf houden, verhuizen of nieuw", "Controleert elke 30 minuten of de DNS goed staat", "Koppelt het domein aan de site en regelt https", "Waarschuwt voor domeinen die verlopen"] },
+    ],
+    tasks: ["DNS-instellingen automatisch controleren tot ze kloppen", "Domein aan het Netlify-project van de klant koppelen", "Verhuizingen en registraties klaarzetten voor Maxim", "Waarschuwen 30 dagen voor een domein verloopt"],
+  },
+  {
+    key: "klantenservice", floor: 2, name: "Klantenservice", color: "#22C3B5", status: "live", manager: "service",
+    page: "service", desc: "Klantvragen uit het portaal en de inbox beantwoorden, nieuwe klanten door hun start helpen, kennismakingen plannen en opzeggingen opvangen.",
+    people: [
+      { key: "service", person: "Emma", role: "Klantenservice", look: { hair: 0x5a3b25, acc: "headset" }, color: 3, does: ["Leest klantvragen uit het portaal en de inbox", "Zet een antwoord klaar dat jij verstuurt", "Volgt nieuwe klanten in hun start", "Vangt opzeggingen op en verzamelt reviews"] },
       { key: "agenda", person: "Ruben", role: "Afspraken & agenda", look: { hair: 0x15110e, acc: "none" }, color: 7, does: ["Beheert de kennismakingen", "Stuurt bevestigingen en herinneringen"] },
     ],
-    tasks: ["Kennismakingen bevestigen en herinneren (Ruben)", "Klanten die vastlopen in hun start signaleren (Emma)"],
+    tasks: ["Klantvragen beantwoorden, antwoord klaar voor jou (Emma)", "Kennismakingen bevestigen en herinneren (Ruben)", "Klanten die vastlopen in hun start signaleren (Emma)", "Opzeggingen en nieuwe reviews melden (Emma)"],
   },
   {
     key: "incidenten", floor: 1, name: "Incidenten", color: "#F5A623", status: "live", manager: "monitor", page: "sites",
@@ -63,10 +72,10 @@ window.SM_ORG = [
     tasks: ["Elke 15 minuten alle live sites controleren", "Melding bij storing en bij herstel"],
   },
   {
-    key: "finance", floor: 0, name: "Finance", color: "#2F8A5B", status: "live", manager: "controller", page: "facturen",
+    key: "finance", floor: 0, name: "Finance", color: "#2F8A5B", status: "live", manager: "controller", page: "kosten",
     desc: "Abonnementen, omzet, facturen, betalingen en kosten.",
     people: [
-      { key: "controller", person: "Bram", role: "Controller", look: { hair: 0xbfbfbf, acc: "glasses" }, color: 5, does: ["Houdt de maandelijkse omzet (MRR) en abonnementen bij", "Maakt facturen van elke betaling", "Signaleert mislukte betalingen"] },
+      { key: "controller", person: "Bram", role: "Controller", look: { hair: 0xbfbfbf, acc: "glasses" }, color: 5, does: ["Houdt de maandelijkse omzet (MRR) en abonnementen bij", "Maakt facturen van elke betaling", "Signaleert mislukte betalingen", "Zet omzet tegen de kosten die jij invult", "Maakt een export per kwartaal voor de boekhouder"] },
     ],
     tasks: ["Facturen van elke betaling", "Mislukte betalingen en openstaande facturen", "Omzet, abonnementen en kosten per maand"],
   },

@@ -17,6 +17,11 @@
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
     start: { gegevens: ["Vult gegevens in", "s-grijs"], betalen: ["Moet nog betalen", "s-let"], informatie: ["Betaald · levert info aan", "s-info"], bouwen: ["Bouwen!", "s-fout"], klaar: ["Gestart", "s-ok"] },
     concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Wordt gemaakt", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
+    opzeg: { aangevraagd: ["Opgezegd", "s-fout"], afgerond: ["Beëindigd", "s-grijs"], ingetrokken: ["Ingetrokken", "s-ok"] },
+    reden: { te_duur: "Te duur", geen_resultaat: "Levert te weinig op", zelf_doen: "Zelf of ander bureau", stoppen: "Stopt met bedrijf", ontevreden: "Niet tevreden over de service", anders: "Andere reden" },
+    domein: { wacht_op_klant: ["Wacht op de klant", "s-let"], aangevraagd: ["DNS instellen", "s-let"], verhuizen: ["Verhuizen", "s-fout"], registreren: ["Registreren", "s-fout"], dns_klaar: ["DNS klopt", "s-info"], actief: ["Actief", "s-ok"], probleem: ["Probleem", "s-fout"], opgezegd: ["Opgezegd", "s-grijs"] },
+    domeinKeuze: { eigen: "Houdt het zelf", verhuizen: "Verhuizen naar Sitemaker", nieuw: "Nieuw registreren" },
+    ticket: { open: ["Open", "s-fout"], beantwoord: ["Beantwoord", "s-ok"], gesloten: ["Gesloten", "s-grijs"] },
     voorkeur: { "": "Geen voorkeur", ochtend: "Ochtend", middag: "Middag", avond: "Begin van de avond", bellen: "Wil gebeld worden" },
   };
   const chip = (map, k) => { const [t, c] = map[k] || [k, "s-grijs"]; return html`<span class="status ${c}">${t}</span>`; };
@@ -39,9 +44,12 @@
     ["overzicht", "Overzicht", '<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>'],
     ["klanten", "Klanten", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
     ["wijzigingen", "Wijzigingen", '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'],
+    ["service", "Klantvragen", '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
     ["aanvragen", "Agenda", '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'],
     ["facturen", "Facturen", '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'],
     ["betalingen", "Betalingen", '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'],
+    ["kosten", "Kosten en winst", '<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/>'],
+    ["domeinen", "Domeinen", '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
     ["b2b", "B2B-mail", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
     ["concepten", "Concepten", '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 8h18M8 21h8M12 17v4"/>'],
@@ -71,7 +79,7 @@
   }
 
   function zetBadges(c) {
-    badges = { concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt };
+    badges = { concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt, service: c.klantvragen, domeinen: c.domeinen_werk, reviews: c.reviews_nieuw };
     app.querySelectorAll("[data-badge]").forEach((el) => { const n = badges[el.dataset.badge]; el.hidden = !n; el.textContent = n || ""; });
   }
 
@@ -81,7 +89,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina === "afdeling" ? "bedrijf" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { bedrijf, afdeling, overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails }[pagina] || bedrijf;
+    const fn = { bedrijf, afdeling, overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten }[pagina] || bedrijf;
     if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
     try { await fn(main, id); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
@@ -337,6 +345,12 @@
               ${["geen", "handmatig", "opgezegd", "wacht_op_betaling"].includes(c.billingStatus) ? html`<button class="knop knop-actie knop-klein" id="mollie-start">${c.billingStatus === "wacht_op_betaling" ? "Nieuwe betaallink" : "Automatisch incasseren"}</button>` : ""}
               ${c.mollieSubscriptionId && c.billingStatus !== "opgezegd" && isAdmin() ? html`<button class="knop knop-gevaar knop-klein" id="mollie-stop">Abonnement opzeggen</button>` : ""}
             </div></section>
+          ${d.opzegging && d.opzegging.status !== "ingetrokken" ? html`<section class="paneel opzeg-paneel"><div class="paneel-kop"><h2>Opzegging</h2>${chip(L.opzeg, d.opzegging.status)}</div>
+            <dl class="gegevens"><dt>Opgezegd op</dt><dd>${tijd(d.opzegging.at)}</dd><dt>Einddatum</dt><dd>${datumLang(d.opzegging.einde)}</dd><dt>Reden</dt><dd>${L.reden[d.opzegging.reden] || d.opzegging.reden}</dd>${d.opzegging.toelichting ? html`<dt>Toelichting</dt><dd>${d.opzegging.toelichting}</dd>` : ""}</dl>
+            ${d.opzegging.status === "aangevraagd" ? html`<p class="klein dempen">Op de einddatum stopt het Mollie-abonnement vanzelf en krijg je een mail met wat er nog moet (site offline, verhuiscode).</p><div class="knoppen"><button class="knop knop-licht knop-klein" id="opzeg-in">Klant blijft: intrekken</button></div>` : ""}</section>` : ""}
+          <section class="paneel"><div class="paneel-kop"><h2>Domein</h2>${d.domein ? chip(L.domein, d.domein.status) : ""}</div>
+            ${d.domein ? html`<dl class="gegevens"><dt>Naam</dt><dd><b>${d.domein.naam}</b></dd><dt>Keuze</dt><dd>${L.domeinKeuze[d.domein.keuze]}</dd>${d.domein.provider ? html`<dt>Provider</dt><dd>${d.domein.provider}</dd>` : ""}${d.domein.dnsAt ? html`<dt>DNS</dt><dd>${d.domein.uitleg}<br><span class="klein dempen">${geleden(d.domein.dnsAt)}</span></dd>` : ""}</dl><a class="meer" href="#domeinen">Naar Domeinen</a>`
+              : html`<p class="dempen">De klant heeft nog niet gekozen. Dat doet hij in het portaal bij Account.</p>`}</section>
           <section class="paneel"><div class="paneel-kop"><h2>Website</h2>${c.siteUrl ? html`<button class="knop knop-licht knop-klein" id="check">Nu controleren</button>` : ""}</div>
             <dl class="gegevens"><dt>Adres</dt><dd>${c.siteUrl ? html`<a href="${c.siteUrl}" target="_blank" rel="noopener">${c.siteUrl}</a>` : html`<span class="dempen">Nog niet ingevuld</span>`}</dd>
               <dt>Status</dt><dd>${chip(L.site, c.siteStatus)}</dd>${c.deliveredAt ? html`<dt>Online sinds</dt><dd>${datumLang(c.deliveredAt)}</dd>` : ""}
@@ -405,6 +419,10 @@
       try { await api(`hq/customers/${id}/cancel`, { method: "POST" }); toast("Abonnement opgezegd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     });
     main.querySelector("#factuur-nieuw").onclick = () => factuurDialoog(c.id);
+    main.querySelector("#opzeg-in")?.addEventListener("click", async (e) => {
+      if (!(await SM.bevestig("Opzegging intrekken?", `${c.company} blijft klant. Het abonnement loopt gewoon door.`, "Intrekken"))) return;
+      try { await api(`hq/customers/${id}/opzegging/intrekken`, { method: "POST" }); toast("Opzegging ingetrokken"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    });
     main.querySelector("#site-maak")?.addEventListener("click", () => siteDialoog(c));
     main.querySelector("#site-koppel")?.addEventListener("click", () => koppelDialoog(c));
     koppelWijzigingen(main);
@@ -1099,7 +1117,7 @@ ${p.body}</div>
       <section class="paneel">${lijst.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Review</th><th>Sterren</th><th>Klant</th><th>Status</th><th></th></tr></thead><tbody>
         ${lijst.map((r) => html`<tr><td><b>${r.name}</b>${r.company ? html` · ${r.company}` : ""}<br><span class="klein dempen">${r.body.length > 120 ? r.body.slice(0, 120) + "…" : r.body}</span></td>
           <td class="nowrap">${st(r.rating)}</td><td>${r.klant ? html`<span class="status s-ok">Geverifieerd</span><br><span class="klein dempen">${r.klant}</span>` : html`<span class="dempen">Niet gekoppeld</span>`}</td>
-          <td>${r.published ? html`<span class="status s-ok">Op de website</span>` : html`<span class="status s-grijs">Verborgen</span>`}</td>
+          <td>${r.published ? html`<span class="status s-ok">Op de website</span>` : html`<span class="status ${r.uitPortaal ? "s-let" : "s-grijs"}">${r.uitPortaal ? "Nieuw, uit het portaal" : "Verborgen"}</span>`}</td>
           <td class="acties"><button class="knop knop-tekst knop-klein" data-bewerk="${r.id}">Bewerken</button><button class="knop knop-tekst knop-klein" data-weg="${r.id}">Verwijderen</button></td></tr>`)}</tbody></table></div>`
         : html`<div class="leeg"><h3>Nog geen reviews</h3><p>Voeg de reviews toe die je van klanten krijgt. Zolang er geen gepubliceerde review is, staat het reviewblok niet op de website.</p></div>`}</section>`);
     const dialoog = (r = {}) => {
@@ -1126,6 +1144,137 @@ ${p.body}</div>
     main.querySelectorAll("[data-weg]").forEach((b) => b.addEventListener("click", async () => {
       if (!(await SM.bevestig("Review verwijderen?", "De review verdwijnt uit HQ en van de website.", "Verwijderen"))) return;
       try { await api("hq/reviews/" + b.dataset.weg, { method: "DELETE" }); toast("Verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    }));
+  }
+
+  // ================================================ KLANTVRAGEN (Emma)
+  let serviceFilter = "";
+  async function service(main) {
+    const { tickets } = await api("hq/service?status=" + serviceFilter);
+    render(main, html`
+      <div class="hq-kop"><div><h1>Klantvragen</h1><p>Vragen uit het portaal en mails van klanten in de inbox. Emma zet een antwoord klaar; jij past het aan en verstuurt.</p></div>
+        <div class="segment" role="group" aria-label="Filter">${[["", "Open"], ["gesloten", "Gesloten"], ["alle", "Alles"]].map(([k, t]) => html`<button class="knop knop-klein ${serviceFilter === k ? "" : "knop-licht"}" data-filter="${k}" aria-pressed="${serviceFilter === k}">${t}</button>`)}</div></div>
+      ${tickets.length ? html`<ul class="tickets">${tickets.map((t) => html`<li class="paneel ticket" data-id="${t.id}">
+        <div class="paneel-kop"><div><h2>${t.onderwerp}</h2><p class="klein dempen">${t.customerId ? html`<a href="#klant/${t.customerId}">${t.company}</a>` : t.naam || t.email} · ${t.bron === "mail" ? "per mail" : t.bron === "opzeggen" ? "tijdens opzeggen" : "via het portaal"} · ${geleden(t.updatedAt)}</p></div>${chip(L.ticket, t.status)}</div>
+        <ol class="gesprek">${t.berichten.map((m) => html`<li class="${m.van === "klant" ? "van-klant" : "van-ons"}"><span class="klein dempen">${m.van === "klant" ? t.naam || "Klant" : "Sitemaker"} · ${tijd(m.at)}</span><p>${m.tekst}</p></li>`)}</ol>
+        ${t.status !== "gesloten" ? html`<form novalidate class="antwoord"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+          <div class="veld"><label for="a-${t.id}">Antwoord${t.conceptStatus === "klaar" ? html` <span class="status s-info">Klaargezet door Emma</span>` : t.conceptStatus === "wacht" || t.conceptStatus === "bezig" ? html` <span class="status s-grijs">Emma schrijft een antwoord…</span>` : ""}</label>
+            <textarea id="a-${t.id}" name="tekst" rows="6">${t.concept || ""}</textarea><div class="fout" data-fout-voor="tekst"></div></div>
+          <div class="knoppen"><button class="knop knop-actie knop-klein" type="submit">Versturen</button><button class="knop knop-licht knop-klein" type="button" data-sluit-na>Versturen en sluiten</button>
+            <button class="knop knop-tekst knop-klein" type="button" data-concept>Nieuw antwoord laten schrijven</button><button class="knop knop-tekst knop-klein" type="button" data-sluit>Sluiten zonder antwoord</button></div>
+          <p class="klein dempen">Het antwoord gaat per mail naar ${t.email || "de klant"} en staat ook in het portaal.</p></form>` : ""}
+      </li>`)}</ul>`
+        : html`<section class="paneel"><div class="leeg"><h3>${serviceFilter ? "Niets gevonden" : "Geen open vragen"}</h3><p>Stelt een klant een vraag in het portaal of mailt hij naar het Sitemaker-adres, dan staat hij hier.</p></div></section>`}`);
+    main.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => { serviceFilter = b.dataset.filter; herlaad(); }));
+    main.querySelectorAll("li.ticket").forEach((li) => {
+      const id = li.dataset.id, form = li.querySelector("form");
+      if (!form) return;
+      const stuur = async (sluiten, knop) => {
+        SM.wisFouten(form); SM.bezig(knop, true, "Versturen…");
+        try { const r = await api(`hq/service/${id}/antwoord`, { method: "POST", body: { tekst: form.elements.tekst.value, sluiten } }); toast(r.mailed && r.mailed.ok === false ? "Opgeslagen; de mail kon niet worden verstuurd" : "Verstuurd", r.mailed && r.mailed.ok === false ? "fout" : "ok"); herlaad(); }
+        catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+      };
+      form.addEventListener("submit", (e) => { e.preventDefault(); stuur(false, form.querySelector("[type=submit]")); });
+      form.querySelector("[data-sluit-na]").onclick = (e) => stuur(true, e.target);
+      form.querySelector("[data-concept]").onclick = async (e) => { SM.bezig(e.target, true, "Bezig…"); try { await api(`hq/service/${id}/concept`, { method: "POST" }); toast("Emma schrijft een nieuw antwoord; ververs over een minuut"); } catch (err) { toast(err.message, "fout"); } SM.bezig(e.target, false); };
+      form.querySelector("[data-sluit]").onclick = async () => { if (!(await SM.bevestig("Sluiten zonder antwoord?", "De klant krijgt geen bericht.", "Sluiten"))) return; try { await api(`hq/service/${id}/sluiten`, { method: "POST" }); herlaad(); } catch (err) { toast(err.message, "fout"); } };
+    });
+  }
+
+  // ================================================ DOMEINEN (Dirk)
+  async function domeinen(main) {
+    const { domeinen: lijst } = await api("hq/domeinen");
+    const werk = lijst.filter((d) => ["verhuizen", "registreren", "probleem"].includes(d.status));
+    render(main, html`
+      <div class="hq-kop"><div><h1>Domeinen</h1><p>Per klant: domein zelf houden, naar Sitemaker verhuizen of nieuw registreren. De DNS wordt elk halfuur gecontroleerd tot hij klopt, daarna dagelijks.</p></div></div>
+      ${werk.length ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>${werk.length === 1 ? "1 domein wacht" : `${werk.length} domeinen wachten`} op jou.</b> Verhuizen en registreren doe je bij je eigen registrar; zet daarna hier de status op "DNS instellen" of "Actief".</p></div>` : ""}
+      <section class="paneel">${lijst.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Domein</th><th>Klant</th><th>Keuze</th><th>Status</th><th>DNS</th><th>Verloopt</th><th class="acties"></th></tr></thead><tbody>
+        ${lijst.map((d) => html`<tr><td><b>${d.naam}</b>${d.notitie ? html`<br><span class="klein dempen">${d.notitie}</span>` : ""}</td><td><a href="#klant/${d.customerId}">${d.company}</a></td>
+          <td>${L.domeinKeuze[d.keuze]}${d.provider ? html`<br><span class="klein dempen">${d.provider}</span>` : ""}${d.verhuiscode ? html`<br><span class="klein">Verhuiscode: <code>${d.verhuiscode}</code></span>` : ""}</td>
+          <td>${chip(L.domein, d.status)}${d.netlify ? html`<br><span class="klein dempen">Gekoppeld aan ${d.siteNaam || "de site"}</span>` : ""}</td>
+          <td>${d.dnsAt ? html`<span class="mini-site"><span class="punt ${d.dnsOk ? "ok" : "fout"}"></span>${d.dnsOk ? "Klopt" : "Klopt nog niet"}</span><span class="klein dempen">${geleden(d.dnsAt)}</span>` : html`<span class="dempen">–</span>`}</td>
+          <td>${d.verlooptOp ? datum(d.verlooptOp) : html`<span class="dempen">–</span>`}</td>
+          <td class="acties"><button class="knop knop-licht knop-klein" data-check="${d.id}">Nu controleren</button><button class="knop knop-tekst knop-klein" data-bewerk="${d.id}">Bewerken</button></td></tr>`)}</tbody></table></div>`
+        : html`<div class="leeg"><h3>Nog geen domeinen</h3><p>Klanten kiezen hun domein in het portaal bij Account. Dan verschijnt het hier.</p></div>`}</section>`);
+    main.querySelectorAll("[data-check]").forEach((b) => b.addEventListener("click", async () => {
+      SM.bezig(b, true, "Controleren…");
+      try { const r = await api(`hq/domeinen/${b.dataset.check}/check`, { method: "POST" }); toast(r.dns?.ok ? "DNS klopt" : (r.dns?.uitleg || "Klopt nog niet"), r.dns?.ok ? "ok" : "fout"); herlaad(); } catch (e) { toast(e.message, "fout"); SM.bezig(b, false); }
+    }));
+    main.querySelectorAll("[data-bewerk]").forEach((b) => b.addEventListener("click", () => {
+      const d = lijst.find((x) => String(x.id) === b.dataset.bewerk);
+      const dlg = SM.dialoog(d.naam, html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="rij2"><div class="veld"><label for="dm-st">Status</label><select id="dm-st" name="status">${opties(L.domein, d.status)}</select></div>
+          <div class="veld"><label for="dm-prov">Provider / registrar</label><input id="dm-prov" name="provider" value="${d.provider || ""}"></div></div>
+        <div class="rij2"><div class="veld"><label for="dm-ver">Verloopt op <span class="opt">(optioneel)</span></label><input id="dm-ver" name="verlooptOp" type="date" value="${d.verlooptOp || ""}"><div class="hulp">30 dagen vooraf krijg je een seintje.</div></div>
+          <div class="veld"><label for="dm-code">Verhuiscode</label><input id="dm-code" name="verhuiscode" value="${d.verhuiscode || ""}" autocomplete="off"><div class="hulp">Wordt gewist zodra het domein klopt.</div></div></div>
+        <div class="veld"><label for="dm-not">Notitie</label><textarea id="dm-not" name="notitie" rows="2">${d.notitie || ""}</textarea></div>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        try { await api("hq/domeinen/" + d.id, { method: "PUT", body: Object.fromEntries(new FormData(form)) }); dlg.close(); toast("Opgeslagen"); herlaad(); } catch (err) { SM.toonFouten(form, err); }
+      });
+    }));
+  }
+
+  // ================================================ KOSTEN EN WINST (Bram)
+  async function kosten(main) {
+    const d = await api("hq/kosten");
+    const mnd = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 15).toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }); };
+    const max = Math.max(1, ...d.maanden.map((m) => Math.max(m.omzet, m.kosten)));
+    const nu = new Date(), jaar = nu.getFullYear(), kw = Math.floor(nu.getMonth() / 3) + 1;
+    const SOORT = { maandelijks: "per maand", jaarlijks: "per jaar", eenmalig: "eenmalig" };
+    render(main, html`
+      <div class="hq-kop"><div><h1>Kosten en winst</h1><p>Vul je vaste en losse kosten in (exclusief btw). Omzet komt uit de betaalde facturen.</p></div>${isAdmin() ? html`<button class="knop knop-actie" id="nieuw">Kosten toevoegen</button>` : ""}</div>
+      <div class="kpis">
+        <div class="kpi"><div class="waarde">${euro(d.mrr)}</div><div class="naam">abonnementen per maand</div></div>
+        <div class="kpi"><div class="waarde">${euro(d.vasteKostenPerMaand)}</div><div class="naam">vaste kosten per maand (jaarkosten gedeeld door 12)</div></div>
+        <div class="kpi ${d.mrr - d.vasteKostenPerMaand < 0 ? "alarm" : ""}"><div class="waarde">${euro(d.mrr - d.vasteKostenPerMaand)}</div><div class="naam">blijft per maand over, excl. btw en vóór belasting</div></div>
+      </div>
+      <section class="paneel"><div class="paneel-kop"><h2>Laatste 12 maanden</h2><span class="legenda"><span class="sw omzet"></span>Omzet <span class="sw kosten"></span>Kosten</span></div>
+        <div class="staven" role="img" aria-label="Omzet en kosten per maand">${d.maanden.map((m) => html`<div class="staaf-groep" title="${mnd(m.maand)}: omzet ${euro(m.omzet)}, kosten ${euro(m.kosten)}"><div class="staaf-paar"><span class="staaf omzet" data-h="${Math.round((m.omzet / max) * 100)}"></span><span class="staaf kosten" data-h="${Math.round((m.kosten / max) * 100)}"></span></div><span class="klein dempen">${mnd(m.maand)}</span></div>`)}</div>
+        <div class="tabel-wrap"><table class="tabel"><thead><tr><th>Maand</th><th class="rechts">Omzet</th><th class="rechts">Kosten</th><th class="rechts">Winst</th></tr></thead><tbody>
+          ${d.maanden.slice().reverse().map((m) => html`<tr><td>${mnd(m.maand)}</td><td class="rechts nummers">${euro(m.omzet)}</td><td class="rechts nummers">${euro(m.kosten)}</td><td class="rechts nummers ${m.winst < 0 ? "min" : ""}">${euro(m.winst)}</td></tr>`)}</tbody></table></div>
+        <p class="klein dempen">Bedragen exclusief btw. Omzet = betaalde facturen in die maand.</p></section>
+      <section class="paneel"><div class="paneel-kop"><h2>Kostenposten</h2></div>
+        ${d.kosten.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Omschrijving</th><th>Categorie</th><th class="rechts">Bedrag excl. btw</th><th>Periode</th><th class="acties"></th></tr></thead><tbody>
+          ${d.kosten.map((k) => html`<tr><td><b>${k.omschrijving}</b>${k.leverancier ? html`<br><span class="klein dempen">${k.leverancier}</span>` : ""}</td><td>${d.categorieen[k.categorie] || k.categorie}</td>
+            <td class="rechts nummers">${euro(k.bedragCents)} <span class="klein dempen">${SOORT[k.soort]}</span></td>
+            <td>${k.soort === "eenmalig" ? datum(k.datum) : html`vanaf ${datum(k.datum)}${k.tot ? html`<br>tot en met ${datum(k.tot)}` : ""}`}</td>
+            <td class="acties">${isAdmin() ? html`<button class="knop knop-tekst knop-klein" data-bewerk="${k.id}">Bewerken</button><button class="knop knop-tekst knop-klein" data-weg="${k.id}">Verwijderen</button>` : ""}</td></tr>`)}</tbody></table></div>`
+          : html`<div class="leeg"><h3>Nog geen kosten ingevuld</h3><p>Denk aan Netlify, je mailprovider, Claude, Outscraper, domeinen en advertenties. Dan zie je hier wat er echt overblijft.</p></div>`}</section>
+      <section class="paneel compact"><h2>Export voor de boekhouder</h2>
+        <p class="dempen">Een CSV-bestand (opent in Excel) met alle facturen en kosten van de periode, met btw apart.</p>
+        <form class="rij-form" id="export"><div class="veld"><label for="ex-jaar">Jaar</label><select id="ex-jaar" name="jaar">${[jaar, jaar - 1].map((y) => html`<option>${y}</option>`)}</select></div>
+          <div class="veld"><label for="ex-kw">Periode</label><select id="ex-kw" name="kwartaal">${[1, 2, 3, 4].map((k) => html`<option value="${k}" ${k === kw ? raw("selected") : ""}>Kwartaal ${k}</option>`)}<option value="0">Heel het jaar</option></select></div>
+          <button class="knop knop-licht" type="submit">${raw(icon.download)}Downloaden</button></form></section>`);
+    main.querySelectorAll(".staaf[data-h]").forEach((el) => el.style.setProperty("--h", el.dataset.h + "%"));
+    main.querySelector("#export").addEventListener("submit", (e) => { e.preventDefault(); const f = new FormData(e.target); location.href = `/api/hq/kosten/export?jaar=${f.get("jaar")}&kwartaal=${f.get("kwartaal")}`; });
+    const dialoog = (k = {}) => {
+      const bedrag = (c) => c != null ? (c / 100).toFixed(2).replace(".", ",") : "";
+      const dlg = SM.dialoog(k.id ? "Kosten bewerken" : "Kosten toevoegen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="rij2"><div class="veld"><label for="k-oms">Omschrijving</label><input id="k-oms" name="omschrijving" value="${k.omschrijving || ""}" placeholder="Bijvoorbeeld Netlify Pro"><div class="fout" data-fout-voor="omschrijving"></div></div>
+          <div class="veld"><label for="k-lev">Leverancier <span class="opt">(optioneel)</span></label><input id="k-lev" name="leverancier" value="${k.leverancier || ""}"></div></div>
+        <div class="rij2"><div class="veld"><label for="k-cat">Categorie</label><select id="k-cat" name="categorie">${Object.entries(d.categorieen).map(([v, t]) => html`<option value="${v}" ${v === (k.categorie || "software") ? raw("selected") : ""}>${t}</option>`)}</select></div>
+          <div class="veld"><label for="k-soort">Soort</label><select id="k-soort" name="soort">${Object.entries(SOORT).map(([v, t]) => html`<option value="${v}" ${v === (k.soort || "maandelijks") ? raw("selected") : ""}>${t[0].toUpperCase() + t.slice(1)}</option>`)}</select></div></div>
+        <div class="rij2"><div class="veld"><label for="k-bed">Bedrag exclusief btw</label><input id="k-bed" name="bedrag" inputmode="decimal" value="${bedrag(k.bedragCents)}" placeholder="19,00"><div class="fout" data-fout-voor="bedrag"></div></div>
+          <div class="veld"><label for="k-btw">Btw-bedrag <span class="opt">(optioneel)</span></label><input id="k-btw" name="btw" inputmode="decimal" value="${k.id ? bedrag(k.btwCents) : ""}" placeholder="0,00"><div class="hulp">Voor de export; buitenlandse diensten vaak 0 (verlegd).</div><div class="fout" data-fout-voor="btw"></div></div></div>
+        <div class="rij2"><div class="veld"><label for="k-dat" data-label-datum>Vanaf</label><input id="k-dat" name="datum" type="date" value="${k.datum || new Date().toISOString().slice(0, 10)}"><div class="fout" data-fout-voor="datum"></div></div>
+          <div class="veld" data-tot><label for="k-tot">Tot en met <span class="opt">(leeg = loopt door)</span></label><input id="k-tot" name="tot" type="date" value="${k.tot || ""}"></div></div>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      const wissel = () => { const een = form.elements.soort.value === "eenmalig"; form.querySelector("[data-tot]").hidden = een; form.querySelector("[data-label-datum]").textContent = een ? "Datum" : "Vanaf"; };
+      form.elements.soort.addEventListener("change", wissel); wissel();
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        try { await api(k.id ? "hq/kosten/" + k.id : "hq/kosten", { method: k.id ? "PUT" : "POST", body: Object.fromEntries(new FormData(form)) }); dlg.close(); toast("Opgeslagen"); herlaad(); } catch (err) { SM.toonFouten(form, err); }
+      });
+    };
+    main.querySelector("#nieuw")?.addEventListener("click", () => dialoog());
+    main.querySelectorAll("[data-bewerk]").forEach((b) => b.addEventListener("click", () => dialoog(d.kosten.find((k) => String(k.id) === b.dataset.bewerk))));
+    main.querySelectorAll("[data-weg]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig("Kostenpost verwijderen?", "Hij telt dan ook niet meer mee in eerdere maanden.", "Verwijderen"))) return;
+      try { await api("hq/kosten/" + b.dataset.weg, { method: "DELETE" }); toast("Verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
   }
 
@@ -1156,6 +1305,10 @@ ${p.body}</div>
             <button class="knop" type="submit">Opslaan</button></form>
           <form class="paneel" id="f-melding" novalidate><h2>Meldingen</h2>
             ${v("email", "Meldingen naar", s.notify.email, { type: "email", hulp: "Nieuwe aanvragen, wijzigingen, mislukte betalingen en sites offline. Leeg = het afzendadres." })}
+            <button class="knop" type="submit">Opslaan</button></form>
+          <form class="paneel" id="f-tracking" novalidate><h2>Tracking en cookies</h2>
+            <p class="klein dempen">Zonder tracking toont de website geen cookiebanner (alleen noodzakelijke cookies). Vul je een Meta Pixel-ID in, dan verschijnt de banner en laadt de pixel pas na toestemming.</p>
+            ${v("metaPixelId", "Meta Pixel-ID", s.tracking?.metaPixelId || "", { hulp: "Te vinden in Meta Events Manager. Leeg = geen tracking." })}
             <button class="knop" type="submit">Opslaan</button></form>
         </div>
         <div>
@@ -1192,6 +1345,7 @@ ${p.body}</div>
       opslaan(e.target, { billing: { pricesIncludeVat: f.pricesIncludeVat === "true" ? true : f.pricesIncludeVat === "false" ? false : null, vatRate: Number(f.vatRate), paymentTermDays: Number(f.paymentTermDays), invoicePrefix: f.invoicePrefix, autoInvoices: e.target.elements.autoInvoices.checked } });
     });
     main.querySelector("#f-melding").addEventListener("submit", (e) => { e.preventDefault(); opslaan(e.target, { notify: fd(e.target) }); });
+    main.querySelector("#f-tracking").addEventListener("submit", (e) => { e.preventDefault(); opslaan(e.target, { tracking: fd(e.target) }); });
     main.querySelector("#f-b2b").addEventListener("submit", (e) => {
       e.preventDefault(); const f = fd(e.target), el = e.target.elements;
       opslaan(e.target, { b2b: { senderName: f.senderName, dailyMax: Number(f.dailyMax), followupDays: Number(f.followupDays), sendHours: [Number(f.from), Number(f.to)], ai: { research: el.aiResearch.checked },
@@ -1213,14 +1367,14 @@ ${p.body}</div>
 
   // ================================================ TEAM
   async function team(main) {
-    const d = await api("hq/team");
+    const d = await api("hq/medewerkers");
     render(main, html`
       <div class="hq-kop"><div><h1>Team</h1><p>Medewerkers kunnen klanten, wijzigingen, facturen en B2B beheren. Beheerders ook instellingen, team en het opzeggen van abonnementen.</p></div>${isAdmin() ? html`<button class="knop knop-actie" id="lid">Teamlid toevoegen</button>` : ""}</div>
       <section class="paneel"><div class="tabel-wrap"><table class="tabel"><thead><tr><th>E-mail</th><th>Rol</th><th>Laatst ingelogd</th><th></th></tr></thead><tbody>
         ${d.team.map((u) => html`<tr><td><b>${u.email}</b>${u.name ? html`<br><span class="klein dempen">${u.name}</span>` : ""}</td><td>${u.role === "admin" ? "Beheerder" : "Medewerker"}${u.fromEnv ? html` <span class="status s-info">ADMIN_EMAILS</span>` : ""}${u.active ? "" : html` <span class="status s-grijs">Geblokkeerd</span>`}</td>
           <td>${u.last_login_at ? geleden(u.last_login_at) : "–"}</td><td class="acties">${isAdmin() && u.email !== me.email ? html`<button class="knop knop-tekst knop-klein" data-lid='${JSON.stringify({ email: u.email, name: u.name, role: u.role, active: !u.active })}'>${u.active ? "Blokkeren" : "Toegang geven"}</button>` : ""}</td></tr>`)}</tbody></table></div></section>`);
     main.querySelectorAll("[data-lid]").forEach((b) => b.addEventListener("click", async () => {
-      try { await api("hq/team", { method: "POST", body: JSON.parse(b.dataset.lid) }); toast("Bijgewerkt"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+      try { await api("hq/medewerkers", { method: "POST", body: JSON.parse(b.dataset.lid) }); toast("Bijgewerkt"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelector("#lid")?.addEventListener("click", () => {
       const dlg = SM.dialoog("Teamlid toevoegen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
@@ -1230,7 +1384,7 @@ ${p.body}</div>
         <button class="knop knop-actie" type="submit">Toevoegen</button></form>`);
       dlg.querySelector("form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        try { await api("hq/team", { method: "POST", body: Object.fromEntries(new FormData(e.target)) }); dlg.close(); toast("Teamlid toegevoegd; inloggen gaat met een code per mail"); herlaad(); } catch (err) { SM.toonFouten(e.target, err); }
+        try { await api("hq/medewerkers", { method: "POST", body: Object.fromEntries(new FormData(e.target)) }); dlg.close(); toast("Teamlid toegevoegd; inloggen gaat met een code per mail"); herlaad(); } catch (err) { SM.toonFouten(e.target, err); }
       });
     });
   }

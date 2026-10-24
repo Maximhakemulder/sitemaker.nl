@@ -7,6 +7,8 @@ import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
 import { runConcepts } from "../lib/concepts.mjs";
 import { pulse, maybeBriefings } from "../lib/team.mjs";
+import { runDomainChecks } from "../lib/domains.mjs";
+import { runCancellations, retryDrafts } from "../lib/service.mjs";
 
 export default async () => {
   const started = Date.now();
@@ -15,6 +17,9 @@ export default async () => {
 
   await step("uptime", () => runChecks({ max: 8 }));
   await step("agenda-herinnering", () => sendReminders());
+  await step("domeinen", () => runDomainChecks({ max: 4 }));
+  await step("opzeggingen", () => runCancellations());
+  await step("klantvragen", () => retryDrafts());
   await step("concepten", () => runConcepts({ max: 2 }));
   await step("briefings", () => maybeBriefings());
   if (autoReady()) await step("ai-retry", () => retryStuck());

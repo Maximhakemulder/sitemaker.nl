@@ -16,6 +16,7 @@ export const DEPTS = {
   projecten: { name: "Projecten", manager: "Iris", role: "projectmanager" },
   klantenservice: { name: "Klantenservice", manager: "Emma", role: "klantenservice-medewerker" },
   incidenten: { name: "Incidenten", manager: "Kees", role: "monitoring-specialist" },
+  domeinen: { name: "Domeinen", manager: "Dirk", role: "domeinbeheerder" },
   finance: { name: "Finance", manager: "Bram", role: "controller" },
 };
 
@@ -98,15 +99,24 @@ async function klantenservice() {
        WHERE onboarding AND site_status = 'in_aanbouw' AND intake_at IS NULL AND COALESCE(started_at, details_at, created_at) < NOW() - INTERVAL '2 days' ORDER BY created_at LIMIT 10`),
     n("SELECT COUNT(*)::int AS n FROM customers WHERE onboarding AND intake_at IS NULL AND site_status = 'in_aanbouw'"),
   ]);
+  const [vragen, concepten, opzeg, reviews] = await Promise.all([
+    n("SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'open'"),
+    n("SELECT COUNT(*)::int AS n FROM tickets WHERE status = 'open' AND concept_status = 'klaar'"),
+    q("SELECT company, opzeg_einde FROM customers WHERE opzeg_status = 'aangevraagd' ORDER BY opzeg_einde"),
+    n("SELECT COUNT(*)::int AS n FROM reviews WHERE source = 'portaal' AND NOT published"),
+  ]);
   return {
+    vragen, opzeg, reviews,
     metrics: [
+      { label: "open klantvragen", value: vragen, alarm: vragen > 0, href: "#service" },
+      { label: "lopende opzeggingen", value: opzeg.length, alarm: opzeg.length > 0, href: "#klanten" },
       { label: "kennismakingen vandaag", value: vandaag, href: "#aanvragen" },
       { label: "kennismakingen komende 7 dagen", value: komend, href: "#aanvragen" },
       { label: "klanten die vastlopen in hun start", value: vast.length, alarm: vast.length > 0, href: "#overzicht" },
       { label: "nieuwe klanten in hun start", value: starters, href: "#overzicht" },
     ],
     people: {
-      service: { text: vast.length ? `${vast.length} klanten lopen vast (o.a. ${vast[0].company} bij ${vast[0].stap})` : starters ? `${starters} klanten zijn op weg in hun start` : "Geen klanten in hun start", busy: false },
+      service: { text: vragen ? `${nl(vragen, "klantvraag", "klantvragen")} open${concepten ? `, ${concepten} met een antwoord klaar` : ""}` : vast.length ? `${vast.length} klanten lopen vast (o.a. ${vast[0].company} bij ${vast[0].stap})` : starters ? `${starters} klanten zijn op weg in hun start` : "Geen open vragen", busy: vragen > concepten },
       agenda: { text: vandaag ? `${nl(vandaag, "kennismaking", "kennismakingen")} vandaag` : komend ? `${nl(komend, "kennismaking", "kennismakingen")} deze week` : "Nog geen kennismakingen gepland", busy: geboekt > 0 },
     },
     vast,
@@ -140,6 +150,7 @@ async function finance() {
     one("SELECT COUNT(*)::int AS n, COALESCE(SUM(amount_cents),0)::int AS bedrag FROM invoices WHERE status IN ('open','vervallen')"),
     n("SELECT COUNT(*)::int AS n FROM customers WHERE billing_status = 'betaling_mislukt'"),
   ]);
+  const { vasteKostenPerMaand: kosten } = await (await import("./kosten.mjs")).overzicht({ maanden: 1 });
   return {
     metrics: [
       { label: "abonnementen per maand (MRR)", value: euro(mrr), href: "#betalingen" },
@@ -147,10 +158,34 @@ async function finance() {
       { label: "ontvangen deze maand", value: euro(maand), href: "#facturen" },
       { label: "openstaande facturen", value: `${open.n} · ${euro(open.bedrag)}`, alarm: open.n > 0, href: "#facturen" },
       { label: "mislukte betalingen", value: mislukt, alarm: mislukt > 0, href: "#betalingen" },
+      { label: "vaste kosten per maand", value: kosten ? euro(kosten) : "nog niet ingevuld", href: "#kosten" },
+      { label: "MRR min vaste kosten", value: euro(mrr - kosten), href: "#kosten" },
     ],
     people: {
       controller: { text: !mollieReady() ? "Wacht op de Mollie-koppeling voor automatische betalingen" : mislukt ? `${nl(mislukt, "mislukte betaling", "mislukte betalingen")} om op te volgen` : `MRR ${euro(mrr)} uit ${actief} abonnementen`, busy: false },
     },
+  };
+}
+
+async function domeinen(pulseData) {
+  const rows = await q("SELECT d.status, d.keuze, d.naam, d.verloopt_op, d.created_at, c.company FROM domains d JOIN customers c ON c.id = d.customer_id WHERE d.status <> 'opgezegd'");
+  const tel = (f) => rows.filter(f).length;
+  const actief = tel((d) => d.status === "actief"), werk = rows.filter((d) => ["verhuizen", "registreren"].includes(d.status));
+  const probleem = rows.filter((d) => d.status === "probleem"), wacht = rows.filter((d) => d.status === "wacht_op_klant");
+  const lang = wacht.filter((d) => Date.now() - new Date(d.created_at) > 3 * 86400000);
+  const verloopt = rows.filter((d) => d.verloopt_op && new Date(d.verloopt_op) < new Date(Date.now() + 30 * 86400000));
+  const zonder = await n("SELECT COUNT(*)::int AS n FROM customers c WHERE c.site_status IN ('live','in_aanbouw') AND c.started_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM domains d WHERE d.customer_id = c.id AND d.status <> 'opgezegd')");
+  return {
+    metrics: [
+      { label: "domeinen actief", value: actief, href: "#domeinen" },
+      { label: "voor jou te regelen (verhuizen/registreren)", value: werk.length, alarm: werk.length > 0, href: "#domeinen" },
+      { label: "wachten op de klant", value: wacht.length, alarm: lang.length > 0, sub: lang.length ? `${lang.length} al langer dan 3 dagen` : "", href: "#domeinen" },
+      { label: "problemen of bijna verlopen", value: probleem.length + verloopt.length, alarm: probleem.length + verloopt.length > 0, href: "#domeinen" },
+    ],
+    people: {
+      domeinen: { text: werk.length ? `${werk.length} domein${werk.length > 1 ? "en" : ""} voor jou te regelen: ${werk.slice(0, 2).map((d) => d.naam).join(", ")}` : probleem.length ? `${probleem[0].naam} wijst niet meer naar de site` : zonder ? `${zonder} klant${zonder > 1 ? "en hebben" : " heeft"} nog geen domein gekozen` : actief ? `${actief} domeinen actief, alles klopt` : "Nog geen domeinen", busy: recent(pulseData.domeinen?.at) },
+    },
+    werk, probleem,
   };
 }
 
@@ -188,7 +223,19 @@ const FEED_ACTIONS = {
   "factuur.aangemaakt": ["finance", "Bram", "Factuur {nummer} gemaakt voor {klant}"],
   "incident.offline": ["incidenten", "Kees", "{klant} is offline"],
   "incident.online": ["incidenten", "Kees", "{klant} is weer online"],
+  "domein.actief": ["domeinen", "Dirk", "{naam} is actief voor {klant}"],
+  "domein.probleem": ["domeinen", "Dirk", "{naam} wijst niet meer naar de site van {klant}"],
+  "domein.dns_klaar": ["domeinen", "Dirk", "DNS van {naam} klopt; koppelen aan de site"],
+  "domein.eigen": ["domeinen", "Dirk", "{klant} houdt {naam} zelf; instructies gestuurd"],
+  "domein.verhuizen": ["domeinen", "Dirk", "{klant} wil {naam} naar Sitemaker verhuizen"],
+  "domein.nieuw": ["domeinen", "Dirk", "{klant} wil {naam} laten registreren"],
   "klant.aangemaakt": ["klantenservice", "Emma", "Nieuwe klant: {klant}"],
+  "service.beantwoord": ["klantenservice", "Emma", "Vraag van {klant} beantwoord"],
+  "review.geschreven": ["klantenservice", "Emma", "{klant} schreef een review"],
+  "opzegging.aangevraagd": ["klantenservice", "Emma", "{klant} heeft opgezegd"],
+  "opzegging.ingetrokken": ["klantenservice", "Emma", "{klant} blijft klant (opzegging ingetrokken)"],
+  "opzegging.afgerond": ["finance", "Bram", "Abonnement van {klant} beëindigd"],
+  "kosten.toegevoegd": ["finance", "Bram", "Kostenpost toegevoegd: {omschrijving}"],
 };
 export async function feed(limit = 60) {
   const audit = await q(`SELECT a.action, a.detail, a.created_at, c.company FROM audit_log a LEFT JOIN customers c ON c.id = a.customer_id
@@ -197,7 +244,7 @@ export async function feed(limit = 60) {
   const leadNames = leadIds.length ? Object.fromEntries((await q("SELECT id, company FROM leads WHERE id = ANY($1)", [leadIds])).map((l) => [l.id, l.company])) : {};
   const items = audit.map((a) => {
     const [dept, wie, tpl] = FEED_ACTIONS[a.action];
-    return { dept, wie, at: a.created_at, text: tpl.replace("{klant}", a.company || "een klant").replace("{lead}", leadNames[a.detail?.lead] || "Een lead").replace("{nummer}", a.detail?.number || "") };
+    return { dept, wie, at: a.created_at, text: tpl.replace("{klant}", a.company || "een klant").replace("{lead}", leadNames[a.detail?.lead] || "Een lead").replace("{nummer}", a.detail?.number || "").replace("{naam}", a.detail?.naam || "het domein").replace("{omschrijving}", a.detail?.omschrijving || "") };
   });
   const [concepten, mails, research, afspraken, voorstellen, betalingen] = await Promise.all([
     q("SELECT l.company, COALESCE(c.ready_at, c.updated_at) AS at, c.status, c.reden FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.updated_at > NOW() - INTERVAL '7 days' AND c.status IN ('klaar','overgeslagen') ORDER BY c.updated_at DESC LIMIT 15"),
@@ -221,9 +268,9 @@ export async function feed(limit = 60) {
 // ---------------------------------------------------------------- alles samen (voor HQ)
 export async function teamState() {
   const pulseData = (await one("SELECT value FROM settings WHERE key = 'team_pulse'"))?.value || {};
-  const [B, P, K, I, F, M, lijst, briefings] = await Promise.all([b2b(pulseData), projecten(), klantenservice(), incidenten(pulseData), finance(), marketing(), feed(80),
+  const [B, P, K, I, F, M, D, lijst, briefings] = await Promise.all([b2b(pulseData), projecten(), klantenservice(), incidenten(pulseData), finance(), marketing(), domeinen(pulseData), feed(80),
     q(`SELECT dept, text, ai, created_at FROM team_briefings WHERE day = $1`, [dayKey()])]);
-  const depts = { b2b: B, projecten: P, klantenservice: K, incidenten: I, finance: F, marketing: M };
+  const depts = { b2b: B, projecten: P, klantenservice: K, incidenten: I, finance: F, marketing: M, domeinen: D };
   const busy = {};
   for (const d of Object.values(depts)) for (const [k, v] of Object.entries(d.people)) busy[k] = !!v.busy;
   const brief = Object.fromEntries(briefings.map((b) => [b.dept, { text: b.text, ai: b.ai, at: b.created_at }]));
@@ -232,13 +279,18 @@ export async function teamState() {
     P.metrics[1].value && { text: `${P.metrics[1].value} voorstellen voor wijzigingen goedkeuren`, href: "#wijzigingen/voorstel" },
     P.metrics[0].alarm && { text: P.metrics[0].sub, href: "#wijzigingen" },
     B.metrics[3].value && { text: `${B.metrics[3].value} reacties op B2B-mails beantwoorden`, href: "#b2b" },
+    K.vragen && { text: `${nl(K.vragen, "klantvraag", "klantvragen")} beantwoorden`, href: "#service" },
+    K.opzeg.length && { text: `${nl(K.opzeg.length, "klant heeft", "klanten hebben")} opgezegd (o.a. ${K.opzeg[0].company}); bel ze nog even`, href: "#klanten" },
+    K.reviews && { text: `${nl(K.reviews, "nieuwe review", "nieuwe reviews")} van klanten publiceren`, href: "#reviews" },
     K.vast.length && { text: `${K.vast.length} nieuwe klanten lopen vast in hun start`, href: "#overzicht" },
     I.offline.length && { text: `${I.offline.length} klantsites offline`, href: "#sites" },
+    D.werk.length && { text: `${D.werk.length} domein${D.werk.length > 1 ? "en" : ""} verhuizen of registreren`, href: "#domeinen" },
+    D.probleem.length && { text: `${D.probleem.length} domein${D.probleem.length > 1 ? "en wijzen" : " wijst"} niet meer naar de site`, href: "#domeinen" },
     F.metrics[4].value && { text: `${F.metrics[4].value} mislukte betalingen`, href: "#betalingen" },
   ].filter(Boolean);
   const pd = (k) => ({ ...depts[k], briefing: brief[k] || null, feed: lijst.filter((f) => f.dept === k).slice(0, 25) });
   return {
-    depts: { b2b: pd("b2b"), projecten: pd("projecten"), klantenservice: pd("klantenservice"), incidenten: pd("incidenten"), finance: pd("finance"), marketing: pd("marketing"),
+    depts: { b2b: pd("b2b"), projecten: pd("projecten"), klantenservice: pd("klantenservice"), incidenten: pd("incidenten"), finance: pd("finance"), marketing: pd("marketing"), domeinen: pd("domeinen"),
       directie: { metrics: [], people: { directeur: { text: brief.directie ? "Briefing van vandaag staat klaar" : "Schrijft de briefing elke ochtend na 8:00", busy: false }, jij: { text: beslissingen.length ? `${beslissingen.length} dingen wachten op jou` : "Niets dat op je wacht", busy: true } }, briefing: brief.directie || null, feed: lijst.slice(0, 25) } },
     busy, beslissingen, feed: lijst.slice(0, 30), marketingLive: M.live, ai: aiReady(),
   };
@@ -270,7 +322,7 @@ export async function runBriefings({ force = false } = {}) {
   const day = dayKey();
   const st = await teamState();
   const done = Object.fromEntries((await q("SELECT dept FROM team_briefings WHERE day = $1", [day])).map((r) => [r.dept, true]));
-  const keys = ["b2b", "projecten", "klantenservice", "incidenten", "finance"].concat(st.marketingLive ? ["marketing"] : []);
+  const keys = ["b2b", "projecten", "domeinen", "klantenservice", "incidenten", "finance"].concat(st.marketingLive ? ["marketing"] : []);
   const teksten = {};
   for (const k of keys) {
     if (done[k] && !force) continue;
@@ -332,8 +384,9 @@ export const checkTeamKey = (s, key) => { const a = Buffer.from(String(key || ""
 export async function runJob(job) {
   if (job.kind === "vraag") return answerQuestion(Number(job.id));
   if (job.kind === "briefings") return runBriefings({ force: !!job.force });
+  if (job.kind === "ticket") return (await import("./service.mjs")).draftAnswer(Number(job.id));
 }
-async function trigger(job) {
+export async function trigger(job) {
   if (env("SM_INLINE_AI") === "1") return runJob(job).catch((e) => console.log("[team]", e.message));
   const s = JSON.stringify(job);
   await fetch(`${env("URL") || publicBase()}/.netlify/functions/team-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ job, key: triggerKey(s) }), signal: AbortSignal.timeout(5000) })

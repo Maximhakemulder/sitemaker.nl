@@ -17,7 +17,7 @@
   SM.render = (el, content) => { el.innerHTML = String(content); };
 
   // ------------------------------------------------ opmaak
-  SM.euro = (c) => "€" + (Number(c || 0) / 100).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  SM.euro = (c) => (Number(c) < 0 ? "-€" : "€") + (Math.abs(Number(c || 0)) / 100).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const d = (v) => (v ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? v + "T12:00:00" : v) : null);
   SM.datum = (v) => (v ? d(v).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : "–");
   SM.datumLang = (v) => (v ? d(v).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "–");
