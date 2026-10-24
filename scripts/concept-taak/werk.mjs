@@ -36,6 +36,7 @@ try {
     schrijf(path.join(WERK, "_kit", "ontwerp-regels.md"), d.ontwerpRegels);
     schrijf(path.join(WERK, "_kit", "beweging.js"), d.beweging);
     schrijf(path.join(WERK, "_kit", "sprite.svg"), d.sprite);
+    schrijf(path.join(WERK, "_kit", "vangnet.css"), d.vangnet || "");
     console.log(`Kit in ${path.join(WERK, "_kit")}: content-regels.md, ontwerp-regels.md, beweging.js, sprite.svg`);
   } else if (cmd === "status") {
     console.log(JSON.stringify(await api("GET", "status"), null, 1));
@@ -66,7 +67,7 @@ try {
     const content = JSON.parse(fs.readFileSync(dir(id, "content.json"), "utf8"));
     const html = fs.readFileSync(dir(id, "index.html"), "utf8");
     const d = await api("PUT", `concepten/${id}`, { content, html });
-    console.log(`Opgeslagen. ${d.waarschuwingen?.length ? "Let op: " + d.waarschuwingen.join("; ") : ""}`);
+    console.log(`Opgeslagen: ${d.url} ${d.waarschuwingen?.length ? "Let op: " + d.waarschuwingen.join("; ") : ""}\nControleer nu: node scripts/concept-taak/controle.mjs ${d.url}`);
   } else if (cmd === "afmelden") {
     const [id, reden, vlag] = args;
     await api("POST", `concepten/${id}/afmelden`, { reden, overslaan: vlag === "--overslaan" });

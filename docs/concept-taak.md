@@ -44,9 +44,13 @@ dit bestand, het concept-id en de omgevingsvariabelen mee. Lukt een concept niet
    - Mobiel: geen horizontaal scrollen, niets te klein of te groot, knoppen duimvriendelijk, actiebalk onderaan.
    - Desktop: hero niet hoger dan één scherm, geen gigantische beelden, geen lege gaten.
    - Contrast overal goed (geen donker op donker, geen licht op licht), passende foto's, geen verzonnen feiten.
+   - **Geen lege vlakken**: het rapport moet op elke breedte "geen lege vlakken" zeggen, ook op 1920 en 2560. Bekijk ook
+     `1920-overzicht.png` en `2560-overzicht.png`. Koppel hoogtes niet aan de schermhoogte (stappen max. `min(46vh,440px)`).
    Pas de HTML aan en bekijk opnieuw tot alles klopt.
 7. **Opslaan**: `node scripts/concept-taak/werk.mjs opslaan <id>`. Geeft de server een fout (bijv. Feitencontrole), los het
    op en sla opnieuw op. Waarschuwingen over kleuren: controleer en verbeter als het terecht is.
+8. **Live controleren**: `node scripts/concept-taak/controle.mjs <url uit stap 7>` scrolt de echte pagina mét beweging op
+   390/1280/1920/2560 en meldt lege schermen of horizontaal scrollen. Alles moet "ok" zijn; anders verbeteren en opnieuw opslaan.
 
 ## Afronden
 Geef een korte samenvatting: per concept het bedrijf, het idee/pronkstuk, en of het gelukt is (of waarom niet).
