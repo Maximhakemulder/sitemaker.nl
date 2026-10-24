@@ -514,6 +514,126 @@ console.log("Agenda (kennismaking boeken)");
   });
 }
 
+console.log("Concept-websites voor leads");
+{
+  const { q: dbq } = await import("../netlify/lib/core.mjs");
+  const pngVan = (w, h, n) => { const b = Buffer.alloc(64 + n); Buffer.from("89504e470d0a1a0a0000000d49484452", "hex").copy(b); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20); b[40 + n % 20] = n; return b; };
+  const SITE = `<!doctype html><html><head><title>Bakkerij Zon</title><link rel="stylesheet" href="/stijl.css"><meta property="og:image" content="/img/winkel.png"></head><body>
+    <img src="/img/logo-zon.png" alt="Bakkerij Zon logo"><h1>Welkom bij Bakkerij Zon</h1><p>Ambachtelijke bakker in Utrecht sinds jaar en dag. Wij bakken elke dag vers brood, taarten en koekjes met biologisch meel.</p>
+    <p>Bestel uw taart voor verjaardag of bruiloft. Ook glutenvrij brood op bestelling.</p><img src="/img/brood.png" alt="Vers brood"><img src="/img/icon-klein.png">
+    <a href="/over-ons">Over ons</a><p>Bel ons: 030 123 45 67 of mail info@bakkerij-zon.test</p><p>Openingstijden: maandag t/m zaterdag 07:00 - 18:00</p><footer>© 2016 Bakkerij Zon</footer></body></html>`;
+  const OVER = `<html><body><h1>Over ons</h1><p>Bakkerij Zon is een familiebedrijf. Bakker Jan staat elke nacht om vier uur in de bakkerij om alles vers te bakken voor de buurt.</p></body></html>`;
+  const echteFetch = globalThis.fetch;
+  globalThis.fetch = async (url, opt) => {
+    const u = String(url);
+    if (!u.startsWith("https://bakkerij-zon.test") && !u.startsWith("https://webwinkel.test")) return echteFetch(url, opt);
+    const r = (body, type) => new Response(body, { status: 200, headers: { "content-type": type } });
+    const pad = new URL(u).pathname;
+    if (u.startsWith("https://webwinkel.test")) return r(`<html><body><h1>Webwinkel</h1><p>${"Bestel online schoenen en tassen, gratis verzending, in winkelmand. ".repeat(10)}</p></body></html>`, "text/html");
+    if (pad === "/" ) return r(SITE, "text/html; charset=utf-8");
+    if (pad === "/over-ons") return r(OVER, "text/html");
+    if (pad === "/stijl.css") return r("body{color:#333} .knop{background:#c8102e} h1{color:#c8102e} a{color:#f5a623}", "text/css");
+    if (pad === "/img/winkel.png") return r(pngVan(1600, 1000, 1), "image/png");
+    if (pad === "/img/brood.png") return r(pngVan(1200, 900, 2), "image/png");
+    if (pad === "/img/logo-zon.png") return r(pngVan(300, 100, 3), "image/png");
+    if (pad === "/img/icon-klein.png") return r(pngVan(64, 64, 4), "image/png");
+    return new Response("nee", { status: 404 });
+  };
+  const vorigeAi = globalThis.__aiFake;
+  globalThis.__aiFake = (x) => {
+    if (!/Huisstijlkleuren/.test(x.prompt)) return vorigeAi(x);
+    if (/webwinkel/i.test(x.prompt)) return JSON.stringify({ kan: false, reden: "Dit is een webshop." });
+    const fotos = [...x.prompt.matchAll(/afbeeldingen\/(foto-\d+\.png)/g)].map((m) => "afbeeldingen/" + m[1]);
+    return "```json\n" + JSON.stringify({ kan: true, content: {
+      thema: "natuur", kleuren: { primair: "#c8102e", accent: "nietgeldig" },
+      bedrijf: { naam: "Bakkerij Zon", telefoon: "030 123 45 67", email: "info@bakkerij-zon.test", whatsapp: "06 99999999", adres: "Verzonnen straat 1", plaats: "Utrecht" },
+      seo: { titel: "Bakkerij Zon | Ambachtelijke bakker in Utrecht", omschrijving: "Elke dag vers brood en taart." },
+      hero: { titel: "Elke dag vers, met liefde gebakken", tekst: "Brood, taart en koekjes van biologisch meel.", knop: { tekst: "Bestel een taart" }, foto: fotos[0] || "" },
+      diensten: { titel: "Uit onze bakkerij", items: [{ titel: "Vers brood", tekst: "Elke ochtend vers.", prijs: "€ 99" }, { titel: "Taarten", tekst: "Voor verjaardag en bruiloft." }, { titel: "Glutenvrij", tekst: "Op bestelling." }] },
+      over: { titel: "Over ons", tekst: "Een familiebedrijf. Bakker Jan bakt elke nacht vers voor de buurt.", foto: fotos[1] || "afbeeldingen/bestaat-niet.jpg" },
+      fotos: [], openingstijden: [{ dag: "Maandag t/m zaterdag", tijd: "07:00 - 18:00" }, { dag: "Zondag", tijd: "10:00 - 14:00" }],
+      contact: { titel: "Bestel of kom langs", tekst: "Bel of mail ons." } } }) + "\n```";
+  };
+  let lead, token;
+  await test("concept: agent bekijkt de site, Claude maakt een eerlijk concept", async () => {
+    const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Bakkerij Zon", email: "info@bakkerij-zon.test", website: "https://bakkerij-zon.test/", city: "Utrecht", category: "bakker" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); lead = r.data.lead.id;
+    const g = await call("POST", `hq/leads/${lead}/concept`, { cookie: admin, body: {} });
+    assert.equal(g.status, 200, JSON.stringify(g.data));
+    const l = (await call("GET", "hq/leads?status=nieuw", { cookie: admin })).data.leads.find((x) => x.id === lead);
+    assert.equal(l.concept.status, "klaar", JSON.stringify(l.concept));
+    assert.equal(l.concept.fotos, 2, "twee echte foto's, icoon te klein");
+    assert.ok(l.concept.punten.some((p) => /2016/.test(p)) && l.concept.punten.some((p) => /mobiel/.test(p)));
+    token = l.concept.url.split("/voorbeeld/")[1];
+    const { one: dbone } = await import("../netlify/lib/core.mjs");
+    const c = (await dbone("SELECT content FROM concepts WHERE lead_id = $1", [lead])).content;
+    assert.equal(c.bedrijf.telefoon, "030 123 45 67"); assert.equal(c.bedrijf.email, "info@bakkerij-zon.test");
+    assert.equal(c.bedrijf.whatsapp, "", "verzonnen WhatsApp eruit"); assert.equal(c.bedrijf.adres, "", "verzonnen adres eruit");
+    assert.equal(c.diensten.items[0].prijs, "", "verzonnen prijs eruit"); assert.equal(c.openingstijden.length, 0, "verzonnen zondag = alle tijden eruit");
+    assert.equal(c.kleuren.primair, "#c8102e"); assert.equal(c.kleuren.accent, "");
+    assert.match(c.bedrijf.logo, /^afbeeldingen\/logo\.png$/); assert.ok(!JSON.stringify(c).includes("bestaat-niet"));
+  });
+  await test("concept-pagina: noindex, eigen foto's, balk en knop naar de kennismaking", async () => {
+    const p = await call("GET", "voorbeeld/" + token);
+    assert.equal(p.status, 200); const h = String(p.data);
+    assert.ok(h.includes("noindex") && h.includes("Zo kan de nieuwe website van Bakkerij Zon eruitzien") && h.includes(`/api/voorbeeld/${token}/afbeeldingen/foto-1.png`));
+    assert.ok(h.includes(`?concept=${token}&bedrijf=Bakkerij%20Zon#kennismaking`) && h.includes("/gezien"));
+    assert.ok(!String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("/gezien"), "HQ telt niet mee");
+    const img = await call("GET", `voorbeeld/${token}/afbeeldingen/foto-1.png`, { raw: true });
+    assert.equal(img.status, 200); assert.equal(img.headers.get("content-type"), "image/png");
+    assert.notEqual((await call("GET", `voorbeeld/${token}/afbeeldingen/../../x`, { raw: true })).headers.get("content-type"), "image/png");
+    assert.equal((await call("GET", `voorbeeld/${token}/afbeeldingen/bestaat-niet.png`, { raw: true })).status, 404);
+    assert.ok(String((await call("GET", "voorbeeld/onbekend12345")).data).includes("niet (meer) beschikbaar"));
+  });
+  await test("mail bevat de conceptlink; bekeken geeft een seintje", async () => {
+    const pv = (await call("GET", `hq/leads/${lead}/preview?kind=eerste`, { cookie: admin })).data;
+    assert.ok(pv.body.includes(`/voorbeeld/${token}`) && pv.body.indexOf("eerste opzet") < pv.body.indexOf("Ik ben"), pv.body);
+    const voor = captured.length;
+    assert.equal((await call("POST", `voorbeeld/${token}/gezien`, { body: {} })).status, 200);
+    await call("POST", `voorbeeld/${token}/gezien`, { body: {} });
+    const { q: q2 } = await import("../netlify/lib/core.mjs");
+    assert.equal((await q2("SELECT COUNT(*)::int AS n FROM audit_log WHERE action = 'concept.bekeken'"))[0].n, 1, "één seintje");
+    const lijst = (await call("GET", "hq/leads?status=bekeken", { cookie: admin })).data;
+    assert.equal(lijst.counts.bekeken, 1); assert.equal(lijst.leads[0].concept.views, 2);
+    assert.equal((await call("PUT", `hq/leads/${lead}/concept`, { cookie: admin, body: { thema: "zacht" } })).status, 200);
+    assert.ok(String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("#22C3B5"));
+  });
+  await test("afspraak vanuit het concept koppelt de lead; website aanmaken start vanuit het concept", async () => {
+    await dbq("UPDATE appointments SET ip_hash = 'oud'");
+    const s = (await call("GET", "agenda/slots")).data;
+    const start = s.days[3].times[0].start;
+    const r = await call("POST", "agenda/boek", { body: { start, name: "Jan Zon", company: "Bakkerij Zon", email: "jan.prive@zon.test", phone: "0612345678", concept: token } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const appt = (await call("GET", "hq/appointments", { cookie: admin })).data.appointments.find((a) => a.email === "jan.prive@zon.test");
+    const l = (await call("GET", "hq/leads?status=afspraak", { cookie: admin })).data.leads.find((x) => x.id === lead);
+    assert.ok(l, "lead staat op afspraak");
+    const k = await call("POST", "hq/customers", { cookie: admin, body: { company: "Bakkerij Zon", email: "jan.prive@zon.test", appointmentId: appt.id } });
+    assert.equal(k.status, 200, JSON.stringify(k.data));
+    const site = await call("POST", `hq/customers/${k.data.customer.id}/site`, { cookie: admin, body: {} });
+    assert.equal(site.status, 200, JSON.stringify(site.data)); assert.equal(site.data.bron, "concept");
+    const repo = __ghFake.repos[site.data.repo];
+    const files = repo.commits[repo.refs.main].files;
+    const content = JSON.parse(files["content.json"]);
+    assert.equal(content.hero.titel, "Elke dag vers, met liefde gebakken"); assert.equal(content.thema, "zacht");
+    assert.ok(files["afbeeldingen/foto-1.png"] && files["afbeeldingen/logo.png"] && files["render.mjs"] && !files["afbeeldingen/hero.jpg"]);
+  });
+  await test("webshops slaat de agent over; afmelden haalt het concept weg", async () => {
+    const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Webwinkel", email: "info@webwinkel.test", website: "https://webwinkel.test/" } });
+    await call("POST", `hq/leads/${r.data.lead.id}/concept`, { cookie: admin, body: {} });
+    const l = (await call("GET", "hq/leads?status=nieuw", { cookie: admin })).data.leads.find((x) => x.id === r.data.lead.id);
+    assert.equal(l.concept.status, "overgeslagen"); assert.match(l.concept.reden, /webshop/i);
+    assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "afmelden", ids: [lead] } })).status, 200);
+    assert.ok(String((await call("GET", "voorbeeld/" + token)).data).includes("niet (meer) beschikbaar"));
+  });
+  await test("tick zet nieuwe leads met een website automatisch in de wachtrij (binnen de daglimiet)", async () => {
+    const { runConcepts } = await import("../netlify/lib/concepts.mjs");
+    await call("POST", "hq/leads", { cookie: admin, body: { company: "Slagerij Twee", email: "info@slagerij-twee.test", website: "https://slagerij-twee.test/" } });
+    const r = await runConcepts({ max: 2 });
+    assert.ok(r.started >= 1, JSON.stringify(r));
+  });
+  globalThis.fetch = echteFetch; globalThis.__aiFake = vorigeAi;
+}
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

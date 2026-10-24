@@ -92,10 +92,12 @@ export const DEFAULT_SETTINGS = {
     sendHours: [8, 17],
     scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "fysiotherapeut"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
+    // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
+    concepten: { auto: true, perDag: 20, geldigDagen: 60, wachten: true },
     templates: {
       eerste: {
         subject: "Een website die aanvragen oplevert voor {bedrijf}",
-        body: "Goedendag,\n\n{intro}Ik ben {afzender} van Sitemaker. Wij bouwen professionele websites voor bedrijven, gericht op één ding: bezoekers omzetten in klanten.\n\nWat u krijgt:\n- Een professionele website, binnen 48 uur (2 werkdagen) online nadat u uw informatie hebt aangeleverd\n- Hosting inbegrepen\n- Elke maand vier wijzigingen, die we binnen 48 uur verwerken via uw eigen klantenportaal\n\nDe prijs is vast: €299,95 eenmalig en daarna €69,95 per maand. Geen onverwachte kosten.\n\nZullen we een korte kennismaking plannen? U kunt direct een moment kiezen via {link}, of gewoon op deze mail reageren.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
+        body: "Goedendag,\n\n{intro}{concept}Ik ben {afzender} van Sitemaker. Wij bouwen professionele websites voor bedrijven, gericht op één ding: bezoekers omzetten in klanten.\n\nWat u krijgt:\n- Een professionele website, binnen 48 uur (2 werkdagen) online nadat u uw informatie hebt aangeleverd\n- Hosting inbegrepen\n- Elke maand vier wijzigingen, die we binnen 48 uur verwerken via uw eigen klantenportaal\n\nDe prijs is vast: €299,95 eenmalig en daarna €69,95 per maand. Geen onverwachte kosten.\n\nZullen we een korte kennismaking plannen? U kunt direct een moment kiezen via {link}, of gewoon op deze mail reageren.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
       },
       opvolging: {
         subject: "Re: Een website die aanvragen oplevert voor {bedrijf}",

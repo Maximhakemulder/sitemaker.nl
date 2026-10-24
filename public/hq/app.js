@@ -16,6 +16,7 @@
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
     start: { gegevens: ["Vult gegevens in", "s-grijs"], betalen: ["Moet nog betalen", "s-let"], informatie: ["Betaald · levert info aan", "s-info"], bouwen: ["Bouwen!", "s-fout"], klaar: ["Gestart", "s-ok"] },
+    concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Wordt gemaakt", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
     voorkeur: { "": "Geen voorkeur", ochtend: "Ochtend", middag: "Middag", avond: "Begin van de avond", bellen: "Wil gebeld worden" },
   };
   const chip = (map, k) => { const [t, c] = map[k] || [k, "s-grijs"]; return html`<span class="status ${c}">${t}</span>`; };
@@ -42,6 +43,7 @@
     ["betalingen", "Betalingen", '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
     ["b2b", "B2B-mail", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
+    ["concepten", "Concepten", '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 8h18M8 21h8M12 17v4"/>'],
     ["reviews", "Reviews", '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'],
     ["instellingen", "Instellingen", '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>', "Beheer"],
     ["team", "Team", '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6Z"/>'],
@@ -68,7 +70,7 @@
   }
 
   function zetBadges(c) {
-    badges = { klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt };
+    badges = { concepten: c.concepten_bekeken, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt };
     app.querySelectorAll("[data-badge]").forEach((el) => { const n = badges[el.dataset.badge]; el.hidden = !n; el.textContent = n || ""; });
   }
 
@@ -78,7 +80,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, reviews, instellingen, team, mails }[pagina] || overzicht;
+    const fn = { overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails }[pagina] || overzicht;
     try { await fn(main, id); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
   }
@@ -105,6 +107,7 @@
         ${kpi(`${c.open_facturen} · ${euro(c.open_bedrag)}`, "openstaande facturen", "#facturen")}
         ${kpi(c.betaling_mislukt, "mislukte betalingen", "#betalingen", c.betaling_mislukt > 0)}
         ${kpi(c.offline, "sites offline", "#sites", c.offline > 0)}
+        ${kpi(`${c.concepten_bekeken} / ${c.concepten_klaar}`, "concepten bekeken (7 dagen) / klaar", "#concepten", c.concepten_bekeken > 0)}
       </div>
       <div class="twee">
         <section class="paneel"><div class="paneel-kop"><h2>Wijzigingen te doen</h2><a href="#wijzigingen">Alle wijzigingen</a></div>
@@ -792,7 +795,7 @@
     const d = await api("hq/leads?status=" + (leadFilter === "alle" ? "" : leadFilter));
     const c = d.counts;
     const n = (k) => c[k] || 0;
-    const filters = [["nieuw", "Klaar om te mailen"], ["goedgekeurd", "Wachtrij"], ["verstuurd", "Verstuurd"], ["opgevolgd", "Opgevolgd"], ["reactie", "Reacties"], ["afspraak", "Afspraak"], ["kandidaat", "Te onderzoeken"], ["overgeslagen", "Overgeslagen"], ["afgemeld", "Afgemeld"], ["fout", "Fout"], ["alle", "Alle"]];
+    const filters = [["bekeken", "Concept bekeken"], ["nieuw", "Klaar om te mailen"], ["goedgekeurd", "Wachtrij"], ["verstuurd", "Verstuurd"], ["opgevolgd", "Opgevolgd"], ["reactie", "Reacties"], ["afspraak", "Afspraak"], ["kandidaat", "Te onderzoeken"], ["overgeslagen", "Overgeslagen"], ["afgemeld", "Afgemeld"], ["fout", "Fout"], ["alle", "Alle"]];
     const opvolgKlaar = d.followupDue.length;
     render(main, html`
       <div class="hq-kop"><div><h1>B2B-mail</h1><p>Bedrijven benaderen per mail. Niets gaat de deur uit zonder jouw goedkeuring; afmelden kan altijd met één klik. Vandaag verstuurd: ${d.sentToday} van max. ${d.dailyMax}.</p></div>
@@ -801,13 +804,15 @@
       ${!d.ready.company ? html`<div class="melding melding-let">${raw(icon.let)}<p>Vul bij <a href="#instellingen">Instellingen</a> je bedrijfsnaam en KvK-nummer in; die staan verplicht onder elke zakelijke mail.</p></div>` : ""}
       ${opvolgKlaar ? html`<div class="melding melding-info">${raw(icon.let)}<div><p><b>${opvolgKlaar} leads</b> zijn langer dan je opvolgtermijn geleden gemaild zonder reactie.</p><button class="knop knop-klein" id="opvolgen">Opvolging goedkeuren</button></div></div>` : ""}
       <div class="filters" role="group" aria-label="Filter">${filters.map(([k, t]) => html`<button aria-pressed="${k === leadFilter}" data-f="${k}">${t}${k !== "alle" ? html`<span class="n">${k === "opgevolgd" ? n("opgevolgd") + n("opvolging_goedgekeurd") : n(k)}</span>` : ""}</button>`)}</div>
-      <section class="paneel">${d.leads.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th><input type="checkbox" class="selecteer" id="alles" aria-label="Alles selecteren"></th><th>Bedrijf</th><th>E-mail</th><th>Plaats / branche</th><th>Status</th><th>Laatst</th></tr></thead><tbody>
+      <section class="paneel">${d.leads.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th><input type="checkbox" class="selecteer" id="alles" aria-label="Alles selecteren"></th><th>Bedrijf</th><th>E-mail</th><th>Plaats / branche</th><th>Concept</th><th>Status</th><th>Laatst</th></tr></thead><tbody>
         ${d.leads.map((l) => html`<tr class="klikbaar" data-lead="${l.id}"><td><input type="checkbox" class="selecteer" value="${l.id}" aria-label="Selecteer ${l.company}"></td>
           <td><b>${l.company}</b>${l.intro ? html`<br><span class="klein dempen">Met openingszin</span>` : ""}${l.rejectReason && l.status === "overgeslagen" ? html`<br><span class="klein dempen">${l.rejectReason}</span>` : ""}</td>
           <td class="klein">${l.email || html`<span class="dempen">–</span>`}</td><td class="klein">${[l.city, l.category].filter(Boolean).join(" · ")}</td>
+          <td>${conceptCel(l)}</td>
           <td>${chip(L.lead, l.status)}${l.error ? html`<br><span class="klein dempen">${l.error}</span>` : ""}</td><td class="klein nowrap">${geleden(l.updatedAt)}</td></tr>`)}</tbody></table></div>
         <div class="balk-acties" id="balk" hidden><span id="aantal"></span>
           <button class="knop knop-actie knop-klein" data-actie="goedkeuren">Goedkeuren voor verzending</button>
+          <button class="knop knop-licht knop-klein" data-actie="concept">Concept maken</button>
           <button class="knop knop-licht knop-klein" data-actie="opvolgen">Opvolging goedkeuren</button>
           <button class="knop knop-licht knop-klein" data-actie="terug">Uit wachtrij</button>
           <button class="knop knop-licht knop-klein" data-actie="overslaan">Overslaan</button>
@@ -831,9 +836,15 @@
     main.querySelectorAll("[data-actie]").forEach((b) => b.addEventListener("click", async () => {
       const ids = gekozen();
       if (b.dataset.actie === "verwijderen" && !(await SM.bevestig("Leads verwijderen?", "Alleen leads die nog niet gemaild zijn worden verwijderd.", "Verwijderen"))) return;
-      try { const r = await api("hq/leads/action", { method: "POST", body: { action: b.dataset.actie, ids } }); toast(`${r.changed} leads bijgewerkt`); herlaad(); } catch (err) { toast(err.message, "fout"); }
+      try { const r = await api("hq/leads/action", { method: "POST", body: { action: b.dataset.actie, ids } }); toast(b.dataset.actie === "concept" ? `${r.changed} concepten in de wachtrij${r.skipped ? ` (${r.skipped} zonder website overgeslagen)` : ""}` : `${r.changed} leads bijgewerkt`); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
-    main.querySelectorAll("tr[data-lead]").forEach((tr) => tr.addEventListener("click", () => leadDetail(d.leads.find((l) => String(l.id) === tr.dataset.lead))));
+    main.querySelectorAll("tr[data-lead]").forEach((tr) => tr.addEventListener("click", (e) => { if (e.target.closest("a")) return; leadDetail(d.leads.find((l) => String(l.id) === tr.dataset.lead)); }));
+  }
+  function conceptCel(l) {
+    const c = l.concept;
+    if (!c) return l.website ? html`<span class="klein dempen">Nog niet</span>` : html`<span class="klein dempen">Geen website</span>`;
+    if (c.status !== "klaar") return html`${chip(L.concept, c.status)}${c.reden ? html`<br><span class="klein dempen">${c.reden}</span>` : ""}`;
+    return html`<a class="klein" href="${c.url}?hq=1" target="_blank" rel="noopener">Bekijken</a>${c.views ? html`<br><span class="status s-fout">${c.views}× bekeken</span>` : html`<br><span class="klein dempen">Nog niet geopend</span>`}`;
   }
 
   function leadToevoegen() {
@@ -867,6 +878,7 @@
       <p>${chip(L.lead, l.status)} ${l.website ? html`<a href="${l.website}" target="_blank" rel="noopener">${l.website.replace(/^https?:\/\//, "")}</a>` : ""} ${l.phone ? html` · <a href="tel:${l.phone}">${l.phone}</a>` : ""}</p>
       ${l.replySnippet ? html`<div class="notitie"><b>Reactie ${tijd(l.replyAt)}:</b> ${l.replySnippet}</div>` : ""}
       ${l.researchNote ? html`<p class="klein dempen">Research: ${l.researchNote}</p>` : ""}
+      ${l.website ? conceptBlok(l) : ""}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <div class="rij2"><div class="veld"><label for="d-bedrijf">Bedrijfsnaam</label><input id="d-bedrijf" name="company" value="${l.company}"></div><div class="veld"><label for="d-email">E-mailadres</label><input id="d-email" name="email" type="email" value="${l.email || ""}"></div></div>
         <div class="rij3"><div class="veld"><label for="d-plaats">Plaats</label><input id="d-plaats" name="city" value="${l.city}"></div><div class="veld"><label for="d-cat">Branche</label><input id="d-cat" name="category" value="${l.category}"></div><div class="veld"><label for="d-tel">Telefoon</label><input id="d-tel" name="phone" value="${l.phone}"></div></div>
@@ -888,6 +900,62 @@
     form.querySelector("[data-afspraak]")?.addEventListener("click", () => act("afspraak", "Op afspraak gezet"));
     form.querySelector("[data-afmelden]").addEventListener("click", async () => { if (await SM.bevestig("Nooit meer mailen?", `${l.email || l.company} komt op de afmeldlijst en krijgt geen B2B-mail meer.`, "Afmelden")) act("afmelden", "Afgemeld"); });
     form.querySelector("[data-klant]")?.addEventListener("click", () => { dlg.close(); klantDialoog({ company: l.company, email: l.email, phone: l.phone, siteUrl: l.website, notes: l.notes, leadId: l.id }); });
+    koppelConcept(dlg, l, () => { dlg.close(); herlaad(); });
+  }
+  function conceptBlok(l) {
+    const c = l.concept;
+    return html`<section class="concept-blok"><div class="paneel-kop"><h3>Concept-website</h3>${c ? chip(L.concept, c.status) : ""}</div>
+      ${!c ? html`<p class="klein dempen">Nog geen concept. De agent bekijkt hun site en Claude maakt een opzet in de Sitemaker-opmaak.</p>` : ""}
+      ${c?.status === "klaar" ? html`<p><a class="knop knop-licht knop-klein" href="${c.url}?hq=1" target="_blank" rel="noopener">${raw(icon.open)}Concept bekijken</a> <button class="knop knop-tekst knop-klein" type="button" data-kopieer="${c.url}">Link kopiëren</button></p>
+        <p class="klein dempen">${c.views ? `${c.views}× bekeken, eerst ${tijd(c.firstViewAt)}, laatst ${geleden(c.lastViewAt)}` : "Nog niet geopend door de lead"}${c.expiresAt ? ` · geldig tot ${datum(c.expiresAt)}` : ""} · ${c.fotos} eigen foto's</p>
+        <div class="rij2"><div class="veld"><label for="c-thema">Stijl</label><select id="c-thema" data-thema>${Object.entries({ elegant: "Elegant", stoer: "Stoer", natuur: "Natuur", zacht: "Zacht" }).map(([k, t]) => html`<option value="${k}" ${k === c.thema ? raw("selected") : ""}>${t}</option>`)}</select></div></div>` : ""}
+      ${c?.reden && c.status !== "klaar" ? html`<p class="klein">${c.reden}</p>` : ""}
+      ${c?.punten?.length ? html`<p class="klein"><b>Hun huidige site:</b> ${c.punten.join(" · ")}</p>` : ""}
+      ${!c || c.status !== "bezig" ? html`<div class="veld"><label for="c-instr">Wens voor ${c ? "een nieuw" : "het"} concept <span class="opt">(optioneel)</span></label><input id="c-instr" data-instructie placeholder="Bijv. stoerder, meer nadruk op spoedservice" value="${c?.instructie || ""}"></div>
+        <div class="knoppen"><button class="knop knop-klein ${c ? "knop-licht" : "knop-actie"}" type="button" data-concept>${c ? "Opnieuw maken" : "Concept maken"}</button>${c ? html`<button class="knop knop-tekst knop-klein" type="button" data-concept-weg>Verwijderen</button>` : ""}</div>` : html`<p class="klein dempen">Wordt nu gemaakt; dat duurt meestal 1 à 2 minuten.</p>`}
+    </section>`;
+  }
+  function koppelConcept(el, l, klaar) {
+    koppelKopieer(el);
+    el.querySelector("[data-concept]")?.addEventListener("click", async (e) => {
+      SM.bezig(e.target, true, "Starten…");
+      try { await api(`hq/leads/${l.id}/concept`, { method: "POST", body: { instructie: el.querySelector("[data-instructie]")?.value || "" } }); toast("De agent gaat aan de slag. Over 1 à 2 minuten staat het concept klaar."); klaar(); } catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); }
+    });
+    el.querySelector("[data-concept-weg]")?.addEventListener("click", async () => {
+      if (!(await SM.bevestig("Concept verwijderen?", "De link werkt daarna niet meer.", "Verwijderen"))) return;
+      try { await api(`hq/leads/${l.id}/concept`, { method: "DELETE" }); toast("Concept verwijderd"); klaar(); } catch (err) { toast(err.message, "fout"); }
+    });
+    el.querySelector("[data-thema]")?.addEventListener("change", async (e) => {
+      try { await api(`hq/leads/${l.id}/concept`, { method: "PUT", body: { thema: e.target.value } }); toast("Stijl aangepast"); } catch (err) { toast(err.message, "fout"); }
+    });
+  }
+
+  // ================================================ CONCEPTEN (galerij)
+  let conceptFilter = "";
+  async function concepten(main) {
+    const d = await api("hq/concepten?filter=" + conceptFilter);
+    const f = [["", "Alle", d.counts.alle], ["bekeken", "Bekeken", d.counts.bekeken], ["klaar", "Klaar", d.counts.klaar], ["bezig", "Wordt gemaakt", d.counts.bezig], ["overgeslagen", "Overgeslagen", d.counts.overgeslagen]];
+    render(main, html`
+      <div class="hq-kop"><div><h1>Concepten</h1><p>Voorbeeldsites die de agent voor leads heeft gemaakt. Bekeken = de lead heeft de link geopend: bel ze!</p></div><a class="knop knop-licht" href="#b2b">Naar B2B-mail</a></div>
+      <div class="filters" role="group" aria-label="Filter">${f.map(([k, t, n]) => html`<button aria-pressed="${k === conceptFilter}" data-f="${k}">${t}<span class="n">${n}</span></button>`)}</div>
+      ${d.concepts.length ? html`<div class="concept-raster">${d.concepts.map((c) => html`<article class="concept-kaart thema-${c.thema || "natuur"}">
+          <a class="concept-beeld" ${c.status === "klaar" ? raw(`href="${SM.esc(c.hqUrl)}" target="_blank" rel="noopener"`) : ""} aria-label="${c.company} openen">
+            ${c.heroImg ? html`<img src="${c.heroImg}" alt="" loading="lazy">` : ""}
+            <div class="concept-mini"><span class="concept-naam">${c.company}</span>${c.titel ? html`<b>${c.titel}</b>` : html`<b>${L.concept[c.status]?.[0] || c.status}</b>`}</div>
+            ${c.views ? html`<span class="concept-gezien">${c.views}× bekeken</span>` : ""}</a>
+          <div class="concept-info"><div class="wijziging-kop"><b>${c.company}</b>${chip(L.concept, c.status)}</div>
+            <p class="klein dempen">${[c.category, c.city].filter(Boolean).join(" · ")}${c.status === "klaar" ? ` · ${c.fotos} foto's` : ""}${c.reden && c.status !== "klaar" ? ` · ${c.reden}` : ""}</p>
+            ${c.views ? html`<p class="klein"><b>Laatst bekeken ${geleden(c.lastViewAt)}</b>${c.phone ? html` · <a href="tel:${c.phone}">${c.phone}</a>` : ""}</p>` : ""}
+            <div class="knoppen">${c.status === "klaar" ? html`<a class="knop knop-licht knop-klein" href="${c.hqUrl}" target="_blank" rel="noopener">Open</a><button class="knop knop-tekst knop-klein" data-kopieer="${c.url}">Link kopiëren</button>` : ""}<button class="knop knop-tekst knop-klein" data-lead="${c.leadId}">Lead</button></div></div>
+        </article>`)}</div>`
+        : html`<section class="paneel"><div class="leeg"><h3>Nog geen concepten${conceptFilter ? " in deze lijst" : ""}</h3><p>Voor nieuwe leads met een website maakt de agent automatisch een concept (instelbaar bij Instellingen). Je kunt het ook per lead starten bij B2B-mail.</p></div></section>`}`);
+    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { conceptFilter = b.dataset.f; concepten(main); }));
+    koppelKopieer(main);
+    main.querySelectorAll("[data-lead]").forEach((b) => b.addEventListener("click", async () => {
+      const { leads } = await api("hq/leads?status=");
+      const l = leads.find((x) => String(x.id) === b.dataset.lead);
+      if (l) leadDetail(l);
+    }));
   }
 
   // ================================================ REVIEWS
@@ -966,12 +1034,16 @@
             <div class="rij2">${v("senderName", "Je naam als afzender", b.senderName)}${v("dailyMax", "Max. mails per dag", b.dailyMax, { type: "number" })}</div>
             <div class="rij3">${v("from", "Versturen vanaf (uur)", b.sendHours[0], { type: "number" })}${v("to", "tot (uur)", b.sendHours[1], { type: "number" })}${v("followupDays", "Opvolgen na (dagen)", b.followupDays, { type: "number" })}</div>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="aiResearch" ${b.ai.research ? raw("checked") : ""}> Openingszin laten schrijven op basis van de website van het bedrijf (AI)</label></div>
+            <h3>Concept-websites</h3>
+            <div class="veld"><label class="vinkje"><input type="checkbox" name="cAuto" ${b.concepten?.auto !== false ? raw("checked") : ""}> <span>Automatisch een concept maken voor nieuwe leads met een website<small class="hulp">De link komt in de eerste mail. Elk concept is één Claude-aanroep.</small></span></label></div>
+            <div class="veld"><label class="vinkje"><input type="checkbox" name="cWacht" ${b.concepten?.wachten !== false ? raw("checked") : ""}> Eerste mail maximaal drie uur uitstellen tot het concept klaar is</label></div>
+            <div class="rij2">${v("cPerDag", "Max. concepten per dag", b.concepten?.perDag ?? 20, { type: "number" })}${v("cDagen", "Link geldig (dagen)", b.concepten?.geldigDagen ?? 60, { type: "number" })}</div>
             <h3>Scout (Outscraper)</h3>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="scoutActive" ${b.scout.active ? raw("checked") : ""}> Elke werkdag automatisch nieuwe bedrijven zoeken</label></div>
             <div class="rij2"><div class="veld"><label for="s-cats">Branches</label><textarea id="s-cats" name="categories" rows="4">${b.scout.categories.join("\n")}</textarea><div class="hulp">Eén per regel.</div></div>
               <div class="veld"><label for="s-places">Plaatsen</label><textarea id="s-places" name="places" rows="4">${b.scout.places.join("\n")}</textarea><div class="hulp">Elke dag de volgende plaats.</div></div></div>
             ${v("perDay", "Ongeveer zoveel bedrijven per dag", b.scout.perDay, { type: "number" })}
-            <h3>Mailteksten</h3><p class="klein dempen">Te gebruiken: {bedrijf}, {plaats}, {intro}, {afzender}, {link}. De afmeldlink en je bedrijfsgegevens worden er automatisch onder gezet.</p>
+            <h3>Mailteksten</h3><p class="klein dempen">Te gebruiken: {bedrijf}, {plaats}, {intro}, {concept} (zin met de link naar hun concept, leeg als er geen is), {conceptlink}, {afzender}, {link}. De afmeldlink en je bedrijfsgegevens worden er automatisch onder gezet.</p>
             <div class="sjabloon">${v("t1s", "Eerste mail: onderwerp", b.templates.eerste.subject)}<div class="veld"><label for="s-t1b">Eerste mail: tekst</label><textarea id="s-t1b" name="t1b">${b.templates.eerste.body}</textarea></div>
               ${v("t2s", "Opvolgmail: onderwerp", b.templates.opvolging.subject)}<div class="veld"><label for="s-t2b">Opvolgmail: tekst</label><textarea id="s-t2b" name="t2b">${b.templates.opvolging.body}</textarea></div></div>
             <div class="knoppen"><button class="knop" type="submit">Opslaan</button><button class="knop knop-licht" type="button" id="standaard">Standaardteksten terugzetten</button></div></form>
@@ -992,6 +1064,7 @@
     main.querySelector("#f-b2b").addEventListener("submit", (e) => {
       e.preventDefault(); const f = fd(e.target), el = e.target.elements;
       opslaan(e.target, { b2b: { senderName: f.senderName, dailyMax: Number(f.dailyMax), followupDays: Number(f.followupDays), sendHours: [Number(f.from), Number(f.to)], ai: { research: el.aiResearch.checked },
+        concepten: { auto: el.cAuto.checked, wachten: el.cWacht.checked, perDag: Number(f.cPerDag), geldigDagen: Number(f.cDagen) },
         scout: { active: el.scoutActive.checked, perDay: Number(f.perDay), categories: f.categories, places: f.places },
         templates: { eerste: { subject: f.t1s, body: f.t1b }, opvolging: { subject: f.t2s, body: f.t2b } } } });
     });

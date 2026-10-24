@@ -1,4 +1,5 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
+import * as concepts from "../lib/concepts.mjs";
 import * as agenda from "../lib/agenda.mjs";
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
@@ -65,6 +66,11 @@ export default async (req, context) => {
       if (!ics) return new Response("Niet gevonden", { status: 404 });
       return new Response(ics, { headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
     }
+    // ------------------------------------------------ concept-websites (sitemaker.nl/voorbeeld/<token>)
+    if (seg[0] === "voorbeeld" && m === "GET") {
+      if (seg[2] === "afbeeldingen" && seg[3]) return await concepts.conceptImage(seg[1], seg[3]);
+      if (seg.length === 2) return await concepts.conceptPage(seg[1], { hq: url.searchParams.get("hq") === "1" });
+    }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
     if (path === "b2b/afmelden") {
       const id = Number(url.searchParams.get("l")), t = url.searchParams.get("t");
@@ -78,6 +84,7 @@ export default async (req, context) => {
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");
 
     // ------------------------------------------------ website
+    if (seg[0] === "voorbeeld" && seg[2] === "gezien" && m === "POST") return json(await concepts.markViewed(seg[1]));
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
 
@@ -189,6 +196,10 @@ export default async (req, context) => {
         case "POST agenda/uitzondering": return json(await agenda.addException(await body(req), user));
         case "DELETE agenda/uitzondering/:id": return json(await agenda.deleteException(Number(seg[3]), user));
         case "POST appointments/:id/annuleren": { const a = await one("SELECT * FROM appointments WHERE id = $1", [id]); if (!a) fail(404, "Afspraak niet gevonden."); return json(await agenda.cancel(a, "sitemaker", user)); }
+        case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
+        case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
+        case "PUT leads/:id/concept": return json(await hq.setConceptTheme(id, (await body(req)).thema, user));
+        case "DELETE leads/:id/concept": return json(await hq.deleteConcept(id));
         case "GET appointments": return json({ appointments: await hq.listAppointments() });
         case "PUT appointments/:id": return json(await hq.updateAppointment(id, await body(req), user));
         case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "" }));

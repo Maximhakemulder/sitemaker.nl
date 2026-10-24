@@ -5,6 +5,7 @@ import dns from "node:dns/promises";
 import { ImapFlow } from "imapflow";
 import { env, q, one, getSettings, str, cleanEmail, EMAIL_RE, domainOf, normUrl, dayKey, hourAms, publicBase, escH, fail, audit } from "./core.mjs";
 import { sendMail, mailEnv, mailReady } from "./mail.mjs";
+import { conceptUrl, deleteConcept } from "./concepts.mjs";
 
 export const LEAD_STATUSES = ["kandidaat", "nieuw", "goedgekeurd", "verstuurd", "opvolging_goedgekeurd", "opgevolgd", "reactie", "afspraak", "klant", "afgemeld", "overgeslagen", "fout"];
 export const scoutReady = () => !!env("OUTSCRAPER_API_KEY");
@@ -23,16 +24,23 @@ export function checkUnsub(id, t) {
 export async function unsubscribe(id) {
   const l = await one("UPDATE leads SET status = 'afgemeld', unsub_at = NOW(), updated_at = NOW() WHERE id = $1 RETURNING *", [id]);
   if (l?.email) await q("INSERT INTO suppressions (email, reason) VALUES ($1, 'afgemeld') ON CONFLICT DO NOTHING", [l.email.toLowerCase()]);
+  if (l) await deleteConcept(id).catch(() => {}); // afgemeld = ook het concept weg
   return !!l;
 }
 
 // ---------------------------------------------------------------- opstellen
+export const conceptReady = (lead) => lead.concept_status === "klaar" && lead.concept_token && (!lead.concept_expires || new Date(lead.concept_expires) > new Date(Date.now() + 7 * 86400000));
+export const LEAD_SELECT = `SELECT l.*, c.token AS concept_token, c.status AS concept_status, c.expires_at AS concept_expires, c.created_at AS concept_created FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id`;
 export function fillTemplate(tpl, lead, s) {
   const sender = s.b2b.senderName || s.company.name || "Sitemaker";
   const map = {
     bedrijf: lead.company || "uw bedrijf", plaats: lead.city || "", afzender: sender,
     intro: lead.intro ? lead.intro.trim() + "\n\n" : "", link: `${publicBase()}/#kennismaking`,
+    concept: conceptReady(lead) ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van uw huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
+    conceptlink: conceptReady(lead) ? conceptUrl(lead.concept_token) : "",
   };
+  // Oudere eigen mailteksten zonder {concept}: zet de conceptregel na de openingszin.
+  if (map.concept && !/\{concept\}/.test(tpl || "") && /\{intro\}/.test(tpl || "")) tpl = tpl.replace("{intro}", "{intro}{concept}");
   return String(tpl || "").replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
 }
 export function compose(lead, kind, s) {
@@ -62,7 +70,11 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   let room = Math.max(0, Number(s.b2b.dailyMax || 40) - today);
   if (!room) return { skipped: "daglimiet" };
   const started = Date.now();
-  const todo = await q(`SELECT * FROM leads WHERE status IN ('goedgekeurd','opvolging_goedgekeurd') AND email IS NOT NULL ORDER BY updated_at LIMIT $1`, [Math.min(max, room)]);
+  // Wacht (max. drie uur) op een concept dat nog gemaakt wordt, zodat de link mee kan in de eerste mail.
+  const wacht = s.b2b.concepten?.wachten !== false;
+  const todo = await q(`${LEAD_SELECT} WHERE l.status IN ('goedgekeurd','opvolging_goedgekeurd') AND l.email IS NOT NULL
+    AND NOT COALESCE($2::boolean AND l.status = 'goedgekeurd' AND c.status IN ('wachtrij','bezig') AND c.created_at > NOW() - INTERVAL '3 hours', false)
+    ORDER BY l.updated_at LIMIT $1`, [Math.min(max, room), wacht]);
   let sent = 0, failed = 0;
   for (const lead of todo) {
     if (Date.now() - started > budgetMs) break;
