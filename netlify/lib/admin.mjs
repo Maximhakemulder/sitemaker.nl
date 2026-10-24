@@ -44,7 +44,8 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM leads WHERE status IN ('verstuurd','opgevolgd') AND sent_at > NOW() - INTERVAL '30 days') AS leads_verstuurd_30d`, [month]);
   const todo = await q(`SELECT cr.*, c.company FROM change_requests cr JOIN customers c ON c.id = cr.customer_id
                         WHERE cr.status IN ('ontvangen','in_behandeling') ORDER BY cr.created_at LIMIT 20`);
-  const appts = await q("SELECT * FROM appointments WHERE status = 'nieuw' ORDER BY created_at DESC LIMIT 10");
+  const appts = await q(`SELECT * FROM appointments WHERE status <> 'geannuleerd' AND ((starts_at >= NOW() - INTERVAL '30 minutes' AND starts_at < NOW() + INTERVAL '7 days') OR (starts_at IS NULL AND status = 'nieuw'))
+                         ORDER BY starts_at IS NULL, starts_at, created_at DESC LIMIT 10`);
   const starters = await q("SELECT * FROM customers WHERE onboarding AND site_status = 'in_aanbouw' ORDER BY intake_at IS NULL, intake_at, started_at IS NULL, started_at, created_at DESC LIMIT 20");
   const s = await getSettings();
   return {
@@ -357,13 +358,16 @@ export async function listSites() {
 export const checkSiteNow = (id) => checkNow(id);
 
 // ---------------------------------------------------------------- aanvragen via de website
-const publicAppointment = (a) => ({ id: a.id, name: a.name, company: a.company, email: a.email, phone: a.phone, preference: a.preference, message: a.message, status: a.status, staffNote: a.staff_note, customerId: a.customer_id, createdAt: a.created_at, source: a.source });
+const publicAppointment = (a) => ({ startsAt: a.starts_at, endsAt: a.ends_at, canceledAt: a.canceled_at, canceledBy: a.canceled_by, id: a.id, name: a.name, company: a.company, email: a.email, phone: a.phone, preference: a.preference, message: a.message, status: a.status, staffNote: a.staff_note, customerId: a.customer_id, createdAt: a.created_at, source: a.source });
 export async function listAppointments() {
-  return (await q("SELECT * FROM appointments ORDER BY status = 'nieuw' DESC, created_at DESC LIMIT 300")).map(publicAppointment);
+  // Komende afspraken op tijd, daarna terugbelverzoeken zonder tijd, daarna de rest (nieuwste eerst).
+  return (await q(`SELECT * FROM appointments ORDER BY
+      CASE WHEN starts_at >= NOW() - INTERVAL '30 minutes' AND status <> 'geannuleerd' THEN 0 WHEN starts_at IS NULL AND status = 'nieuw' THEN 1 ELSE 2 END,
+      CASE WHEN starts_at >= NOW() - INTERVAL '30 minutes' THEN starts_at END ASC, COALESCE(starts_at, created_at) DESC LIMIT 300`)).map(publicAppointment);
 }
 export async function updateAppointment(id, b, user) {
   const a = await one("UPDATE appointments SET status = COALESCE($2, status), staff_note = COALESCE($3, staff_note), updated_at = NOW() WHERE id = $1 RETURNING *",
-    [id, ["nieuw", "gepland", "klant", "geen_interesse"].includes(b.status) ? b.status : null, b.staffNote !== undefined ? str(b.staffNote, 2000) : null]);
+    [id, ["nieuw", "gepland", "klant", "geen_interesse", "niet_bereikbaar"].includes(b.status) ? b.status : null, b.staffNote !== undefined ? str(b.staffNote, 2000) : null]);
   if (!a) fail(404, "Aanvraag niet gevonden.");
   await audit(user.id, a.customer_id, "aanvraag.bijgewerkt", { id, status: a.status });
   return { appointment: publicAppointment(a) };

@@ -67,6 +67,11 @@ export async function withLock(name, fn, ttlMs = 30000) {
 
 // ---------------------------------------------------------------- instellingen
 export const DEFAULT_SETTINGS = {
+  // Online kennismaking boeken. Tijden in Europe/Amsterdam; week: 0 = zondag … 6 = zaterdag.
+  agenda: {
+    actief: true, duur: 15, interval: 30, minUren: 4, dagenVooruit: 21, maxPerDag: 0, soort: "telefoon", videoLink: "",
+    week: { 0: [], 1: [["09:00", "12:00"], ["13:00", "17:00"]], 2: [["09:00", "12:00"], ["13:00", "17:00"]], 3: [["09:00", "12:00"], ["13:00", "17:00"]], 4: [["09:00", "12:00"], ["13:00", "17:00"]], 5: [["09:00", "12:00"], ["13:00", "17:00"]], 6: [] },
+  },
   company: {
     name: "Sitemaker", legalName: "", address: "", postcode: "", city: "", kvk: "", vat: "", iban: "",
     email: "", phone: "", website: "https://sitemaker.nl",

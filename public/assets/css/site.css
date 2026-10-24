@@ -509,3 +509,33 @@ p { margin: 0 0 1em; }
 @media (max-width: 1060px) { .reviews-rij { grid-auto-columns: calc((100% - 16px) / 2); } }
 @media (max-width: 700px) { .reviews-rij { grid-auto-columns: 86%; gap: 12px; } .reviews-pijlen { display: none; } .review { padding: 18px; } }
 .g-galerij div { overflow: hidden; } .g-galerij div > img { height: 170px; min-height: 0; }
+
+/* Kennismaking boeken */
+.b-kop { font-size: 24px; margin-bottom: 4px; }
+.b-sub { color: var(--grijs); margin: 0 0 18px; font-size: 16px; }
+.b-dagen-wrap { margin: 0 -28px; padding: 0 28px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.b-dagen-wrap::-webkit-scrollbar { display: none; }
+.b-dagen { display: flex; gap: 8px; padding: 2px 0 6px; }
+.b-dag { flex: none; width: 74px; padding: 10px 0 9px; border-radius: 14px; border: 2px solid var(--lijn); background: var(--wit); color: var(--paars); font: inherit; cursor: pointer; display: grid; justify-items: center; gap: 1px; line-height: 1.15; }
+.b-dag small { font-size: 13px; font-weight: 600; color: var(--grijs); text-transform: lowercase; }
+.b-dag b { font-size: 24px; font-weight: 800; }
+.b-dag:hover { border-color: var(--paars); }
+.b-dag[aria-pressed="true"] { background: var(--paars); border-color: var(--paars); color: var(--wit); }
+.b-dag[aria-pressed="true"] small { color: #CFC6EE; }
+.b-tijdkop { font-size: 16px; font-weight: 700; margin: 18px 0 10px; }
+.b-tijden { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.b-tijd { min-height: 48px; border-radius: var(--r-klein); border: 2px solid var(--lijn); background: var(--wit); color: var(--paars); font: 700 17px/1 var(--font); cursor: pointer; }
+.b-tijd:hover { border-color: var(--paars); background: var(--ijs); }
+.b-gekozen { display: flex; align-items: center; gap: 12px; background: var(--ijs); border-radius: var(--r-klein); padding: 12px 14px; margin-bottom: 18px; }
+.b-gekozen svg { width: 26px; height: 26px; flex: none; }
+.b-gekozen div { flex: 1; line-height: 1.3; }
+.b-gekozen b { display: block; }
+.b-gekozen span { color: var(--grijs); font-size: 15px; }
+.b-wijzig, .b-link { background: none; border: 0; padding: 6px 0; font: 700 15px var(--font); color: var(--paars); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; text-align: left; }
+.b-alt { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--lijn); }
+.b-alt .b-link { font-weight: 600; color: var(--grijs); }
+.bedankt .b-acties { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.knop-rand { background: var(--wit); color: var(--paars); box-shadow: inset 0 0 0 2px var(--paars); }
+@media (max-width: 700px) { .b-dagen-wrap { margin: 0 -16px; padding: 0 16px; } }
+@media (max-width: 560px) { .b-tijden { grid-template-columns: repeat(3, 1fr); } .b-kop { font-size: 22px; } }
+.kennis .wrap > * { min-width: 0; } .boeken { min-width: 0; }

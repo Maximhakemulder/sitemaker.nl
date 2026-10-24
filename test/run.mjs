@@ -423,6 +423,97 @@ await test("links in mails volgen PORTAL_URL en HQ_URL", async () => {
   } finally { delete process.env.PORTAL_URL; delete process.env.HQ_URL; }
 });
 
+console.log("Agenda (kennismaking boeken)");
+{
+  const { q: dbq } = await import("../netlify/lib/core.mjs");
+  const heleWeek = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map((d) => [d, [["00:00", "23:30"]]]));
+  const reset = () => dbq("UPDATE appointments SET ip_hash = 'oud', email = email || '.oud' WHERE source = 'agenda' OR ip_hash <> 'oud'");
+  let slotA, slotB, tok;
+  await test("HQ stelt beschikbaarheid in; de website toont vrije momenten", async () => {
+    await reset();
+    const r = await call("PUT", "hq/agenda/instellingen", { cookie: admin, body: { actief: true, duur: 15, interval: 30, minUren: 1, dagenVooruit: 7, maxPerDag: 0, soort: "telefoon", week: heleWeek } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const s = await call("GET", "agenda/slots");
+    assert.equal(s.status, 200); assert.equal(s.data.actief, true); assert.ok(s.data.days.length >= 6);
+    const alle = s.data.days.flatMap((d) => d.times);
+    assert.ok(alle.every((t) => Date.parse(t.start) > Date.now() + 3600000 - 60000), "niets binnen de minimale aanlooptijd");
+    slotA = s.data.days[1].times[3].start; slotB = s.data.days[1].times[4].start;
+    assert.equal(Date.parse(slotB) - Date.parse(slotA), 30 * 60000);
+    assert.equal((await call("PUT", "hq/agenda/instellingen", { cookie: k2, body: {} })).status, 403);
+  });
+  await test("boeken: bevestiging met agenda-uitnodiging, dubbel boeken kan niet", async () => {
+    const voor = captured.length;
+    const fout = await call("POST", "agenda/boek", { body: { start: slotA, name: "A", company: "", email: "x", phone: "" } });
+    assert.equal(fout.status, 400); assert.ok(fout.data.errors.phone && fout.data.errors.email);
+    const r = await call("POST", "agenda/boek", { body: { start: slotA, name: "Eva de Boer", company: "Kapsalon Eva", email: "eva@kapsalon.test", phone: "06 1234 5678", message: "Heb nog geen site" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); tok = r.data.token;
+    const m = captured.slice(voor).find((x) => x.to === "eva@kapsalon.test");
+    assert.ok(m && /Je kennismaking met Sitemaker/.test(m.subject));
+    assert.ok(m.attachments?.[0]?.content.includes("BEGIN:VEVENT") && m.attachments[0].content.includes("DTSTART:"));
+    assert.ok(m.text.includes("/api/agenda/annuleren?t=" + tok));
+    const dubbel = await call("POST", "agenda/boek", { body: { start: slotA, name: "Piet", company: "Piet BV", email: "piet@bv.test", phone: "0612345678" } });
+    assert.equal(dubbel.status, 409); assert.equal(dubbel.data.slotGone, true);
+    const nep = await call("POST", "agenda/boek", { body: { start: new Date(Date.parse(slotA) + 7 * 60000).toISOString(), name: "Piet", company: "Piet BV", email: "piet@bv.test", phone: "0612345678" } });
+    assert.equal(nep.status, 409, "alleen echte momenten");
+    const s = await call("GET", "agenda/slots");
+    assert.ok(!s.data.days.flatMap((d) => d.times).some((t) => t.start === slotA), "geboekt moment is weg");
+    const lijst = (await call("GET", "hq/appointments", { cookie: admin })).data.appointments;
+    assert.equal(lijst[0].company, "Kapsalon Eva"); assert.equal(lijst[0].startsAt && Date.parse(lijst[0].startsAt), Date.parse(slotA));
+  });
+  await test("klant annuleert via de link; moment komt weer vrij", async () => {
+    const ics = await call("GET", "agenda/ics?t=" + tok);
+    assert.equal(ics.status, 200); assert.ok(String(ics.data).includes("Kennismaking Sitemaker"));
+    const pagina = await call("GET", "agenda/annuleren?t=" + tok);
+    assert.ok(String(pagina.data).includes("Ja, annuleer"));
+    const r = await call("POST", "agenda/annuleren?t=" + tok, { csrf: false, form: new URLSearchParams({}), headers: { "content-type": "application/x-www-form-urlencoded" } });
+    assert.ok(String(r.data).includes("geannuleerd"));
+    const s = await call("GET", "agenda/slots");
+    assert.ok(s.data.days.flatMap((d) => d.times).some((t) => t.start === slotA));
+    assert.equal((await call("GET", "agenda/annuleren?t=onzin-onzin-onzin-onzin")).status, 200);
+  });
+  await test("HQ zet een slot dicht en weer open, en neemt een dag vrij", async () => {
+    assert.equal((await call("POST", "hq/agenda/slot", { cookie: admin, body: { start: slotB, dicht: true } })).status, 200);
+    let s = (await call("GET", "agenda/slots")).data;
+    assert.ok(!s.days.flatMap((d) => d.times).some((t) => t.start === slotB));
+    assert.equal((await call("POST", "hq/agenda/slot", { cookie: admin, body: { start: slotB, dicht: false } })).status, 200);
+    s = (await call("GET", "agenda/slots")).data;
+    assert.ok(s.days.flatMap((d) => d.times).some((t) => t.start === slotB));
+    const dag = s.days[2].date;
+    const vrij = await call("POST", "hq/agenda/uitzondering", { cookie: admin, body: { kind: "dicht", van: dag, tot: dag, note: "Vrij" } });
+    assert.equal(vrij.status, 200, JSON.stringify(vrij.data));
+    s = (await call("GET", "agenda/slots")).data;
+    assert.ok(!s.days.some((d) => d.date === dag), "vrije dag niet boekbaar");
+    const hq = (await call("GET", "hq/agenda", { cookie: admin })).data;
+    assert.ok(hq.exceptions.some((e) => e.note === "Vrij")); assert.ok(hq.days.find((d) => d.date === dag).dicht);
+    assert.match(hq.feedUrl, /feed\.ics\?k=[0-9a-f]{32}$/);
+    // ene slot op die vrije dag toch openzetten
+    const los = hq.days.find((d) => d.date === dag).slots[5].start;
+    await call("POST", "hq/agenda/slot", { cookie: admin, body: { start: los, dicht: false } });
+    s = (await call("GET", "agenda/slots")).data;
+    assert.deepEqual(s.days.find((d) => d.date === dag)?.times.map((t) => t.start), [los]);
+    await call("DELETE", `hq/agenda/uitzondering/${vrij.data.id}`, { cookie: admin });
+  });
+  await test("agenda-abonnement alleen met de juiste sleutel; HQ annuleert met mail", async () => {
+    const r = await call("POST", "agenda/boek", { body: { start: slotB, name: "Tom", company: "Schilder Tom", email: "tom@schilder.test", phone: "0612345678" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const url = (await call("GET", "hq/agenda", { cookie: admin })).data.feedUrl;
+    const f = await call("GET", url.slice(url.indexOf("agenda/")));
+    assert.equal(f.status, 200); assert.ok(String(f.data).includes("Schilder Tom") && String(f.data).includes("0612345678"));
+    assert.equal((await call("GET", "agenda/feed.ics?k=" + "0".repeat(32))).status, 404);
+    const id = (await call("GET", "hq/appointments", { cookie: admin })).data.appointments.find((a) => a.company === "Schilder Tom").id;
+    const voor = captured.length;
+    assert.equal((await call("POST", `hq/appointments/${id}/annuleren`, { cookie: admin, body: {} })).status, 200);
+    assert.ok(captured.slice(voor).some((x) => x.to === "tom@schilder.test" && /gaat niet door/.test(x.subject)));
+  });
+  await test("online boeken uit: geen momenten en boeken geweigerd", async () => {
+    await call("PUT", "hq/agenda/instellingen", { cookie: admin, body: { actief: false, week: heleWeek } });
+    const s = (await call("GET", "agenda/slots")).data;
+    assert.equal(s.actief, false); assert.equal(s.days.length, 0);
+    assert.equal((await call("POST", "agenda/boek", { body: { start: slotB, name: "Tom", company: "Schilder Tom", email: "tom2@schilder.test", phone: "0612345678" } })).status, 400);
+    await call("PUT", "hq/agenda/instellingen", { cookie: admin, body: { actief: true } });
+  });
+}
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});
