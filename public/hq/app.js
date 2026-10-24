@@ -1134,7 +1134,7 @@
     main.querySelectorAll("[data-actie]").forEach((b) => b.addEventListener("click", async () => {
       const ids = gekozen();
       if (b.dataset.actie === "verwijderen" && !(await SM.bevestig("Leads verwijderen?", "Alleen leads die nog niet gemaild zijn worden verwijderd.", "Verwijderen"))) return;
-      try { const r = await api("hq/leads/action", { method: "POST", body: { action: b.dataset.actie, ids } }); toast(b.dataset.actie === "concept" ? `${r.changed} concepten in de wachtrij${r.skipped ? ` (${r.skipped} zonder website overgeslagen)` : ""}` : `${r.changed} leads bijgewerkt`); herlaad(); } catch (err) { toast(err.message, "fout"); }
+      try { const r = await api("hq/leads/action", { method: "POST", body: { action: b.dataset.actie, ids } }); toast(b.dataset.actie === "concept" ? `${r.changed} concepten in de wachtrij${r.skipped ? ` (${r.skipped} zonder website overgeslagen)` : ""}` : b.dataset.actie === "goedkeuren" ? `${r.changed} goedgekeurd; ze gaan uit zodra hun voorbeeldwebsite klaar is${r.skipped ? ` (${r.skipped} overgeslagen: geen website of al gemaild)` : ""}` : `${r.changed} leads bijgewerkt`); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelectorAll("tr[data-lead]").forEach((tr) => tr.addEventListener("click", (e) => { if (e.target.closest("a")) return; leadDetail(d.leads.find((l) => String(l.id) === tr.dataset.lead)); }));
   }
@@ -1497,7 +1497,7 @@ ${p.body}</div>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="aiResearch" ${b.ai.research ? raw("checked") : ""}> Openingszin laten schrijven op basis van de website van het bedrijf (AI)</label></div>
             <h3>Concept-websites</h3>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="cAuto" ${b.concepten?.auto !== false ? raw("checked") : ""}> <span>Automatisch een concept maken voor nieuwe leads met een website<small class="hulp">De link komt in de eerste mail. Elk concept is één Claude-aanroep.</small></span></label></div>
-            <div class="veld"><label class="vinkje"><input type="checkbox" name="cWacht" ${b.concepten?.wachten !== false ? raw("checked") : ""}> Eerste mail maximaal drie uur uitstellen tot het concept klaar is</label></div>
+            <p class="klein dempen">Elke eerste mail gaat altijd met een voorbeeldwebsite. Een goedgekeurde mail wacht tot het concept klaar is; lukt het concept niet, dan gaat de lead terug naar "Klaar om te mailen".</p>
             <div class="rij2">${v("cPerDag", "Max. concepten per dag", b.concepten?.perDag ?? 20, { type: "number" })}${v("cDagen", "Link geldig (dagen)", b.concepten?.geldigDagen ?? 60, { type: "number" })}</div>
             <h3>Scout (Outscraper)</h3>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="scoutActive" ${b.scout.active ? raw("checked") : ""}> Elke werkdag automatisch nieuwe bedrijven zoeken</label></div>
@@ -1526,7 +1526,7 @@ ${p.body}</div>
     main.querySelector("#f-b2b").addEventListener("submit", (e) => {
       e.preventDefault(); const f = fd(e.target), el = e.target.elements;
       opslaan(e.target, { b2b: { senderName: f.senderName, dailyMax: Number(f.dailyMax), followupDays: Number(f.followupDays), sendHours: [Number(f.from), Number(f.to)], ai: { research: el.aiResearch.checked },
-        concepten: { auto: el.cAuto.checked, wachten: el.cWacht.checked, perDag: Number(f.cPerDag), geldigDagen: Number(f.cDagen) },
+        concepten: { auto: el.cAuto.checked, perDag: Number(f.cPerDag), geldigDagen: Number(f.cDagen) },
         scout: { active: el.scoutActive.checked, perDay: Number(f.perDay), categories: f.categories, places: f.places },
         templates: { eerste: { subject: f.t1s, body: f.t1b }, opvolging: { subject: f.t2s, body: f.t2b } } } });
     });

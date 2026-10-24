@@ -420,9 +420,10 @@ export async function leadAction(b, user) {
   switch (b.action) {
     case "goedkeuren": {
       if (!s.company.kvk || !(s.company.legalName || s.company.name)) fail(400, "Vul eerst je bedrijfsnaam en KvK-nummer in bij Instellingen; die staan verplicht onder elke B2B-mail.");
-      const r = await q("UPDATE leads SET status = 'goedgekeurd', updated_at = NOW() WHERE id = ANY($1) AND status = 'nieuw' AND email IS NOT NULL RETURNING id", [ids]);
+      // Elke eerste mail gaat met een voorbeeldwebsite: zonder website kan dat niet. Het concept wordt zo nodig nu gemaakt; de mail wacht erop.
+      const r = await q("UPDATE leads SET status = 'goedgekeurd', error = '', updated_at = NOW() WHERE id = ANY($1) AND status = 'nieuw' AND email IS NOT NULL AND website <> '' RETURNING id", [ids]);
       await audit(user.id, null, "b2b.goedgekeurd", { n: r.length });
-      return { changed: r.length };
+      return { changed: r.length, skipped: ids.length - r.length };
     }
     case "opvolgen": {
       const r = await q("UPDATE leads SET status = 'opvolging_goedgekeurd', updated_at = NOW() WHERE id = ANY($1) AND status = 'verstuurd' RETURNING id", [ids]);

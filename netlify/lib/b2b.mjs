@@ -49,7 +49,14 @@ export function compose(lead, kind, s) {
   const co = s.company;
   const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : "", [co.address, co.postcode, co.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
   const footer = `\n\n--\nU ontvangt deze mail omdat uw adres openbaar op uw website staat. Geen berichten meer van ons? Meld u af: ${unsubUrl(lead.id)}\n${legal}`;
-  const body = fillTemplate(t.body, lead, s) + footer;
+  let body = fillTemplate(t.body, lead, s);
+  // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
+  if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
+    const [aanhef, ...rest] = body.split(/\n\n/);
+    const zin = `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van uw huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}`;
+    body = rest.length ? [aanhef, zin, ...rest].join("\n\n") : `${zin}\n\n${aanhef}`;
+  }
+  body += footer;
   return { subject, body };
 }
 // Meten (B2B): links lopen via een ondertekende doorstuurlink (/api/t/k), een onzichtbaar plaatje meet het openen (/api/t/o).
@@ -96,11 +103,15 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   let room = Math.max(0, Number(s.b2b.dailyMax || 40) - today);
   if (!room) return { skipped: "daglimiet" };
   const started = Date.now();
-  // Wacht (max. drie uur) op een concept dat nog gemaakt wordt, zodat de link mee kan in de eerste mail.
-  const wacht = s.b2b.concepten?.wachten !== false;
+  // Een eerste mail gaat alleen uit met een klare voorbeeldwebsite (besluit Maxim). Lukt het concept niet, dan gaat de lead terug.
+  await q(`UPDATE leads l SET status = CASE WHEN c.status = 'overgeslagen' THEN 'overgeslagen' ELSE 'nieuw' END,
+             reject_reason = CASE WHEN c.status = 'overgeslagen' THEN 'Geen voorbeeldwebsite mogelijk: ' || COALESCE(NULLIF(c.reden,''), 'onbekend') ELSE l.reject_reason END,
+             error = CASE WHEN c.status = 'fout' THEN 'Voorbeeldwebsite mislukt; maak hem opnieuw en keur daarna goed.' ELSE l.error END, updated_at = NOW()
+           FROM concepts c WHERE c.lead_id = l.id AND l.status = 'goedgekeurd' AND c.status IN ('fout','overgeslagen')`);
+  await q("UPDATE leads SET status = 'nieuw', error = 'Geen website: zonder voorbeeldwebsite sturen we geen eerste mail.', updated_at = NOW() WHERE status = 'goedgekeurd' AND website = ''");
   const todo = await q(`${LEAD_SELECT} WHERE l.status IN ('goedgekeurd','opvolging_goedgekeurd') AND l.email IS NOT NULL
-    AND NOT COALESCE($2::boolean AND l.status = 'goedgekeurd' AND c.status IN ('wachtrij','bezig') AND c.created_at > NOW() - INTERVAL '3 hours', false)
-    ORDER BY l.updated_at LIMIT $1`, [Math.min(max, room), wacht]);
+    AND (l.status = 'opvolging_goedgekeurd' OR (c.status = 'klaar' AND (c.expires_at IS NULL OR c.expires_at > NOW() + INTERVAL '7 days')))
+    ORDER BY l.updated_at LIMIT $1`, [Math.min(max, room)]);
   let sent = 0, failed = 0;
   for (const lead of todo) {
     if (Date.now() - started > budgetMs) break;

@@ -39,7 +39,9 @@ main{background:#fff;border-radius:16px;padding:28px;max-width:440px}h1{font-siz
 
 export default async (req, context) => {
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/api\/?/, "").replace(/\/$/, "");
+  // /voorbeeld/<token> (concept-websites) komt rechtstreeks binnen (config.path), net als /api/voorbeeld/<token>.
+  const vb = url.pathname.match(/\/voorbeeld\/(.+)$/);
+  const path = (vb ? "voorbeeld/" + vb[1] : url.pathname.replace(/^\/api\/?/, "")).replace(/\/$/, "");
   const seg = path.split("/");
   const m = req.method;
   try {
@@ -286,4 +288,4 @@ export default async (req, context) => {
   }
 };
 
-export const config = { path: "/api/*" };
+export const config = { path: ["/api/*", "/voorbeeld/*"] };
