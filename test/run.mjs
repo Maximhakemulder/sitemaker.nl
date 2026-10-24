@@ -217,10 +217,19 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
   assert.match(prev.data.body, /€299,95 eenmalig/); assert.match(prev.data.body, /KvK 12345678/); assert.match(prev.data.body, /afmelden\?l=/);
+  // Zonder website geen voorbeeldwebsite, dus geen eerste mail.
+  assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } })).data.changed, 0);
+  for (const id of ids) {
+    await q("UPDATE leads SET website = $2, domain = $3 WHERE id = $1", [id, `https://lead${id}.test`, `lead${id}.test`]);
+    await q("INSERT INTO concepts (lead_id, token, status) VALUES ($1, $2, 'wachtrij')", [id, `tok${id}conceptxyz`]);
+  }
   await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } });
+  assert.equal((await sendBatch({ max: 5, budgetMs: 20000 })).sent, 0, "wacht op de voorbeeldwebsite");
+  await q("UPDATE concepts SET status = 'klaar', ready_at = NOW() WHERE lead_id = ANY($1)", [ids]);
   const res = await sendBatch({ max: 5, budgetMs: 20000 });
   assert.equal(res.sent, 2);
   const m = captured.find((x) => x.to === "info@groen.test");
+  assert.match(m.text, /\/voorbeeld\/tok\d+conceptxyz/, "eerste mail bevat altijd de voorbeeldwebsite");
   assert.ok(m.headers["List-Unsubscribe"]); const link = m.headers["List-Unsubscribe"].slice(1, -1);
   const u = new URL(link);
   const page = await call("GET", "b2b/afmelden" + u.search, { csrf: false }); assert.match(page.data, /meld mij af/);
@@ -579,6 +588,8 @@ console.log("Concept-websites voor leads");
     assert.ok(h.includes("noindex") && h.includes("Zo kan de nieuwe website van Bakkerij Zon eruitzien") && h.includes(`/api/voorbeeld/${token}/afbeeldingen/foto-1.png`));
     assert.ok(h.includes(`?concept=${token}&bedrijf=Bakkerij%20Zon#kennismaking`) && h.includes("/gezien"));
     assert.ok(!String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("/gezien"), "HQ telt niet mee");
+    const direct = await api(new Request("https://sitemaker.test/voorbeeld/" + token + "?hq=1"), { ip: "10.0.0.1" });
+    assert.equal(direct.status, 200, "ook via /voorbeeld/<token> zonder /api"); assert.match(await direct.text(), /Bakkerij Zon/);
     const img = await call("GET", `voorbeeld/${token}/afbeeldingen/foto-1.png`, { raw: true });
     assert.equal(img.status, 200); assert.equal(img.headers.get("content-type"), "image/png");
     assert.notEqual((await call("GET", `voorbeeld/${token}/afbeeldingen/../../x`, { raw: true })).headers.get("content-type"), "image/png");
