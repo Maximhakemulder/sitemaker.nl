@@ -52,3 +52,9 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - `tick` (`runConcepts`): leads met website (nieuw/goedgekeurd) automatisch in de wachtrij, max `perDag`; eerste mail wacht max. drie uur op het concept. Mailtekst: `{concept}` / `{conceptlink}` (oudere teksten krijgen de conceptregel na `{intro}`).
 - Afspraak via het concept koppelt de lead (`linkConcept`); "Website aanmaken" start vanuit het concept (`conceptForCustomer`, ook via afspraak → lead).
 - HQ: B2B (kolom Concept, filter "Concept bekeken", bulk "Concept maken", paneel in lead), pagina Concepten (galerij, standaard "Te beoordelen"), KPI op Overzicht, instellingen bij B2B. Maxim bekijkt elk concept en klikt "Akkoord, verstuur mail" (toont de mail, dan lead → goedgekeurd). Geen stijlkeuze in HQ: Claude neemt sfeer en huisstijlkleuren van hun huidige site over.
+
+## Bedrijf (afdelingen, medewerkers, briefings)
+- HQ opent op **Bedrijf** (`#bedrijf`): 3D-gebouw (`public/hq/building.js`, gebaseerd op TrueSafe HQ; three.js r128 zelf gehost in `public/assets/js/three.min.js` i.v.m. CSP), afdelingen en medewerkers in `public/hq/org.js` (`SM_ORG`). Afdelingspagina `#afdeling/<key>`: verdieping in 3D, cijfers, team met live status, briefing, vraag aan de manager, logboek.
+- `netlify/lib/team.mjs`: alles uit echte gegevens (`teamState`: cijfers + wat elke medewerker deed, logboek uit audit_log/mail_log/concepts/appointments/payments, "wacht op jou"). `tick` schrijft een hartslag per ronde (`settings.team_pulse`) → "nu bezig". Incidenten (offline/online) staan in audit_log.
+- Briefings: elke dag na 8:00 via `team-background` (managers → directeur Victor), tabel `team_briefings`; zonder Claude een feitelijke samenvatting. Vragen aan managers: `team_questions`, beantwoord in `team-background`, HQ pollt.
+- `team_reports` is klaar voor rapporten van geplande Claude-taken (marketing: Meta via Windsor, statics via Kive/Canva) — fase 2.

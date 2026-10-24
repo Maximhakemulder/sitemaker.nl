@@ -1,5 +1,5 @@
 // Online-check van de klantsites: elke ~15 minuten per live site.
-import { q, one } from "./core.mjs";
+import { q, one, audit } from "./core.mjs";
 import { notifyStaff } from "./mail.mjs";
 
 export async function checkSite(url) {
@@ -19,6 +19,8 @@ export async function recordCheck(c, res) {
   await q("UPDATE customers SET check_at = NOW(), check_ok = $1, check_code = $2, check_ms = $3, check_fails = $4, check_error = $5 WHERE id = $6",
     [res.ok, res.code, res.ms, fails, res.error || "", c.id]);
   // Melding bij de tweede mislukte check op rij, en als hij weer online is.
+  if (!res.ok && fails === 2) await audit(null, c.id, "incident.offline", { url: c.site_url, error: res.error }).catch(() => {});
+  if (res.ok && (c.check_fails || 0) >= 2) await audit(null, c.id, "incident.online", { url: c.site_url }).catch(() => {});
   if (!res.ok && fails === 2) await notifyStaff(`Site offline: ${c.company}`, [`${c.site_url} reageert niet (${res.error}).`, "We controleren elke 15 minuten opnieuw."], `/hq/#sites`).catch(() => {});
   if (res.ok && (c.check_fails || 0) >= 2) await notifyStaff(`Site weer online: ${c.company}`, [`${c.site_url} is weer bereikbaar.`], `/hq/#sites`).catch(() => {});
   return { ...res, fails };

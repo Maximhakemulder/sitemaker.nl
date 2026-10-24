@@ -35,6 +35,7 @@
   }
 
   const NAV = [
+    ["bedrijf", "Bedrijf", '<path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M11 21v-3h2v3"/>'],
     ["overzicht", "Overzicht", '<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>'],
     ["klanten", "Klanten", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
     ["wijzigingen", "Wijzigingen", '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'],
@@ -75,16 +76,117 @@
   }
 
   async function route() {
-    const [pagina, id] = (location.hash.slice(1) || "overzicht").split("/");
+    const [pagina, id] = (location.hash.slice(1) || "bedrijf").split("/");
     app.querySelectorAll("[data-nav]").forEach((a) => a.toggleAttribute("aria-current", false));
-    app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina}"]`)?.setAttribute("aria-current", "page");
+    app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina === "afdeling" ? "bedrijf" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails }[pagina] || overzicht;
+    const fn = { bedrijf, afdeling, overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails }[pagina] || bedrijf;
+    if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
     try { await fn(main, id); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
   }
   const herlaad = () => route();
+
+  // ================================================ BEDRIJF (het kantoor met afdelingen en medewerkers)
+  const ORG = () => window.SM_ORG || [];
+  const persoon = (key) => { for (const d of ORG()) { const p = d.people.find((x) => x.key === key); if (p) return { ...p, dept: d }; } return null; };
+  const naamNaarKey = (naam) => { for (const d of ORG()) { const p = d.people.find((x) => x.person === naam); if (p) return p.key; } return ""; };
+  const portret = (key, cls = "portret") => html`<img class="${cls}" data-portret="${key}" alt="" width="44" height="44">`;
+  function vulPortretten(el) {
+    const P = window.HQ_portraits || {};
+    el.querySelectorAll("img[data-portret]").forEach((img) => { if (P[img.dataset.portret]) img.src = P[img.dataset.portret]; });
+  }
+  window.addEventListener("hq-portraits", () => vulPortretten(app));
+  let vraagTimer = null;
+  const briefTekst = (t) => html`${String(t || "").split("\n").filter((r) => r.trim()).map((r) => /^[-•*]\s/.test(r.trim()) ? html`<li>${r.trim().replace(/^[-•*]\s*/, "")}</li>` : html`<p>${r.replace(/\*\*/g, "")}</p>`)}`;
+  const briefHtml = (t) => { const s = String(briefTekst(t)); return raw(s.replace(/(<li>[\s\S]*?<\/li>)+/g, (m) => `<ul>${m}</ul>`)); };
+
+  async function bedrijf(main) {
+    const d = await api("hq/team");
+    window.SM_TEAM = { busy: d.busy };
+    const directie = d.depts.directie;
+    const kaart = (dep) => {
+      const st = d.depts[dep.key] || {};
+      const alarm = (st.metrics || []).filter((m) => m.alarm).length;
+      const live = dep.status === "live" || (dep.key === "marketing" && d.marketingLive);
+      const busy = dep.people.filter((p) => d.busy[p.key]).length;
+      return html`<a class="afd-kaart" href="#afdeling/${dep.key}" data-kleur="${dep.key}">
+        <span class="afd-verdieping">${dep.floor}</span>
+        <div class="afd-tekst"><b>${dep.name}</b><span class="klein dempen">${dep.people.map((p) => p.person).join(", ")}</span>
+          <span class="klein">${live ? (busy ? `${busy} aan het werk` : "Aan het werk") : "Wacht op koppeling"}${alarm ? ` · ${alarm} aandachtspunt${alarm > 1 ? "en" : ""}` : ""}</span></div>
+        ${alarm ? html`<span class="tel">${alarm}</span>` : ""}</a>`;
+    };
+    render(main, html`
+      <div class="hq-kop"><div><h1>Sitemaker</h1><p>Je bedrijf, per afdeling. Klik op een verdieping om het team aan het werk te zien.</p></div>
+        <div class="knoppen"><button class="knop knop-licht" id="ververs">${d.ai ? "Briefings opnieuw laten schrijven" : "Briefings bijwerken"}</button></div></div>
+      <section class="paneel briefing-directie">
+        <div class="briefing-kop">${portret("directeur", "portret groot")}<div><h2>Ochtendbriefing van Victor</h2><span class="klein dempen">Algemeen directeur${directie.briefing ? ` · ${tijd(directie.briefing.at)}` : ""}</span></div></div>
+        ${directie.briefing ? html`<div class="briefing-tekst">${briefHtml(directie.briefing.text)}</div>` : html`<p class="dempen">Victor schrijft elke ochtend na 8:00 een briefing op basis van alle afdelingen.</p>`}
+        ${d.beslissingen.length ? html`<h3 class="sub-kop">Wacht op jou</h3><ul class="beslis">${d.beslissingen.map((b) => html`<li><a href="${b.href}">${b.text}</a></li>`)}</ul>` : html`<p class="klein dempen">Er wacht nu niets op jou.</p>`}
+      </section>
+      <div class="bedrijf-raster">
+        <section class="paneel gebouw-paneel"><div class="office o3d building3d" id="gebouw"></div></section>
+        <div class="afd-lijst">${ORG().slice().sort((a, b) => b.floor - a.floor).map(kaart)}</div>
+      </div>
+      <section class="paneel"><div class="paneel-kop"><h2>Live logboek</h2><span class="klein dempen">Wat het team deed</span></div>${logboek(d.feed)}</section>`);
+    main.querySelector("#ververs").onclick = async (e) => { SM.bezig(e.target, true, "Bezig…"); try { await api("hq/team/briefings", { method: "POST" }); toast(d.ai ? "De managers schrijven nieuwe briefings; over een paar minuten staan ze er." : "Bijgewerkt"); setTimeout(herlaad, d.ai ? 4000 : 500); } catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); } };
+    if (window.SM_Building) window.SM_Building.mountBuilding(main.querySelector("#gebouw"));
+    else main.querySelector("#gebouw").replaceWith(document.createRange().createContextualFragment(`<p class="dempen">Het 3D-kantoor kan hier niet laden.</p>`));
+    vulPortretten(main);
+  }
+  function logboek(items) {
+    if (!items.length) return html`<p class="dempen">Nog niets gebeurd. Zodra het team aan het werk is, zie je het hier.</p>`;
+    return html`<ul class="logboek">${items.map((f) => html`<li>${portret(naamNaarKey(f.wie), "portret klein")}<div><b>${f.wie}</b> ${f.text}<span class="klein dempen">${geleden(f.at)}</span></div></li>`)}</ul>`;
+  }
+
+  async function afdeling(main, key) {
+    const dep = ORG().find((x) => x.key === key);
+    if (!dep) { location.hash = "#bedrijf"; return; }
+    const d = await api("hq/team");
+    window.SM_TEAM = { busy: d.busy };
+    const st = d.depts[key] || { metrics: [], people: {}, feed: [] };
+    const live = dep.status === "live" || (key === "marketing" && d.marketingLive);
+    const manager = dep.people.find((p) => p.key === dep.manager);
+    const pagina = { concepten: "Naar Concepten", wijzigingen: "Naar Wijzigingen", sites: "Naar Sites", facturen: "Naar Facturen" }[dep.page];
+    render(main, html`
+      <div class="klant-kop"><div><a class="terug" href="#bedrijf">Bedrijf</a><h1>${dep.name}</h1><p class="dempen">${dep.desc}</p></div>
+        <div class="knoppen">${!live ? html`<span class="status s-let">Wacht op koppeling</span>` : html`<span class="status s-ok">Aan het werk</span>`}${pagina ? html`<a class="knop knop-licht" href="#${dep.page}">${pagina}</a>` : ""}</div></div>
+      <section class="paneel vloer-paneel"><div class="office o3d floorbox" id="vloer"></div></section>
+      ${st.metrics?.length ? html`<div class="kpis">${st.metrics.map((m) => html`<a class="kpi ${m.alarm ? "alarm" : ""}" href="${m.href || "#afdeling/" + key}"><div class="waarde">${m.value}</div><div class="naam">${m.label}${m.sub ? html`<br><b>${m.sub}</b>` : ""}</div></a>`)}</div>` : ""}
+      <div class="twee">
+        <div>
+          <section class="paneel"><h2>Het team</h2><ul class="team-lijst">${dep.people.map((p) => { const s = st.people?.[p.key] || {}; return html`<li>
+            ${portret(p.key)}<div><div class="team-naam"><b>${p.person}</b> <span class="klein dempen">${p.role}</span>${d.busy[p.key] ? html`<span class="status s-ok">Nu bezig</span>` : ""}</div>
+            ${s.text ? html`<p class="team-nu">${s.text}</p>` : ""}<ul class="klein dempen">${p.does.map((x) => html`<li>${x}</li>`)}</ul></div></li>`; })}</ul></section>
+          <section class="paneel"><h2>Vaste taken</h2><ul class="klein">${dep.tasks.map((t) => html`<li>${t}</li>`)}</ul>
+            ${key === "marketing" && !live ? html`<div class="melding melding-let">${raw(icon.let)}<p>Marketing draait als geplande Claude-taken, omdat Windsor, Kive en Canva alleen aan Claude gekoppeld zijn. Dit wordt de volgende stap.</p></div>` : ""}</section>
+        </div>
+        <div>
+          ${manager ? html`<section class="paneel"><div class="briefing-kop">${portret(manager.key, "portret groot")}<div><h2>Briefing van ${manager.person}</h2><span class="klein dempen">${manager.role}${st.briefing ? ` · ${tijd(st.briefing.at)}` : ""}</span></div></div>
+            ${st.briefing ? html`<div class="briefing-tekst">${briefHtml(st.briefing.text)}</div>` : html`<p class="dempen">${manager.person} schrijft elke ochtend na 8:00 een briefing.</p>`}
+            <form novalidate id="vraag-form" class="vraag-form"><div class="veld"><label for="vraag">Vraag aan ${manager.person}</label><textarea id="vraag" name="vraag" rows="2" placeholder="${key === "b2b" ? "Bijv. welke branche reageert het best?" : key === "finance" ? "Bijv. hoeveel hebben we deze maand verdiend?" : "Stel een vraag over de afdeling"}"></textarea><div class="fout" data-fout-voor="vraag"></div></div>
+              <button class="knop knop-klein" type="submit">Vraag stellen</button></form>
+            <div id="vragen"></div></section>` : ""}
+          <section class="paneel"><h2>Logboek</h2>${logboek(st.feed || [])}</section>
+        </div>
+      </div>`);
+    if (window.SM_Building) window.SM_Building.showFloor(main.querySelector("#vloer"), key);
+    vulPortretten(main);
+    const vragen = async () => {
+      const box = main.querySelector("#vragen"); if (!box) return;
+      const { vragen: lijst } = await api("hq/team/vragen?dept=" + key);
+      render(box, lijst.length ? html`<ul class="qa">${lijst.map((v) => html`<li><p class="vraag-tekst">${v.vraag}</p>${v.status === "open" ? html`<p class="dempen klein">${manager.person} denkt na…</p>` : html`<div class="antwoord ${v.status === "fout" ? "fout" : ""}">${briefHtml(v.antwoord)}</div>`}<span class="klein dempen">${geleden(v.at)}</span></li>`)}</ul>` : "");
+      if (lijst.some((v) => v.status === "open") && location.hash === "#afdeling/" + key) vraagTimer = setTimeout(vragen, 3000);
+    };
+    vragen();
+    main.querySelector("#vraag-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(e.target);
+      const knop = e.target.querySelector("[type=submit]"); SM.bezig(knop, true, "Versturen…");
+      try { await api("hq/team/vraag", { method: "POST", body: { dept: key, vraag: e.target.elements.vraag.value } }); e.target.reset(); vragen(); } catch (err) { SM.toonFouten(e.target, err); }
+      SM.bezig(knop, false);
+    });
+  }
 
   // ================================================ OVERZICHT
   async function overzicht(main) {

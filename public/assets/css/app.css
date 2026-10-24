@@ -406,3 +406,72 @@ dialog h3 { margin: 20px 0 8px; }
 .thema-elegant { --c-achter: #141015; --c-tekst: #F2EBE2; --c-accent: #D9B77C; --c-knop: #D9B77C; --c-kop: Georgia, serif; }
 .thema-stoer { --c-achter: #F4F4F0; --c-tekst: #111111; --c-accent: #8A7200; --c-knop: #FFD400; --c-kop: "Arial Black", Arial, sans-serif; }
 .thema-zacht { --c-achter: #F7F5FF; --c-tekst: #251A57; --c-accent: #6C4CF1; --c-knop: #6C4CF1; --c-kop: system-ui, sans-serif; }
+
+/* Bedrijf: 3D-kantoor (gebaseerd op TrueSafe HQ) */
+.office { position: relative; border-radius: var(--r); overflow: hidden; }
+.office.o3d { padding: 0; height: min(64vh, 560px); min-height: 380px; background: #E9E7E1; cursor: grab; touch-action: pan-y; }
+.office.o3d:active { cursor: grabbing; }
+.stage3d, .stage3d canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
+.ov3d { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.plate3d, .tag3d, .bubble3d { position: absolute; left: 0; top: 0; will-change: transform; }
+.plate3d { display: flex; flex-direction: column; gap: 1px; padding: 4px 9px 5px; border-radius: 8px; background: rgba(28, 7, 71, .9); color: #fff; font-size: 10.5px; line-height: 1.25; max-width: 170px; margin-top: -30px; box-shadow: 0 6px 18px rgba(28, 7, 71, .25); }
+.plate3d b { font-weight: 700; font-size: 11.5px; }
+.plate3d i { position: absolute; right: 8px; top: 8px; width: 7px; height: 7px; border-radius: 50%; background: #9AA6B6; }
+.tag3d { margin-top: -10px; translate: -50% 0; font-size: 10.5px; font-weight: 700; color: var(--paars); background: #fff; border-radius: 999px; padding: 1px 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, .15); white-space: nowrap; }
+.bubble3d { translate: -50% -100%; width: max-content; max-width: 230px; background: #fff; color: #111; border-radius: 12px; padding: 7px 10px; font-size: 12px; line-height: 1.35; box-shadow: 0 8px 24px rgba(28, 7, 71, .22); border: 1px solid rgba(28, 7, 71, .12); }
+.bubble3d::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; background: #fff; transform: translateX(-50%) rotate(45deg); border-right: 1px solid rgba(28, 7, 71, .12); border-bottom: 1px solid rgba(28, 7, 71, .12); }
+.bubble3d.pop { animation: pop3 .25s ease-out; }
+@keyframes pop3 { from { opacity: 0; scale: .85; } to { opacity: 1; scale: 1; } }
+.hint3d { position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: var(--paars); background: rgba(255, 255, 255, .85); padding: 3px 9px; border-radius: 999px; transition: opacity .6s; pointer-events: none; }
+.building3d .floor3d { position: absolute; left: 0; top: 0; will-change: transform; translate: 0 -50%; max-width: 52%; overflow: hidden; display: flex; align-items: center; gap: 7px; padding: 5px 10px 5px 5px; border-radius: 999px; border: 0; background: rgba(255, 255, 255, .95); color: var(--paars); font: inherit; font-size: 11.5px; line-height: 1.2; cursor: pointer; box-shadow: 0 4px 14px rgba(28, 7, 71, .16); white-space: nowrap; text-align: left; pointer-events: auto; }
+.building3d .floor3d .fn { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--fc); color: #fff; font-weight: 800; font-size: 11px; }
+.building3d .floor3d b { font-weight: 700; }
+.building3d .floor3d em { font-style: normal; color: var(--grijs); font-size: 10.5px; }
+.building3d .floor3d.live em { color: var(--ok); }
+.building3d .floor3d.hot, .building3d .floor3d:hover { box-shadow: 0 0 0 2px var(--fc), 0 6px 18px rgba(28, 7, 71, .22); }
+.gebouw-paneel, .vloer-paneel { padding: 0; overflow: hidden; }
+.gebouw-paneel .office.o3d { height: min(74vh, 680px); min-height: 520px; border-radius: 0; }
+.vloer-paneel .office.o3d { height: min(56vh, 440px); min-height: 320px; border-radius: 0; }
+@media (max-width: 700px) { .plate3d { display: none; } .gebouw-paneel .office.o3d { height: 58vh; min-height: 420px; } .building3d .floor3d em { display: none; } }
+
+.bedrijf-raster { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(260px, .8fr); gap: 16px; align-items: start; margin-bottom: 16px; }
+@media (max-width: 1000px) { .bedrijf-raster { grid-template-columns: 1fr; } }
+.afd-lijst { display: grid; gap: 10px; }
+.afd-kaart { --fc: var(--paars); display: flex; align-items: center; gap: 12px; background: var(--wit); border: 1px solid var(--lijn); border-left: 5px solid var(--fc); border-radius: var(--r-klein); padding: 12px 14px; text-decoration: none; color: var(--paars); }
+.afd-kaart:hover { box-shadow: 0 6px 18px rgba(28, 7, 71, .1); }
+.afd-verdieping { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--fc); color: #fff; font-weight: 800; flex: none; }
+.afd-tekst { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.35; }
+.afd-kaart .tel { background: var(--koraal); color: var(--wit); border-radius: 999px; padding: 1px 8px; font-weight: 800; font-size: 13px; }
+.afd-kaart[data-kleur="directie"] { --fc: #1C0747; } .afd-kaart[data-kleur="marketing"] { --fc: #FF5757; } .afd-kaart[data-kleur="b2b"] { --fc: #6C4CF1; }
+.afd-kaart[data-kleur="projecten"] { --fc: #0CC0DF; } .afd-kaart[data-kleur="klantenservice"] { --fc: #22C3B5; } .afd-kaart[data-kleur="incidenten"] { --fc: #F5A623; } .afd-kaart[data-kleur="finance"] { --fc: #2F8A5B; }
+
+.portret { width: 44px; height: 44px; border-radius: 50%; background: var(--ijs); flex: none; object-fit: cover; }
+.portret.groot { width: 56px; height: 56px; }
+.portret.klein { width: 30px; height: 30px; }
+.briefing-directie { margin-bottom: 16px; border-color: var(--paars); }
+.briefing-kop { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.briefing-kop h2 { margin: 0; }
+.briefing-tekst p { margin: 0 0 6px; }
+.briefing-tekst ul { margin: 4px 0 8px; padding-left: 20px; }
+.beslis { margin: 0; padding-left: 20px; }
+.beslis li { margin: 4px 0; font-weight: 600; }
+.logboek { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+.logboek li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--lijn); font-size: 15px; }
+.logboek li:first-child { border-top: 0; }
+.logboek li div { display: flex; flex-direction: column; }
+.team-lijst { list-style: none; margin: 0; padding: 0; }
+.team-lijst > li { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--lijn); }
+.team-lijst > li:first-child { border-top: 0; }
+.team-naam { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.team-nu { margin: 4px 0; font-weight: 600; }
+.team-lijst ul { margin: 2px 0 0; padding-left: 18px; }
+.vraag-form { margin-top: 14px; border-top: 1px solid var(--lijn); padding-top: 12px; }
+.qa { list-style: none; margin: 12px 0 0; padding: 0; }
+.qa li { padding: 10px 0; border-top: 1px solid var(--lijn); }
+.vraag-tekst { font-weight: 700; margin: 0 0 4px; }
+.antwoord { background: var(--ijs); border-radius: var(--r-klein); padding: 10px 12px; margin-bottom: 4px; }
+.antwoord.fout { background: var(--fout-zacht); }
+.antwoord p { margin: 0 0 6px; }
+.vloer-paneel { margin-bottom: 16px; }
+.logboek li div { display: block; }
+.logboek li div .klein { display: block; }
