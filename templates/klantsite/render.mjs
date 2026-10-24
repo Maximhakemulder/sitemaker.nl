@@ -67,8 +67,9 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
   lijn = mix(bg, ink, 0.14);
   // Knoppen en banden: altijd goed leesbaar (minstens 4,5:1 tussen tekst en knop, en de knop zichtbaar op de achtergrond).
   const metTekst = (k) => { let x = k; for (let i = 0; i < 14 && contrast(x, opTekst(x)) < 4.6; i++) x = mix(x, opTekst(x) === "#ffffff" ? "#000000" : "#ffffff", 0.1); return x; };
-  let knopBg = T.donker ? accent : hoofdletters && lum(accent) > 0.35 ? accent : merk;
-  if (contrast(knopBg, bg) < 2.2) knopBg = leesbaar(knopBg, bg, 3);
+  // Eerst hun eigen merkkleuren proberen (eerste keus, dan de andere); pas als geen van beide opvalt, bijkleuren.
+  const kandidaten = T.donker ? [accent, merk] : hoofdletters && lum(accent) > 0.35 ? [accent, merk] : [merk, accent];
+  let knopBg = kandidaten.find((k) => contrast(k, bg) >= (hoofdletters && strak ? 1.6 : 2.2)) || leesbaar(kandidaten[0], bg, 3);
   knopBg = metTekst(knopBg);
   const knopTx = opTekst(knopBg);
   const nadruk = leesbaar(T.donker ? accent : merk, bg, 4.5);
@@ -117,7 +118,7 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
   const heroInfo = [
     b.plaats ? `<li>${ICON.pin}<span>${e(b.plaats)}</span></li>` : "",
     ot.length ? `<li data-vandaag hidden>${ICON.klok}<span></span></li>` : "",
-    tel ? `<li>${ICON.tel}<a href="tel:${e(tel)}">${e(telTekst)}</a></li>` : "",
+    tel && actie.link === "tel:" + tel ? "" : b.email ? `<li>${ICON.mail}<a href="mailto:${e(b.email)}">${e(b.email)}</a></li>` : "",
   ].join("");
   const heroTekst = (extra = "") => `<div class="hero-tekst">
       ${h.label ? `<p class="label">${e(h.label)}</p>` : ""}
@@ -181,7 +182,7 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
   if (gal.length >= 2) S.push(`<section class="blok galerij-blok" id="fotos"><div class="wrap"><div class="galerij g${Math.min(gal.length, 5)}">${gal.slice(0, 5).map((p, i) => `<figure class="f${i}"><img src="${e(p)}" alt="" loading="lazy"></figure>`).join("")}</div></div></section>`);
 
   // Actieband
-  S.push(`<section class="band"><div class="wrap band-grid"><h2>${e(ct.titel || "Klaar voor de volgende stap?")}</h2><div class="acties">${knop(actie, "knop knop-band")}${tel ? `<a class="knop-rand op-band" href="tel:${e(tel)}"><span class="ic">${ICON.tel}</span>${e(telTekst)}</a>` : ""}</div></div></section>`);
+  S.push(`<section class="band"><div class="wrap band-grid"><h2>${e(/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel || "") ? ct.titel : h.titel || "Klaar voor de volgende stap?")}</h2><div class="acties">${knop(actie, "knop knop-band")}${tel ? `<a class="knop-rand op-band" href="tel:${e(tel)}"><span class="ic">${ICON.tel}</span>${e(telTekst)}</a>` : ""}</div></div></section>`);
 
   // Contact
   const regels = [
@@ -191,7 +192,7 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
     b.adres || b.plaats ? `<a class="c-regel" href="${e(kaartLink)}" target="_blank" rel="noopener"><span class="c-ic">${ICON.pin}</span><span><small>Route plannen</small>${e([b.adres, b.adres && b.adres.includes(b.plaats || "§") ? "" : b.plaats].filter(Boolean).join(", "))}</span></a>` : "",
   ].join("");
   S.push(`<section class="blok contact" id="contact"><div class="wrap contact-grid">
-    <div><p class="label">Contact</p><h2>${e(ct.titel || "Neem contact op")}</h2>${ct.tekst ? `<p class="c-tekst">${e(ct.tekst)}</p>` : ""}<div class="c-lijst">${regels || knop(actie)}</div></div>
+    <div><p class="label">Contact</p><h2>${e(ct.titel && !/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel) ? ct.titel : b.plaats ? `Langskomen in ${b.plaats}` : "Contact en openingstijden")}</h2>${ct.tekst ? `<p class="c-tekst">${e(ct.tekst)}</p>` : ""}<div class="c-lijst">${regels || knop(actie)}</div></div>
     ${ot.length ? `<div class="tijden"><h3>${ICON.klok}Openingstijden</h3><dl>${ot.map((r, i) => `<div data-dag="${i}"><dt>${e(r.dag)}</dt><dd>${e(r.tijd)}</dd></div>`).join("")}</dl></div>` : ""}
   </div></section>`);
 
@@ -255,7 +256,7 @@ ${strak ? ".hero-vorm{transform:rotate(6deg)}" : ""}
 .kader-klein{position:absolute;right:4%;bottom:-36px;width:22%;aspect-ratio:1;border-radius:${rond ? "50%" : "var(--r)"};overflow:hidden;border:6px solid var(--bg)}.kader-klein img{width:100%;height:100%;object-fit:cover}
 .v-typo{padding:72px 0 84px}.v-typo h1{font-size:clamp(52px,9vw,${hoofdletters ? 150 : 128}px);max-width:12ch}.v-typo .hero-tekst{position:relative}
 .typo-strip{display:grid;gap:14px;margin-top:56px}.typo-strip.n3{grid-template-columns:1.4fr 1fr 1fr}.typo-strip.n2{grid-template-columns:1.4fr 1fr}
-.typo-strip figure{margin:0;border-radius:var(--r);overflow:hidden;aspect-ratio:4/3}.typo-strip.n3 figure:first-child,.typo-strip.n2 figure:first-child{aspect-ratio:auto}.typo-strip img{width:100%;height:100%;object-fit:cover}
+.typo-strip{grid-auto-rows:clamp(220px,26vw,360px)}.typo-strip figure{margin:0;border-radius:var(--r);overflow:hidden}.typo-strip img{width:100%;height:100%;object-fit:cover}
 
 /* rijen */
 .rijen{list-style:none;margin:0;padding:0;counter-reset:r}
@@ -303,13 +304,12 @@ h2{font-size:clamp(36px,4.8vw,62px)}
 
 /* galerij */
 .galerij-blok{padding-top:0}.over+.galerij-blok{padding-top:104px}
-.galerij{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:220px;gap:14px}
+.galerij{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:230px;gap:14px;grid-auto-flow:dense}
 .galerij figure{margin:0;overflow:hidden;border-radius:var(--r);background:var(--vlak)}.galerij img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}.galerij figure:hover img{transform:scale(1.04)}
 .galerij .f0{grid-column:span 2;grid-row:span 2}
-.g2 .f0,.g2 .f1{grid-column:span 2;grid-row:span 2}
+.g2 .f1{grid-column:span 2;grid-row:span 2}
 .g3 .f1,.g3 .f2{grid-column:span 2}
-.g4 .f1{grid-column:span 2}.g4 .f3{grid-column:span 2}
-.g5 .f3{grid-column:span 1}
+.g4 .f3{grid-column:span 2}
 
 /* band */
 .band{background:var(--band);color:var(--band-tx);padding:84px 0;position:relative;overflow:hidden}
@@ -347,10 +347,10 @@ footer .woordmerk{font-size:19px;opacity:1}
 @media (max-width:760px){
   .v-volbeeld{min-height:86vh}.v-volbeeld .wrap{padding:110px 0 40px}
   .v-kader{padding:28px 0 64px;text-align:left}.v-kader .acties,.v-kader .hero-info{justify-content:flex-start}.kader-beeld{margin-top:36px}.kader-foto{aspect-ratio:4/3}.kader-klein{width:34%;bottom:-24px;border-width:4px}
-  .v-typo{padding:36px 0 56px}.v-typo h1{font-size:clamp(46px,14vw,72px)}.typo-strip{margin-top:36px;gap:8px}.typo-strip.n3{grid-template-columns:1fr 1fr}.typo-strip.n3 figure:first-child{grid-column:span 2;aspect-ratio:16/10}
+  .v-typo{padding:36px 0 56px}.v-typo h1{font-size:clamp(46px,14vw,72px)}.typo-strip{margin-top:36px;gap:8px}.typo-strip{grid-auto-rows:150px}.typo-strip.n3{grid-template-columns:1fr 1fr}.typo-strip.n3 figure:first-child{grid-column:span 2;grid-row:span 1}.typo-strip.n3 figure:first-child img{height:100%}
   .rijen li{grid-template-columns:1fr;gap:8px;padding:24px 0}
   body{font-size:16px;padding-bottom:76px}
-  .kop nav{display:none}.kop .wrap{min-height:64px;gap:12px}.kop .knop{margin-left:auto;min-height:40px;padding:0 14px;font-size:14px}.woordmerk{font-size:19px}.merk img{max-height:38px;max-width:150px}
+  .kop nav{display:none}.kop .wrap{min-height:64px;gap:12px}.kop .knop{display:none}.woordmerk{font-size:19px}.merk img{max-height:38px;max-width:150px}
   .hero{padding:16px 0 56px}.hero-grid{gap:30px}
   .hero-beeld{order:-1;padding:0 0 26px 26px}.hero-foto{aspect-ratio:5/4;border-radius:${rond ? "140px 140px var(--r) var(--r)" : "var(--r)"}}.hero-klein{width:36%;border-width:5px}
   .hero-woord{aspect-ratio:auto;padding:46px 24px}
@@ -360,7 +360,7 @@ footer .woordmerk{font-size:19px;opacity:1}
   .sectie-kop{display:block;margin-bottom:28px}.sectie-kop p{margin-top:12px}
   .kaarten,.kaarten.n4,.kaarten.n2{grid-template-columns:1fr}.kaart.groot{grid-column:auto}
   .over-vorm{inset:16px -12px -16px 16px}
-  .galerij{grid-template-columns:1fr 1fr;grid-auto-rows:150px;gap:10px}.galerij figure{grid-column:span 1!important;grid-row:span 1!important}.galerij .f0{grid-column:span 2!important;grid-row:span 2!important}
+  .galerij{grid-template-columns:1fr 1fr;grid-auto-rows:150px;gap:10px}.galerij figure{grid-column:span 1!important;grid-row:span 1!important}.galerij .f0{grid-column:span 2!important;grid-row:span 2!important}.galerij figure:last-child:nth-child(even){grid-column:span 2!important}
   .band{padding:60px 0}.band .acties{width:100%}
   .actiebalk{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--lijn)}
   .actiebalk a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border-radius:${strak ? "0" : "14px"};font-weight:600;text-decoration:none;font-size:15px;background:var(--kaart);color:var(--ink);${T.donker ? "border:1px solid var(--lijn);" : "box-shadow:inset 0 0 0 1.5px var(--lijn);"}}

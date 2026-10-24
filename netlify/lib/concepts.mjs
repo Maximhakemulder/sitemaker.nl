@@ -10,6 +10,7 @@ import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
 
+export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo"], diensten: ["kaarten", "rijen", "lijst"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
 export const conceptUrl = (token) => `${publicBase()}/voorbeeld/${token}`;
 const UA = "Mozilla/5.0 (compatible; SitemakerBot/1.0; +https://sitemaker.nl)";
@@ -40,17 +41,23 @@ function imageCandidates(html, base) {
   const out = [];
   const add = (u, alt = "", hint = "") => { const a = abs(u, base); if (a && !out.some((x) => x.url === a)) out.push({ url: a, alt: str(alt, 120), hint }); };
   for (const m of html.matchAll(/<meta[^>]+>/gi)) if (/property=["']og:image["']/i.test(m[0])) add(attr(m[0], "content"), "", "og");
+  // Logo: plaatjes in de kop of in de link naar de homepage, of met "logo" in naam/alt/class. Score bepaalt de volgorde.
+  const kopEind = Math.max(0, html.search(/<\/header>/i));
+  const thuis = [...html.matchAll(/<a\b[^>]*href=["'](\/|\.\/|https?:\/\/[^"'\/]+\/?)["'][^>]*>([\s\S]{0,600}?)<\/a>/gi)].map((m) => m[2]).join(" ");
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
     const t = m[0];
     const srcset = attr(t, "srcset") || attr(t, "data-srcset");
     let src = attr(t, "data-src") || attr(t, "data-lazy-src") || attr(t, "src");
     if (srcset) { const best = srcset.split(",").map((x) => x.trim().split(/\s+/)).sort((a, b) => parseInt(b[1] || "0") - parseInt(a[1] || "0"))[0]; if (best?.[0]) src = best[0]; }
     if (!src || src.startsWith("data:")) continue;
-    const isLogo = /logo/i.test(src + " " + attr(t, "alt") + " " + attr(t, "class") + " " + attr(t, "id"));
-    add(src, attr(t, "alt"), isLogo ? "logo" : "");
+    const naamLogo = /logo/i.test(src + " " + attr(t, "alt") + " " + attr(t, "class") + " " + attr(t, "id"));
+    const inKop = kopEind && m.index < kopEind, inThuis = thuis.includes(t);
+    const score = (naamLogo ? 3 : 0) + (inThuis ? 3 : 0) + (inKop ? 2 : 0) - (/award|badge|keurmerk|review|rating|partner|sponsor|certific/i.test(src + " " + attr(t, "alt")) ? 6 : 0);
+    if (score >= 3) { const a = abs(src, base); if (a && !out.some((x) => x.url === a)) out.push({ url: a, alt: str(attr(t, "alt"), 120), hint: "logo", score }); continue; }
+    add(src, attr(t, "alt"), "");
   }
   for (const m of html.matchAll(/background(?:-image)?\s*:\s*url\((['"]?)([^'")]+)\1\)/gi)) add(m[2], "", "bg");
-  return out.filter((x) => !/\.(svg|gif|ico)(\?|$)/i.test(x.url) && !/(pixel|tracking|spinner|loader|icon|sprite|emoji|avatar|gravatar|badge|flag|facebook|instagram|twitter|linkedin|whatsapp|google|maps|cookie|payment|ideal|visa|mastercard)/i.test(x.url));
+  return out.filter((x) => !(x.hint !== "logo" && /\.svg(\?|$)/i.test(x.url)) && !/\.(gif|ico)(\?|$)/i.test(x.url) && !/(pixel|tracking|spinner|loader|icon|sprite|emoji|avatar|gravatar|badge|flag|facebook|instagram|twitter|linkedin|whatsapp|google|maps|cookie|payment|ideal|visa|mastercard)/i.test(x.url));
 }
 
 // Afmetingen uit de eerste bytes (JPEG, PNG, WebP).
@@ -141,25 +148,64 @@ export async function scan(website) {
 // Download de bruikbare foto's (en logo) naar Blobs.
 async function saveImages(conceptId, cands) {
   const out = [];
-  const logo = cands.find((c) => c.hint === "logo");
+  const logos = cands.filter((c) => c.hint === "logo").sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3);
   const photos = cands.filter((c) => c.hint !== "logo").slice(0, 16);
-  const got = await Promise.all([...(logo ? [logo] : []), ...photos].map(async (c) => ({ c, r: await get(c.url, { binary: true, max: 3500000, timeout: 5000 }) })));
+  const got = await Promise.all([...logos, ...photos].map(async (c) => ({ c, r: await get(c.url, { binary: true, max: 3500000, timeout: 5000 }) })));
   const hashes = new Set();
+  let logoGehad = false;
   for (const { c, r } of got) {
     if (!r?.buf?.length) continue;
-    const size = imageSize(r.buf);
+    const isLogo = c.hint === "logo";
+    if (isLogo && logoGehad) continue;
+    const size = imageSize(r.buf) || (isLogo ? svgSize(r.buf) : null);
     if (!size) continue;
-    const isLogo = c === logo;
     if (!isLogo && (size.w < 500 || size.h < 300 || size.w / size.h > 3 || size.h / size.w > 2.2)) continue;
-    if (isLogo && (size.w < 80 || size.h < 20)) continue;
+    // Een echt logo: niet te klein en geen lange strook (zoals een rij keurmerken).
+    if (isLogo && (size.w < 60 || size.h < 16 || size.w / size.h > 5.5)) continue;
+    if (isLogo) logoGehad = true;
     const hash = crypto.createHash("sha1").update(r.buf).digest("hex");
     if (hashes.has(hash)) continue; hashes.add(hash);
-    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/svg+xml": "svg" }[size.type];
     const name = isLogo ? `logo.${ext}` : `foto-${out.filter((x) => !x.logo).length + 1}.${ext}`;
     const key = `concepts/${conceptId}/${name}`;
     await putFile(key, r.buf, { type: size.type, name });
     out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: c.alt, logo: isLogo, bron: c.url });
     if (out.filter((x) => !x.logo).length >= 8) break;
+  }
+  return out;
+}
+
+// SVG-logo: afmetingen uit viewBox/width/height. Alleen als het echt een SVG is.
+function svgSize(buf) {
+  const t = buf.slice(0, 4000).toString("utf8");
+  if (!/<svg\b/i.test(t) || buf.length > 300000) return null;
+  const vb = t.match(/viewBox=["']\s*[-\d.]+[ ,]+[-\d.]+[ ,]+([\d.]+)[ ,]+([\d.]+)/i);
+  const w = Number(vb?.[1] || (t.match(/\bwidth=["']([\d.]+)/i) || [])[1] || 0), h = Number(vb?.[2] || (t.match(/\bheight=["']([\d.]+)/i) || [])[1] || 0);
+  return w && h ? { type: "image/svg+xml", w: Math.round(w * (w < 60 ? 10 : 1)), h: Math.round(h * (w < 60 ? 10 : 1)) } : null;
+}
+
+// Sfeerbeelden (stock) als hun eigen site te weinig goede foto's heeft. Pexels: gratis te gebruiken, ook commercieel.
+// Alleen met PEXELS_API_KEY. In het concept en in HQ staat welke foto's sfeerbeelden zijn.
+export const stockReady = () => !!env("PEXELS_API_KEY");
+async function stockFotos(conceptId, zoek, nodig, start) {
+  if (!stockReady() || !zoek || nodig <= 0) return [];
+  let data;
+  try {
+    const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${Math.min(15, nodig + 4)}&orientation=landscape&locale=nl-NL`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return [];
+    data = await r.json();
+  } catch { return []; }
+  const out = [];
+  for (const p of data.photos || []) {
+    if (out.length >= nodig) break;
+    const r = await get(p.src?.large2x || p.src?.large, { binary: true, max: 3500000, timeout: 6000 });
+    const size = r?.buf && imageSize(r.buf);
+    if (!size) continue;
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
+    const name = `foto-${start + out.length + 1}.${ext}`;
+    const key = `concepts/${conceptId}/${name}`;
+    await putFile(key, r.buf, { type: size.type, name });
+    out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: str(p.alt, 120), logo: false, stock: true, bron: p.url, fotograaf: str(p.photographer, 80) });
   }
   return out;
 }
@@ -176,9 +222,15 @@ Regels:
 - Het concept moet herkenbaar voelen als HUN bedrijf: neem de sfeer en huisstijl van hun huidige site over. Kies het thema dat daar het dichtst bij ligt: elegant (luxe, beauty, donker), stoer (bouw, installatie, techniek), natuur (tuin, zorg, ambacht, lokaal), zacht (modern, praktijk, coaching, zakelijk).
 - kleuren.primair: hun belangrijkste huisstijlkleur uit de lijst (meestal de eerste die bij hun logo/knoppen past). kleuren.accent: een tweede huisstijlkleur als die er is. Laat alleen leeg als er geen bruikbare kleur in de lijst staat.
 - Openingstijden alleen als ze in de tekst staan.
+- "ontwerp": maak elke site anders en passend bij HUN merk. Kies:
+  fonts: klassiek (verfijnd, schoonheid), luxe (high-end, mode, juwelen), editorial (stijlvol, horeca, makelaar), warm (ambacht, bakker, zorg), modern (creatief, eigentijds), ambacht (bouw, timmerman, garage), stoer (installatie, sloop, sport), strak (techniek, zakelijk, advies), speels (kinderen, coaching, hobby, dieren).
+  hero: volbeeld (sterke sfeerfoto, groot en meeslepend), split (tekst + foto naast elkaar), kader (grote kop, brede foto eronder), typo (weinig of zwakke foto's: grote typografie).
+  diensten: lijst (prijslijst of behandelingen), rijen (een paar grote diensten), kaarten (diensten met uitleg).
+  vorm: rond (zacht, vriendelijk), zacht (modern), strak (zakelijk, luxe, stoer). sfeer: licht, donker (luxe, avond, horeca, beauty met donkere site), merk (vrolijk, hun kleur overal).
+- "stock": staan er minder dan 4 goede foto's in de lijst, geef dan een Nederlandse zoekterm voor sfeerbeelden die bij het bedrijf passen (bijv. "airco installateur", "kapsalon interieur", "hovenier tuin"). Anders leeg.
 - Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
 Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
-{"thema":"natuur","kleuren":{"primair":"","accent":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
+{"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":"","kleuren":{"primair":"","accent":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
  "seo":{"titel":"","omschrijving":""},"hero":{"label":"","titel":"","tekst":"","knop":{"tekst":"","link":"#contact"},"foto":""},
  "diensten":{"titel":"","items":[{"titel":"","tekst":"","prijs":""}]},"over":{"titel":"","tekst":"","foto":""},"fotos":[],
  "openingstijden":[{"dag":"","tijd":""}],"contact":{"titel":"","tekst":"","knop":{"tekst":"","link":""}}}`;
@@ -195,6 +247,7 @@ export function clean(c, { text, images, lead }) {
   const tel = s(b.telefoon, 30), mail = s(b.email, 120).toLowerCase();
   const out = {
     thema: THEMAS[c.thema] ? c.thema : "natuur",
+    ontwerp: Object.fromEntries(Object.entries(ONTWERP).map(([k, opties]) => [k, opties.includes(c.ontwerp?.[k]) ? c.ontwerp[k] : ""]).filter(([, v]) => v)),
     kleuren: { primair: HEX.test(c.kleuren?.primair || "") ? c.kleuren.primair : "", accent: HEX.test(c.kleuren?.accent || "") ? c.kleuren.accent : "" },
     bedrijf: {
       naam: s(b.naam, 80) || lead.company,
@@ -221,6 +274,11 @@ export function clean(c, { text, images, lead }) {
   if (!out.hero.foto && vrij.length) out.hero.foto = vrij[0];
   if (!out.over.foto && vrij.length > 1) out.over.foto = vrij.find((p) => p !== out.hero.foto) || "";
   if (!out.fotos.length && vrij.length > 2) out.fotos = vrij.filter((p) => p !== out.hero.foto && p !== out.over.foto).slice(0, 6);
+  // Hero: liever een grote liggende foto dan een kleine of staande.
+  const info = (p) => images.find((i) => `afbeeldingen/${i.name}` === p);
+  const goed = (i) => i && i.w >= 1000 && i.w / i.h >= 1.2;
+  if (out.hero.foto && !goed(info(out.hero.foto))) { const beter = images.find((i) => !i.logo && goed(i) && `afbeeldingen/${i.name}` !== out.over.foto); if (beter) { const oud = out.hero.foto; out.hero.foto = `afbeeldingen/${beter.name}`; out.fotos = [oud, ...out.fotos.filter((p) => p !== out.hero.foto && p !== oud)].slice(0, 6); } }
+  if (out.ontwerp.hero === "volbeeld" && !goed(info(out.hero.foto))) out.ontwerp.hero = "split";
   if (!out.hero.titel || !out.diensten.items.length) return null;
   return out;
 }
@@ -262,6 +320,21 @@ ${site.text}
     if (out.kan === false) return await klaar("overgeslagen", { reden: str(out.reden, 300) || "Niet geschikt voor een concept.", images, analysis: site.analysis });
     const content = clean(out.content || {}, { text: site.text, images, lead });
     if (!content) return await klaar("fout", { reden: "Het concept was onvolledig.", images, analysis: site.analysis });
+    // Te weinig eigen foto's: aanvullen met sfeerbeelden die bij het bedrijf passen.
+    const eigen = images.filter((i) => !i.logo);
+    if (eigen.length < 4) {
+      const zoek = str(out.content?.stock, 60) || lead.category || "";
+      const stock = await stockFotos(c.id, zoek, 5 - eigen.length, eigen.length).catch(() => []);
+      if (stock.length) {
+        images.push(...stock);
+        const pad = (i) => `afbeeldingen/${i.name}`;
+        const groot = (p) => { const i = images.find((x) => pad(x) === p); return i && i.w >= 1000; };
+        if (!content.hero.foto || !groot(content.hero.foto)) { if (content.hero.foto) content.fotos.unshift(content.hero.foto); content.hero.foto = pad(stock[0]); }
+        if (!content.over.foto) content.over.foto = pad(stock[1] || stock[0]);
+        content.fotos = [...new Set([...content.fotos, ...stock.map(pad)])].filter((p) => p !== content.hero.foto && p !== content.over.foto).slice(0, 6);
+        content.sfeerbeelden = true;
+      }
+    }
     return await klaar("klaar", { content, images, analysis: site.analysis });
   } catch (e) {
     console.log("[concept]", c.id, e.message);
@@ -334,7 +407,7 @@ export async function conceptPage(token, { hq = false } = {}) {
 <div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Zo kan de nieuwe website van ${escH(naam)} eruitzien. Gemaakt door Sitemaker.</span><span class="sm-kort"> door Sitemaker</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit voorbeeld hebben we gemaakt op basis van jullie huidige website. Wil je hem echt? Dan staat hij binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
-<a href="${kennis}">Plan een kennismaking</a><small>Teksten en foto's komen van jullie eigen website. Dit voorbeeld is alleen via deze link te zien.</small></section>
+<a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   const html = render(c.content, { imgBase: `/api/voorbeeld/${token}/afbeeldingen/`, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
@@ -346,7 +419,7 @@ export async function conceptImage(token, name) {
   if (!i) return new Response("Niet gevonden", { status: 404 });
   const buf = await getFile(i.key);
   if (!buf) return new Response("Niet gevonden", { status: 404 });
-  return new Response(buf, { headers: { "content-type": i.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+  return new Response(buf, { headers: { "content-type": i.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox" } });
 }
 
 // Bekeken (via een klein script na 2,5 s, zodat mailscanners niet meetellen). Eerste keer: seintje aan Maxim.
