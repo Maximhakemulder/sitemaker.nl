@@ -1,7 +1,10 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
+import * as domains from "../lib/domains.mjs";
 import * as team from "../lib/team.mjs";
 import * as concepts from "../lib/concepts.mjs";
 import * as agenda from "../lib/agenda.mjs";
+import * as service from "../lib/service.mjs";
+import * as kosten from "../lib/kosten.mjs";
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
 import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
@@ -72,6 +75,12 @@ export default async (req, context) => {
       if (seg[2] === "afbeeldingen" && seg[3]) return await concepts.conceptImage(seg[1], seg[3]);
       if (seg.length === 2) return await concepts.conceptPage(seg[1], { hq: url.searchParams.get("hq") === "1" });
     }
+    if (path === "bedrijf" && m === "GET") {
+      const s = await getSettings(), co = s.company;
+      const adres = [co.address, [co.postcode, co.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      return json({ naam: co.name || "Sitemaker", rechtsvorm: co.legalName || "", kvk: co.kvk || "", btw: co.vat || "", adres, email: co.email || "", telefoon: co.phone || "",
+        pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 60, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
+    }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
     if (path === "b2b/afmelden") {
       const id = Number(url.searchParams.get("l")), t = url.searchParams.get("t");
@@ -128,6 +137,17 @@ export default async (req, context) => {
         const form = await req.formData().catch(() => fail(400, "Het formulier kon niet worden gelezen. Is het bestand kleiner dan 4 MB?"));
         return json(await submitChange(user, form));
       }
+      if (path === "portal/domein" && m === "GET") return json(await domains.portalDomain(user.customer_id));
+      if (path === "portal/domein" && m === "POST") return json(await domains.chooseDomain(user, await body(req)));
+      if (path === "portal/domein/check" && m === "POST") return json(await domains.portalRecheck(user));
+      if (path === "portal/domein/beschikbaar" && m === "GET") return json(await domains.beschikbaar(url.searchParams.get("naam")));
+      if (path === "portal/account" && m === "GET") return json({ domein: await domains.portalDomain(user.customer_id), review: await service.portalReviewState(user.customer_id), vragen: await service.portalTickets(user), opzeggen: await service.opzegState(user.customer_id) });
+      if (path === "portal/vragen" && m === "POST") return json(await service.portalAsk(user, await body(req)));
+      if (seg[1] === "vragen" && /^\d+$/.test(seg[2] || "") && m === "POST") return json(await service.portalReply(user, Number(seg[2]), await body(req)));
+      if (path === "portal/review" && m === "POST") return json(await service.portalReview(user, await body(req)));
+      if (path === "portal/opzeggen" && m === "POST") return json(await service.portalCancel(user, await body(req)));
+      if (path === "portal/opzeggen/bel-me" && m === "POST") return json(await service.cancelCallback(user, await body(req)));
+      if (path === "portal/opzeggen/intrekken" && m === "POST") return json(await service.withdrawCancel(user.customer_id, user));
       if (path === "portal/start/gegevens" && m === "PUT") return json(await saveDetails(user, await body(req)));
       if (path === "portal/start/betalen" && m === "POST") return json(await startPortalPayment(user, await body(req), ipOf(req, context)));
       if (path === "portal/start/informatie" && m === "PUT") return json(await saveIntake(user, await body(req)));
@@ -198,6 +218,9 @@ export default async (req, context) => {
         case "DELETE agenda/uitzondering/:id": return json(await agenda.deleteException(Number(seg[3]), user));
         case "POST appointments/:id/annuleren": { const a = await one("SELECT * FROM appointments WHERE id = $1", [id]); if (!a) fail(404, "Afspraak niet gevonden."); return json(await agenda.cancel(a, "sitemaker", user)); }
         case "GET team": return json(await team.teamState());
+        case "GET domeinen": return json({ domeinen: await domains.listDomains() });
+        case "PUT domeinen/:id": return json(await domains.updateDomain(id, await body(req), user));
+        case "POST domeinen/:id/check": return json(await domains.controleer(id, { user }));
         case "POST team/briefings": return json(await team.refreshBriefings());
         case "POST team/vraag": return json(await team.askQuestion(user, await body(req)));
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
@@ -217,12 +240,22 @@ export default async (req, context) => {
         case "GET settings": return json(await hq.getAdminSettings());
         case "PUT settings": requireAdmin(user); return json(await hq.saveAdminSettings(await body(req), user));
         case "POST settings/testmail": return json(await hq.testMail(user));
-        case "GET team": return json({ ...(await hq.listTeam()), me: { id: user.id, email: user.email, role: user.role } });
-        case "POST team": requireAdmin(user); return json(await hq.saveTeamMember(await body(req), user));
+        case "GET medewerkers": return json({ ...(await hq.listTeam()), me: { id: user.id, email: user.email, role: user.role } });
+        case "POST medewerkers": requireAdmin(user); return json(await hq.saveTeamMember(await body(req), user));
         case "GET reviews": return json({ reviews: await listReviews() });
         case "POST reviews": return json(await saveReview(null, await body(req), user));
         case "PUT reviews/:id": return json(await saveReview(id, await body(req), user));
         case "DELETE reviews/:id": return json(await deleteReview(id, user));
+        case "GET service": return json({ tickets: await service.listTickets({ status: url.searchParams.get("status") || "" }) });
+        case "POST service/:id/antwoord": return json(await service.answerTicket(id, await body(req), user));
+        case "POST service/:id/sluiten": return json(await service.closeTicket(id, user));
+        case "POST service/:id/concept": return json(await service.redraft(id));
+        case "POST customers/:id/opzegging/intrekken": return json(await service.withdrawCancel(id, user));
+        case "GET kosten": return json({ kosten: await kosten.listCosts(), ...(await kosten.overzicht()) });
+        case "POST kosten": requireAdmin(user); return json(await kosten.saveCost(null, await body(req), user));
+        case "PUT kosten/:id": requireAdmin(user); return json(await kosten.saveCost(id, await body(req), user));
+        case "DELETE kosten/:id": requireAdmin(user); return json(await kosten.deleteCost(id, user));
+        case "GET kosten/export": return await kosten.exportCsv({ jaar: url.searchParams.get("jaar"), kwartaal: url.searchParams.get("kwartaal") });
         case "GET maillog": return json({ mails: await hq.mailLog() });
         default: fail(404, "Niet gevonden.");
       }

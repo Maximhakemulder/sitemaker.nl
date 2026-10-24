@@ -58,3 +58,12 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - `netlify/lib/team.mjs`: alles uit echte gegevens (`teamState`: cijfers + wat elke medewerker deed, logboek uit audit_log/mail_log/concepts/appointments/payments, "wacht op jou"). `tick` schrijft een hartslag per ronde (`settings.team_pulse`) → "nu bezig". Incidenten (offline/online) staan in audit_log.
 - Briefings: elke dag na 8:00 via `team-background` (managers → directeur Victor), tabel `team_briefings`; zonder Claude een feitelijke samenvatting. Vragen aan managers: `team_questions`, beantwoord in `team-background`, HQ pollt.
 - `team_reports` is klaar voor rapporten van geplande Claude-taken (marketing: Meta via Windsor, statics via Kive/Canva) — fase 2.
+
+## Juridisch, domeinen, klantenservice, opzeggen en kosten
+- `public/voorwaarden.html` + `public/privacy.html` (bedrijfsgegevens via `[data-bedrijf]` uit `/api/bedrijf`, `public/assets/js/juridisch.js`). Cookiebanner verschijnt alleen als `settings.tracking.metaPixelId` gevuld is; de pixel laadt pas na "Akkoord" (`localStorage sm_cookies`).
+- Domeinen (afdeling Dirk, `netlify/lib/domains.mjs`, tabel `domains`): klant kiest in portaal › Account: eigen (A @ 75.2.60.5 + CNAME www → `<site>.netlify.app`, automatische DNS-controle in `tick`), verhuizen of nieuw (RDAP-check). HQ › Domeinen. Test: `DOMAIN_FAKE` (naam met "fout" = DNS fout, "bezet" = bezet).
+- Klantvragen (Emma, `netlify/lib/service.mjs`, tabellen `tickets`/`ticket_messages`): uit het portaal en uit de inbox (`scanInbox` → `ticketFromMail`, alleen bekende klantadressen, dedupe op Message-ID). Claude zet een antwoord klaar via `team-background` (job `ticket`); Maxim verstuurt in HQ › Klantvragen (mail met In-Reply-To).
+- Review: één keer per klant in portaal › Account, alleen als de site live is, met toestemming; komt verborgen binnen (`source = 'portaal'`), Maxim publiceert in HQ › Reviews.
+- Opzeggen: portaal › Account › opzeggen in 3 stappen (reden → behoud/"bel me" → gevolgen + bedrijfsnaam typen). Einde = laatste dag van de volgende maand (voorwaarden art. 8). Intrekken kan tot de einddatum (klant en HQ). `tick` (`runCancellations`) stopt dan Mollie en zet de site op opgezegd; Maxim krijgt een mail met wat er nog moet.
+- Kosten en winst (Bram, `netlify/lib/kosten.mjs`, tabel `costs`): Maxim vult kosten in (excl. btw; maandelijks/jaarlijks/eenmalig), 12 maanden omzet vs kosten, CSV-export per kwartaal (`/api/hq/kosten/export`).
+- HQ-medewerkers beheren: `/api/hq/medewerkers` (`/api/hq/team` is het bedrijf/afdelingen).

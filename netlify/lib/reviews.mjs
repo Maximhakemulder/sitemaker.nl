@@ -15,7 +15,7 @@ export async function publishedReviews() {
 
 export async function listReviews() {
   const rows = await q("SELECT r.*, c.company AS klant FROM reviews r LEFT JOIN customers c ON c.id = r.customer_id ORDER BY r.created_at DESC");
-  return rows.map((r) => ({ id: r.id, ...publiek(r), customerId: r.customer_id, klant: r.klant, published: r.published, createdAt: r.created_at }));
+  return rows.map((r) => ({ id: r.id, ...publiek(r), customerId: r.customer_id, klant: r.klant, published: r.published, uitPortaal: r.source === "portaal", createdAt: r.created_at }));
 }
 
 function velden(b) {

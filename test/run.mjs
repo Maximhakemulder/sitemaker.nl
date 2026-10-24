@@ -240,10 +240,10 @@ await test("HQ-overzicht telt alles op", async () => {
   assert.equal(r.status, 200); assert.equal(r.data.counts.klanten, 2); assert.equal(r.data.counts.betaling_mislukt, 1); assert.ok(r.data.counts.open_wijzigingen >= 2);
 });
 await test("medewerker mag geen instellingen of team wijzigen", async () => {
-  await call("POST", "hq/team", { cookie: admin, body: { email: "medewerker@sitemaker.test", role: "medewerker" } });
+  await call("POST", "hq/medewerkers", { cookie: admin, body: { email: "medewerker@sitemaker.test", role: "medewerker" } });
   const mw = await login("medewerker@sitemaker.test", "hq");
   assert.equal((await call("PUT", "hq/settings", { cookie: mw, body: { notify: { email: "a@b.test" } } })).status, 403);
-  assert.equal((await call("POST", "hq/team", { cookie: mw, body: { email: "x@y.test" } })).status, 403);
+  assert.equal((await call("POST", "hq/medewerkers", { cookie: mw, body: { email: "x@y.test" } })).status, 403);
   assert.equal((await call("GET", "hq/customers", { cookie: mw })).status, 200);
 });
 await test("uitloggen beëindigt de sessie", async () => {
@@ -667,6 +667,112 @@ console.log("Bedrijf (afdelingen, briefings, vragen)");
     assert.equal(r.busy.researcher, true); assert.equal(voor, false);
   });
   globalThis.__aiFake = vorigeAi2;
+}
+
+console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
+{
+  process.env.DOMAIN_FAKE = "1";
+  const ka = await login("jan@een.test", "portaal"), kb = await login("piet@twee.test", "portaal");
+  await test("klant kiest domein zelf houden: instructies, controle en actief", async () => {
+    let st = (await call("GET", "portal/state", { cookie: kb })).data;
+    assert.equal(st.domeinGekozen, false);
+    assert.equal((await call("POST", "portal/domein", { cookie: kb, body: { keuze: "eigen", naam: "https://www.TweeBedrijf.nl/" } })).status, 200);
+    let a = (await call("GET", "portal/account", { cookie: kb })).data;
+    assert.equal(a.domein.domein.naam, "tweebedrijf.nl"); assert.equal(a.domein.domein.keuze, "eigen");
+    const c = await call("POST", "portal/domein/check", { cookie: kb });
+    assert.equal(c.status, 200, JSON.stringify(c.data)); assert.ok(c.data.domein.dnsOk);
+    st = (await call("GET", "portal/state", { cookie: kb })).data; assert.equal(st.domeinGekozen, true);
+    const lijst = (await call("GET", "hq/domeinen", { cookie: admin })).data.domeinen;
+    assert.ok(lijst.some((d) => d.naam === "tweebedrijf.nl"));
+    assert.equal((await call("GET", "hq/domeinen", { cookie: kb })).status, 403);
+  });
+  await test("nieuw domein: bezet wordt geweigerd, ander klant kan hetzelfde domein niet claimen", async () => {
+    assert.equal((await call("POST", "portal/domein", { cookie: ka, body: { keuze: "nieuw", naam: "bezet-bedrijf.nl" } })).status, 409);
+    assert.equal((await call("POST", "portal/domein", { cookie: ka, body: { keuze: "eigen", naam: "tweebedrijf.nl" } })).status, 409);
+    const r = await call("POST", "portal/domein", { cookie: ka, body: { keuze: "verhuizen", naam: "eenbedrijf.nl", provider: "TransIP", verhuiscode: "ABC123" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.domein.status, "verhuizen");
+    const d = (await call("GET", "hq/domeinen", { cookie: admin })).data.domeinen.find((x) => x.naam === "eenbedrijf.nl");
+    assert.equal(d.verhuiscode, "ABC123");
+    assert.equal((await call("PUT", "hq/domeinen/" + d.id, { cookie: admin, body: { status: "aangevraagd", verlooptOp: "2027-10-01" } })).status, 200);
+  });
+  await test("klantvraag via portaal: Emma zet antwoord klaar, Maxim verstuurt, klant ziet het", async () => {
+    const vorige = globalThis.__aiFake;
+    globalThis.__aiFake = ({ system, prompt }) => /Emma van de klantenservice/.test(system) ? "Hoi Jan, dat kan via het portaal.\n\nGroet, Sitemaker" : vorige({ system, prompt });
+    assert.equal((await call("POST", "portal/vragen", { cookie: ka, body: { onderwerp: "", tekst: "x" } })).status, 400);
+    const r = await call("POST", "portal/vragen", { cookie: ka, body: { onderwerp: "Logo vervangen?", tekst: "Kan ik mijn logo ook zelf vervangen?" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    let t = (await call("GET", "hq/service", { cookie: admin })).data.tickets[0];
+    assert.equal(t.conceptStatus, "klaar"); assert.match(t.concept, /Groet, Sitemaker/);
+    const n0 = captured.length;
+    assert.equal((await call("POST", `hq/service/${t.id}/antwoord`, { cookie: admin, body: { tekst: t.concept } })).status, 200);
+    assert.ok(captured.slice(n0).some((m) => m.to === "jan@een.test" && /Re: Logo vervangen/.test(m.subject)));
+    const eigen = (await call("GET", "portal/account", { cookie: ka })).data.vragen;
+    assert.equal(eigen[0].status, "beantwoord"); assert.equal(eigen[0].berichten.length, 2);
+    assert.equal((await call("GET", "portal/account", { cookie: kb })).data.vragen.length, 0, "andere klant ziet het niet");
+    assert.equal((await call("POST", `portal/vragen/${t.id}`, { cookie: kb, body: { tekst: "hack" } })).status, 404);
+    globalThis.__aiFake = vorige;
+  });
+  await test("mail van een klant wordt een klantvraag (en niet dubbel)", async () => {
+    const { ticketFromMail } = await import("../netlify/lib/service.mjs");
+    const t = await ticketFromMail({ from: "piet@twee.test", subject: "Factuur vraag", body: "Klopt mijn factuur?", messageId: "<m1@twee.test>" });
+    assert.ok(t);
+    assert.equal(await ticketFromMail({ from: "piet@twee.test", subject: "Factuur vraag", body: "Klopt mijn factuur?", messageId: "<m1@twee.test>" }), null);
+    await ticketFromMail({ from: "piet@twee.test", subject: "Re: Factuur vraag", body: "Nog een aanvulling", messageId: "<m2@twee.test>" });
+    assert.equal((await q("SELECT COUNT(*)::int AS n FROM ticket_messages WHERE ticket_id = $1", [t.id]))[0].n, 2);
+    assert.equal(await ticketFromMail({ from: "onbekend@x.test", subject: "Hoi", body: "spam", messageId: "<m3@x.test>" }), null);
+  });
+  await test("review: alleen met live site, één keer, eerst verborgen", async () => {
+    assert.equal((await call("GET", "portal/account", { cookie: kb })).data.review.kan, false);
+    assert.equal((await call("POST", "portal/review", { cookie: kb, body: { rating: 5, tekst: "Heel goed gedaan allemaal!", naam: "Piet", toestemming: true } })).status, 400);
+    assert.equal((await call("POST", "portal/review", { cookie: ka, body: { rating: 5, tekst: "Heel goed gedaan allemaal!", naam: "Jan", toestemming: false } })).status, 400);
+    const r = await call("POST", "portal/review", { cookie: ka, body: { rating: 5, titel: "Snel", tekst: "Heel goed gedaan allemaal, binnen twee dagen online.", naam: "Jan", toestemming: true } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.gedaan.gepubliceerd, false);
+    assert.equal((await call("POST", "portal/review", { cookie: ka, body: { rating: 4, tekst: "Nog een keer proberen dan maar", naam: "Jan", toestemming: true } })).status, 409);
+    const pub = (await call("GET", "reviews")).data;
+    assert.ok(!JSON.stringify(pub).includes("binnen twee dagen online"), "niet automatisch op de website");
+    assert.ok((await call("GET", "hq/reviews", { cookie: admin })).data.reviews.some((x) => x.uitPortaal));
+  });
+  await test("opzeggen: reden + bedrijfsnaam verplicht, einddatum, intrekken, afronden", async () => {
+    const { opzegEinde, runCancellations } = await import("../netlify/lib/service.mjs");
+    assert.equal(opzegEinde(new Date("2027-03-10T10:00:00Z")), "2027-04-30");
+    assert.equal(opzegEinde(new Date("2027-12-31T23:30:00Z")), "2028-02-29", "in Amsterdam is het dan al 1 januari");
+    assert.equal((await call("POST", "portal/opzeggen", { cookie: ka, body: { reden: "te_duur", akkoord: true, bevestig: "verkeerd" } })).status, 400);
+    assert.equal((await call("POST", "portal/opzeggen", { cookie: ka, body: { reden: "", akkoord: true, bevestig: "Testklant Een" } })).status, 400);
+    assert.equal((await call("POST", "portal/opzeggen", { cookie: ka, body: { reden: "te_duur", akkoord: false, bevestig: "Testklant Een" } })).status, 400);
+    assert.equal((await call("POST", "portal/opzeggen/bel-me", { cookie: ka, body: { reden: "te_duur" } })).status, 200);
+    assert.ok((await q("SELECT 1 FROM tickets WHERE bron = 'opzeggen'")).length);
+    const r = await call("POST", "portal/opzeggen", { cookie: ka, body: { reden: "te_duur", toelichting: "Even geen budget", akkoord: true, bevestig: "testklant een " } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.status, "aangevraagd");
+    assert.ok(captured.some((m) => m.to === "jan@een.test" && /opzegging/i.test(m.subject)));
+    assert.equal((await call("GET", "portal/state", { cookie: ka })).data.opzegging, r.data.einde);
+    assert.equal((await call("POST", "portal/opzeggen/intrekken", { cookie: ka })).status, 200);
+    assert.equal((await call("POST", "portal/opzeggen", { cookie: ka, body: { reden: "anders", akkoord: true, bevestig: "Testklant Een" } })).status, 200);
+    await q("UPDATE customers SET opzeg_einde = CURRENT_DATE - 1 WHERE id = $1", [c1]);
+    assert.equal((await runCancellations()).done, 1);
+    const [c] = await q("SELECT opzeg_status, site_status FROM customers WHERE id = $1", [c1]);
+    assert.equal(c.opzeg_status, "afgerond"); assert.equal(c.site_status, "opgezegd");
+    assert.equal((await call("POST", `hq/customers/${c1}/opzegging/intrekken`, { cookie: admin })).status, 400);
+  });
+  await test("kosten invullen, winst per maand en export voor de boekhouder", async () => {
+    assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Netlify", bedrag: "", datum: "2026-01-01" } })).status, 400);
+    const vandaag = new Date().toISOString().slice(0, 10);
+    assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Netlify Pro", leverancier: "Netlify", categorie: "hosting", soort: "maandelijks", bedrag: "19,00", btw: "0", datum: "2026-01-01" } })).status, 200);
+    assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Domein", categorie: "domeinen", soort: "jaarlijks", bedrag: "12,00", btw: "2,52", datum: "2026-01-15" } })).status, 200);
+    assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Laptop", categorie: "overig", soort: "eenmalig", bedrag: "1.000,00", btw: "210,00", datum: vandaag } })).status, 200);
+    const d = (await call("GET", "hq/kosten", { cookie: admin })).data;
+    assert.equal(d.kosten.length, 3); assert.equal(d.vasteKostenPerMaand, 1900 + 100);
+    assert.equal(d.huidig.kosten, 1900 + 100000 + (new Date().getUTCMonth() === 0 ? 1200 : 0));
+    assert.equal(d.maanden.length, 12);
+    const csv = await call("GET", `hq/kosten/export?jaar=${new Date().getFullYear()}&kwartaal=${Math.floor(new Date().getMonth() / 3) + 1}`, { cookie: admin, raw: true });
+    assert.equal(csv.status, 200); const txt = await csv.text();
+    assert.match(txt, /Inkoop;.*Netlify Pro \(maandelijks\);Hosting;19,00/); assert.match(txt, /Laptop;Overig;1000,00;210,00;1210,00/);
+    assert.equal((await call("GET", "hq/kosten/export?jaar=x", { cookie: admin })).status, 400);
+    const team = (await call("GET", "hq/team", { cookie: admin })).data;
+    assert.ok(team.depts.finance.metrics.some((m) => /vaste kosten/.test(m.label) && /20,00/.test(m.value)));
+    assert.ok(team.depts.klantenservice.metrics.some((m) => /klantvragen/.test(m.label)));
+    assert.ok((await call("GET", "hq/medewerkers", { cookie: admin })).data.me);
+  });
+  delete process.env.DOMAIN_FAKE;
 }
 
 console.log(`\n${passed} tests geslaagd.`);

@@ -72,6 +72,8 @@ export const DEFAULT_SETTINGS = {
     actief: true, duur: 15, interval: 30, minUren: 4, dagenVooruit: 21, maxPerDag: 0, soort: "telefoon", videoLink: "",
     week: { 0: [], 1: [["09:00", "12:00"], ["13:00", "17:00"]], 2: [["09:00", "12:00"], ["13:00", "17:00"]], 3: [["09:00", "12:00"], ["13:00", "17:00"]], 4: [["09:00", "12:00"], ["13:00", "17:00"]], 5: [["09:00", "12:00"], ["13:00", "17:00"]], 6: [] },
   },
+  // Tracking op de website (alleen na toestemming via de cookiebanner).
+  tracking: { metaPixelId: "" },
   company: {
     name: "Sitemaker", legalName: "", address: "", postcode: "", city: "", kvk: "", vat: "", iban: "",
     email: "", phone: "", website: "https://sitemaker.nl",
@@ -128,7 +130,7 @@ export const TZ = "Europe/Amsterdam";
 export const monthKey = (d = new Date()) => d.toLocaleDateString("sv-SE", { timeZone: TZ }).slice(0, 7);
 export const dayKey = (d = new Date()) => d.toLocaleDateString("sv-SE", { timeZone: TZ });
 export const hourAms = (d = new Date()) => Number(d.toLocaleString("en-GB", { timeZone: TZ, hour: "2-digit", hour12: false }));
-export const euro = (c) => "€" + (Number(c || 0) / 100).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const euro = (c) => (Number(c) < 0 ? "-€" : "€") + (Math.abs(Number(c || 0)) / 100).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const centsToMollie = (c) => (Number(c) / 100).toFixed(2);
 export function addMonths(dateStr, n) {
   const d = new Date(dateStr + "T12:00:00Z");

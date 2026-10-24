@@ -45,6 +45,10 @@ export async function overview() {
       (SELECT COALESCE(SUM(amount_cents),0)::int FROM invoices WHERE status = 'betaald' AND to_char(paid_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM') = $1) AS ontvangen_maand,
       (SELECT COUNT(*)::int FROM leads WHERE status = 'nieuw') AS leads_klaar,
       (SELECT COUNT(*)::int FROM leads WHERE status = 'reactie') AS leads_reactie,
+      (SELECT COUNT(*)::int FROM tickets WHERE status = 'open') AS klantvragen,
+      (SELECT COUNT(*)::int FROM domains WHERE status IN ('verhuizen','registreren','probleem')) AS domeinen_werk,
+      (SELECT COUNT(*)::int FROM reviews WHERE source = 'portaal' AND NOT published) AS reviews_nieuw,
+      (SELECT COUNT(*)::int FROM customers WHERE opzeg_status = 'aangevraagd') AS opzeggingen,
       (SELECT COUNT(*)::int FROM leads WHERE status IN ('verstuurd','opgevolgd') AND sent_at > NOW() - INTERVAL '30 days') AS leads_verstuurd_30d`, [month]);
   const todo = await q(`SELECT cr.*, c.company FROM change_requests cr JOIN customers c ON c.id = cr.customer_id
                         WHERE cr.status IN ('ontvangen','in_behandeling') ORDER BY cr.created_at LIMIT 20`);
@@ -114,6 +118,8 @@ export async function getCustomer(id) {
     changes: changes.map(hqChange), invoices: invoices.map(publicInvoice),
     payments: payments.map(publicPayment), log,
     subscription: await subscriptionInfo(c),
+    domein: (await (await import("./domains.mjs")).listDomains()).find((x) => x.customerId === c.id) || null,
+    opzegging: c.opzeg_status ? { status: c.opzeg_status, at: c.opzeg_at, einde: c.opzeg_einde, reden: c.opzeg_reden, toelichting: c.opzeg_toelichting } : null,
   };
 }
 
@@ -500,6 +506,10 @@ export async function saveAdminSettings(b, user) {
       invoicePrefix: str(x.invoicePrefix ?? s.billing.invoicePrefix, 10).replace(/[^A-Z0-9]/gi, "").toUpperCase() || "SM",
       autoInvoices: x.autoInvoices !== false,
     });
+  }
+  if (b.tracking) {
+    const id = str(b.tracking.metaPixelId, 30).replace(/\D/g, "");
+    await saveSetting("tracking", { metaPixelId: id });
   }
   if (b.notify) {
     const e = cleanEmail(b.notify.email);
