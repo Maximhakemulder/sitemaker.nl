@@ -10,7 +10,7 @@ const b = await chromium.launch({ proxy: process.env.HTTPS_PROXY ? { server: pro
 let slecht = 0;
 for (const url of process.argv.slice(2)) {
   const regels = [];
-  for (const [w, h] of [[390, 844], [1280, 800], [1920, 1080], [2560, 1440]]) {
+  for (const [w, h] of [[390, 844], [1280, 800], [1440, 1260], [1920, 1080], [2560, 1440]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: h }, reducedMotion: "reduce", ignoreHTTPSErrors: true });
     const p = await ctx.newPage();
     await p.goto(url, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});

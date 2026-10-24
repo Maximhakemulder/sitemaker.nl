@@ -32,7 +32,7 @@ $$('[data-toon="icoon"] use',v).forEach(function(x){if(u)x.setAttribute("href",u
 $$('[data-toon="titel"]',v).forEach(function(x){if(t)x.textContent=t.textContent});
 $$('[data-toon="nummer"]',v).forEach(function(x){x.textContent=i+1});
 $$("[data-voortgang]",v).forEach(function(x){x.style.strokeDashoffset=100-Number(el.dataset.stand||((i+1)/$$("[data-stap]",v).length*100))})}
-function maat(){var breed=innerWidth>=900;hor.forEach(function(s){var sp=s.querySelector("[data-spoor]");if(!sp)return;var hd=sp.parentElement,over=sp.scrollWidth-innerWidth;
+function maat(){var breed=innerWidth>=900;hor.forEach(function(s){var sp=s.querySelector("[data-spoor]");if(!sp)return;var hd=null,n=sp.parentElement;while(n&&n!==s){if(getComputedStyle(n).position==="sticky"){hd=n;break}n=n.parentElement}var over=sp.scrollWidth-innerWidth;
 // alleen horizontaal schuiven als er echt iets te schuiven valt; anders gewoon een normale sectie (geen leeg scherm op grote schermen)
 if(breed&&over>innerWidth*.25){s.removeAttribute("data-horizontaal-uit");var hh=Math.min(innerHeight,sp.offsetHeight+Math.min(240,innerHeight*.25));if(hd&&hd!==s){hd.style.height=hh+"px";hd.style.top=Math.max(0,(innerHeight-hh)/2)+"px"}s.style.height=(over+hh)+"px"}
 else{s.setAttribute("data-horizontaal-uit","");s.style.height="";sp.style.transform="";if(hd&&hd!==s){hd.style.height="";hd.style.top=""}}})}
