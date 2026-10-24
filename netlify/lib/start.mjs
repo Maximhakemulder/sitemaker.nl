@@ -1,7 +1,7 @@
 // Start in het portaal: (1) bedrijfsgegevens aanvullen, (2) akkoord en eerste betaling (met machtiging voor de maandtermijn),
 // (3) informatie voor de website aanleveren. Daarna start de klok van 48 uur (2 werkdagen) voor de oplevering.
 import crypto from "node:crypto";
-import { q, one, OFFER, str, fail, audit, escH, publicBase, getSettings, dayKey, addMonths } from "./core.mjs";
+import { q, one, OFFER, str, fail, audit, escH, publicBase, getSettings, dayKey, addMonths, portalUrl } from "./core.mjs";
 import { putFile, getFile, deleteFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady, startFirstPayment } from "./mollie.mjs";
@@ -116,7 +116,7 @@ export async function markStarted(customerId) {
   if (!c.onboarding) return;
   const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [c.id]);
   if (!u) return;
-  const link = `${publicBase()}/portaal/`;
+  const link = `${portalUrl()}`;
   await sendMail({
     to: u.email, kind: "start-betaald", ref: `customer:${c.id}`, subject: "Je betaling is binnen: lever nu je informatie aan",
     text: `Beste ${c.contact_name || c.company},\n\nBedankt, je betaling is binnen en je abonnement is gestart.\n\nVolgende stap: lever in je portaal de informatie voor je website aan (teksten, logo en foto's): ${link}\n\nZodra we alles hebben, staat je website binnen ${OFFER.deliveryText} online.\n\nMet vriendelijke groet,\nSitemaker`,
@@ -162,8 +162,8 @@ export async function saveIntake(user, b) {
     notifyStaff(`Informatie binnen: ${c.company} (bouwen)`, [`${c.company} heeft de informatie voor de website aangeleverd (${files[0].n} bestanden).`, `Website online uiterlijk ${dueTxt}.`], `/hq/#klant/${c.id}`),
     sendMail({
       to: user.email, kind: "start-informatie", ref: `customer:${c.id}`, subject: "We hebben je informatie: we gaan bouwen",
-      text: `Bedankt! We hebben je informatie ontvangen en gaan je website bouwen. Binnen ${OFFER.deliveryText} staat hij online; je krijgt dan een mail.\n\nJe portaal: ${publicBase()}/portaal/`,
-      html: brandHtml({ title: "We gaan bouwen", intro: ["Bedankt! We hebben je informatie ontvangen.", `Binnen <b>${OFFER.deliveryText}</b> staat je website online. Je krijgt dan een mail.`], button: { label: "Naar je portaal", href: `${publicBase()}/portaal/` } }),
+      text: `Bedankt! We hebben je informatie ontvangen en gaan je website bouwen. Binnen ${OFFER.deliveryText} staat hij online; je krijgt dan een mail.\n\nJe portaal: ${portalUrl()}`,
+      html: brandHtml({ title: "We gaan bouwen", intro: ["Bedankt! We hebben je informatie ontvangen.", `Binnen <b>${OFFER.deliveryText}</b> staat je website online. Je krijgt dan een mail.`], button: { label: "Naar je portaal", href: `${portalUrl()}` } }),
     }),
   ]);
   return { ok: true, sent: true, dueAt: due };

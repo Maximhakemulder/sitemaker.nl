@@ -1,6 +1,6 @@
 // Facturen: nummering, btw, PDF in huisstijl en versturen.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { q, one, getSettings, euro, dayKey, addDays, escH, publicBase, fail } from "./core.mjs";
+import { q, one, getSettings, euro, dayKey, addDays, escH, publicBase, fail, portalUrl } from "./core.mjs";
 import { putFile } from "./files.mjs";
 import { sendMail, brandHtml } from "./mail.mjs";
 import { LOGO_PNG_B64 } from "./logo-pdf.mjs";
@@ -144,7 +144,7 @@ export async function mailInvoice(invoiceId) {
   if (!inv) fail(404, "Factuur niet gevonden.");
   const to = inv.customer_email || (await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [inv.customer_id]))?.email;
   if (!to) fail(400, "Deze klant heeft geen e-mailadres.");
-  const link = `${publicBase()}/portaal/#facturen`;
+  const link = `${portalUrl()}#facturen`;
   const paid = inv.status === "betaald";
   const res = await sendMail({
     to, kind: "factuur", ref: `invoice:${inv.id}`,

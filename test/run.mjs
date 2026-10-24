@@ -408,6 +408,21 @@ await test("bestaande klanten zien geen startflow", async () => {
   assert.equal((await call("PUT", "portal/start/gegevens", { cookie: k2, body: {} })).status, 400);
 });
 
+console.log("Subdomeinen");
+await test("links in mails volgen PORTAL_URL en HQ_URL", async () => {
+  const { portalUrl, hqUrl } = await import("../netlify/lib/core.mjs");
+  assert.equal(portalUrl(), "https://sitemaker.test/portaal/"); assert.equal(hqUrl(), "https://sitemaker.test/hq/");
+  process.env.PORTAL_URL = "https://mijn.sitemaker.nl/"; process.env.HQ_URL = "https://hq.sitemaker.nl";
+  try {
+    assert.equal(portalUrl(), "https://mijn.sitemaker.nl/"); assert.equal(hqUrl(), "https://hq.sitemaker.nl/");
+    const voor = captured.length;
+    const r = await call("POST", `hq/customers/${c2}/welcome`, { cookie: admin, body: {} });
+    assert.equal(r.status, 200);
+    const m = captured.slice(voor).find((x) => x.to === "piet@twee.test");
+    assert.ok(m.text.includes("https://mijn.sitemaker.nl/") && !m.text.includes("/portaal/"), m.text);
+  } finally { delete process.env.PORTAL_URL; delete process.env.HQ_URL; }
+});
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

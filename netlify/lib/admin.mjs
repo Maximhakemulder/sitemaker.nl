@@ -1,5 +1,5 @@
 // Sitemaker HQ: alles wat medewerkers beheren. Rollen: medewerker en admin (admin mag ook instellingen, team en abonnementen opzeggen).
-import { q, one, tx, OFFER, getSettings, saveSetting, DEFAULT_SETTINGS, str, cleanEmail, EMAIL_RE, normUrl, monthKey, dayKey, euro, escH, publicBase, fail, audit, env } from "./core.mjs";
+import { q, one, tx, OFFER, getSettings, saveSetting, DEFAULT_SETTINGS, str, cleanEmail, EMAIL_RE, normUrl, monthKey, dayKey, euro, escH, publicBase, fail, audit, env, portalUrl } from "./core.mjs";
 import { startStage, deliveryDue, hqStart } from "./start.mjs";
 import { publicCustomer, publicChange, publicInvoice, changeUsage, mailChangeStatus, STATUS_LABEL, freeSlot } from "./portal.mjs";
 import { createInvoice, generateInvoicePdf, mailInvoice, partsFromGross, priceParts, companyComplete, vatModeSet } from "./billing.mjs";
@@ -190,7 +190,7 @@ export async function sendWelcome(customerId, user) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [customerId]);
   const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
-  const link = `${publicBase()}/portaal/`;
+  const link = `${portalUrl()}`;
   const st = startStage(c);
   const res = st && st !== "klaar" && st !== "bouwen" ? await sendMail({
     to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: start je website in je portaal",

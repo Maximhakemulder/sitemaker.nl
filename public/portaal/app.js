@@ -19,7 +19,7 @@
       if (o.open) return kiesKlant();
     } catch {}
     const r = await SM.inloggen(app, { portal: "portaal", kop: "Inloggen op je klantenportaal", titel: "Je website, je wijzigingen en je facturen op één plek.", tekst: "Geef wijzigingen door, volg de status en vind je facturen terug." });
-    if (r.role !== "klant") { location.href = "/hq/"; return; }
+    if (r.role !== "klant") { location.href = location.hostname.startsWith("mijn.") ? "https://hq." + location.hostname.slice(5) + "/" : "/hq/"; return; }
     laad();
   }
 

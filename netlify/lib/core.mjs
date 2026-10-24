@@ -169,6 +169,11 @@ export function siteUrl(req) {
   return "https://sitemaker.nl";
 }
 // Publieke basis-URL voor links in mails en webhooks: altijd de productie-URL als die bekend is.
+// Klantenportaal en HQ kunnen op een eigen subdomein staan (PORTAL_URL=https://mijn.sitemaker.nl, HQ_URL=https://hq.sitemaker.nl).
+// Zonder die instellingen: <website>/portaal/ en <website>/hq/.
+export const portalUrl = () => (env("PORTAL_URL") ? env("PORTAL_URL").replace(/\/+$/, "") : publicBase() + "/portaal") + "/";
+export const hqUrl = () => (env("HQ_URL") ? env("HQ_URL").replace(/\/+$/, "") : publicBase() + "/hq") + "/";
+
 export function publicBase(req) {
   const fixed = env("PUBLIC_BASE_URL") || (env("CONTEXT") === "production" ? env("URL") : "");
   return (fixed || siteUrl(req)).replace(/\/$/, "");

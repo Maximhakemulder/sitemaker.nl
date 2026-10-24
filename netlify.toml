@@ -32,6 +32,45 @@
     X-Robots-Tag = "noindex, nofollow"
     Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
+# ---- Subdomeinen (zelfde project): mijn.sitemaker.nl = klantenportaal, hq.sitemaker.nl = HQ.
+# Deze regels doen pas iets zodra die domeinen in Netlify aan dit project hangen; tot dan werkt alles via /portaal/ en /hq/.
+[[redirects]]
+  from = "https://mijn.sitemaker.nl/"
+  to = "/portaal/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://hq.sitemaker.nl/"
+  to = "/hq/index.html"
+  status = 200
+  force = true
+
+# Oude adressen op de website sturen door naar het subdomein (querystring zoals ?betaling=1 gaat mee).
+[[redirects]]
+  from = "https://sitemaker.nl/portaal/"
+  to = "https://mijn.sitemaker.nl/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.sitemaker.nl/portaal/"
+  to = "https://mijn.sitemaker.nl/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://sitemaker.nl/hq/"
+  to = "https://hq.sitemaker.nl/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.sitemaker.nl/hq/"
+  to = "https://hq.sitemaker.nl/"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "/portaal"
   to = "/portaal/"

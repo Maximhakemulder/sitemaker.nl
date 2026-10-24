@@ -2,7 +2,7 @@
 import { markStarted } from "./start.mjs";
 // Stroom: eerste betaling (bouwprijs, sequenceType "first") geeft een incassomachtiging;
 // daarna maakt de webhook het maandabonnement aan. Elke betaalde termijn wordt een factuur.
-import { env, q, one, tx, getSettings, centsToMollie, dayKey, addMonths, publicBase, fail, audit, escH, euro } from "./core.mjs";
+import { env, q, one, tx, getSettings, centsToMollie, dayKey, addMonths, publicBase, fail, audit, escH, euro, portalUrl } from "./core.mjs";
 import { priceParts, createInvoice, generateInvoicePdf, vatModeSet, mailInvoice } from "./billing.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 
@@ -47,7 +47,7 @@ export async function startFirstPayment(customerId, { startDate, userId } = {}) 
     amount: { currency: "EUR", value: centsToMollie(parts.gross) },
     description: `Sitemaker website ${c.company}`.slice(0, 255),
     customerId: mcid, sequenceType: "first",
-    redirectUrl: `${publicBase()}/portaal/?betaling=1`,
+    redirectUrl: `${portalUrl()}?betaling=1`,
     webhookUrl: webhookUrl(),
     locale: "nl_NL",
     metadata: { sitemakerCustomerId: c.id, kind: "eerste", startDate: startDate || null },
@@ -69,7 +69,7 @@ export async function payInvoiceLink(invoiceId, userId) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [inv.customer_id]);
   const p = await api("POST", "/payments", {
     amount: { currency: "EUR", value: centsToMollie(inv.amount_cents) },
-    description: `Factuur ${inv.number}`, redirectUrl: `${publicBase()}/portaal/?betaling=1#facturen`, webhookUrl: webhookUrl(), locale: "nl_NL",
+    description: `Factuur ${inv.number}`, redirectUrl: `${portalUrl()}?betaling=1#facturen`, webhookUrl: webhookUrl(), locale: "nl_NL",
     customerId: c.mollie_customer_id || undefined,
     metadata: { sitemakerCustomerId: c.id, kind: "factuur", invoiceId: inv.id },
   });

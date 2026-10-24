@@ -1,7 +1,7 @@
 // Mail via SMTP (standaard Hostnet, zoals bij de andere HQ's). Alles wordt gelogd in mail_log.
 import nodemailer from "nodemailer";
 import crypto from "node:crypto";
-import { env, q, escH, publicBase, getSettings } from "./core.mjs";
+import { env, q, escH, publicBase, getSettings, hqUrl } from "./core.mjs";
 
 export function mailEnv() {
   const user = env("MAIL_USER");
@@ -77,6 +77,8 @@ ${intro.map(p).join("")}${btn}${after.map(p).join("")}
 </div></body></html>`;
 }
 
+// "/hq/#klant/3" → "https://hq.sitemaker.nl/#klant/3" (of <website>/hq/#klant/3 zonder HQ_URL).
+const hqLink = (link) => hqUrl() + String(link).replace(/^\/hq\/?/, "");
 export async function notifyStaff(subject, lines, link) {
   const s = await getSettings();
   const to = s.notify?.email || env("NOTIFY_EMAIL") || mailEnv().from;
@@ -84,7 +86,7 @@ export async function notifyStaff(subject, lines, link) {
   const base = publicBase();
   return sendMail({
     to, subject, kind: "melding",
-    text: lines.join("\n") + (link ? `\n\nOpen in HQ: ${base}${link}` : ""),
-    html: brandHtml({ title: subject, intro: lines.map(escH), button: link ? { label: "Open in HQ", href: base + link } : null }),
+    text: lines.join("\n") + (link ? `\n\nOpen in HQ: ${hqLink(link)}` : ""),
+    html: brandHtml({ title: subject, intro: lines.map(escH), button: link ? { label: "Open in HQ", href: hqLink(link) } : null }),
   });
 }

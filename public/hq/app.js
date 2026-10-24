@@ -21,13 +21,15 @@
   const chip = (map, k) => { const [t, c] = map[k] || [k, "s-grijs"]; return html`<span class="status ${c}">${t}</span>`; };
   const opties = (map, cur) => Object.entries(map).map(([k, [t]]) => html`<option value="${k}" ${k === cur ? raw("selected") : ""}>${t}</option>`);
   const isAdmin = () => me?.role === "admin";
+  // Op hq.sitemaker.nl is "/" het dashboard zelf; de website staat dan op het hoofddomein.
+  const websiteUrl = location.hostname.startsWith("hq.") ? "https://" + location.hostname.slice(3) + "/" : "/";
 
   // ------------------------------------------------ start en kader
   SM.onLoggedOut = () => start();
   async function start() {
     try { const r = await api("auth/me"); if (r.user && r.user.role !== "klant") { me = r.user; return kader(); } } catch {}
     const r = await SM.inloggen(app, { portal: "hq", kop: "Inloggen op Sitemaker HQ", titel: "Sitemaker HQ", tekst: "Klanten, wijzigingen, facturen, betalingen, sites en B2B op één plek." });
-    if (r.role === "klant") { location.href = "/portaal/"; return; }
+    if (r.role === "klant") { location.href = location.hostname.startsWith("hq.") ? "https://mijn." + location.hostname.slice(3) + "/" : "/portaal/"; return; }
     const m = await api("auth/me"); me = m.user; kader();
   }
 
@@ -53,7 +55,7 @@
         <aside class="hq-zij" id="zij">
           <div class="logo"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker"><b>HQ</b></div>
           <nav class="hq-nav" aria-label="HQ">${NAV.map(([k, t, svg, kop]) => html`${kop ? html`<div class="tussen">${kop}</div>` : ""}<a href="#${k}" data-nav="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${raw(svg)}</svg>${t}<span class="tel" data-badge="${k}" hidden></span></a>`)}</nav>
-          <div class="onder">${me.open ? html`<b>Open modus</b>` : html`${me.email}<br>${me.role === "admin" ? "Beheerder" : "Medewerker"} · <button class="knop knop-tekst" id="uit">Uitloggen</button>`}<br><a href="/" target="_blank" rel="noopener" class="knop-tekst knop">Website bekijken</a></div>
+          <div class="onder">${me.open ? html`<b>Open modus</b>` : html`${me.email}<br>${me.role === "admin" ? "Beheerder" : "Medewerker"} · <button class="knop knop-tekst" id="uit">Uitloggen</button>`}<br><a href="${websiteUrl}" target="_blank" rel="noopener" class="knop-tekst knop">Website bekijken</a></div>
         </aside>
         <div class="hq-rechts">${me.open ? html`<div class="open-balk">Open modus: HQ is zonder inloggen bereikbaar. Dit gaat vanzelf dicht zodra de mail is ingesteld.</div>` : ""}<main class="hq-main" id="inhoud" tabindex="-1"></main></div>
       </div>`);
