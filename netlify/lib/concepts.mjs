@@ -10,6 +10,7 @@ import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
 import { ontwerp, toonOntwerp, sanitize } from "./ontwerp.mjs";
+import { BEWEGING } from "./beweging.mjs";
 
 export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
@@ -218,23 +219,46 @@ export const stockReady = () => !!(env("PEXELS_API_KEY") || env("PIXABAY_API_KEY
 async function zoekStock(zoek, aantal) {
   try {
     if (env("PEXELS_API_KEY")) {
-      const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${aantal}&orientation=landscape&locale=nl-NL`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
-      if (r.ok) return ((await r.json()).photos || []).map((p) => ({ src: p.src?.large2x || p.src?.large, alt: p.alt, url: p.url, door: p.photographer }));
+      const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${aantal}&orientation=landscape`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
+      if (r.ok) return ((await r.json()).photos || []).map((p) => ({ src: p.src?.large2x || p.src?.large, klein: p.src?.medium, alt: p.alt, url: p.url, door: p.photographer }));
     }
     if (env("PIXABAY_API_KEY")) {
-      const r = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(env("PIXABAY_API_KEY"))}&q=${encodeURIComponent(zoek)}&lang=nl&image_type=photo&orientation=horizontal&safesearch=true&min_width=1200&per_page=${Math.max(3, aantal)}`, { signal: AbortSignal.timeout(6000) });
-      if (r.ok) return ((await r.json()).hits || []).map((p) => ({ src: p.largeImageURL || p.webformatURL, alt: p.tags, url: p.pageURL, door: p.user }));
+      const r = await fetch(`https://pixabay.com/api/?key=${encodeURIComponent(env("PIXABAY_API_KEY"))}&q=${encodeURIComponent(zoek)}&lang=en&image_type=photo&safesearch=true&min_width=1200&per_page=${Math.max(3, aantal)}`, { signal: AbortSignal.timeout(6000) });
+      if (r.ok) return ((await r.json()).hits || []).map((p) => ({ src: p.largeImageURL || p.webformatURL, klein: p.webformatURL, alt: p.tags, url: p.pageURL, door: p.user }));
     }
   } catch {}
   return [];
 }
-async function stockFotos(conceptId, zoek, nodig, start) {
-  if (!stockReady() || !zoek || nodig <= 0) return [];
-  const gevonden = await zoekStock(zoek, Math.min(15, nodig + 4));
+
+// Claude kijkt naar de kandidaten en kiest alleen foto's die echt bij hun werk passen (geen zonnepanelen bij een CV-installateur).
+async function keurStock(kandidaten, { bedrijf, vak, diensten }) {
+  const metBeeld = [];
+  for (const k of kandidaten) {
+    const r = k.klein && await get(k.klein, { binary: true, max: 600000, timeout: 5000 });
+    const t = r?.buf && imageSize(r.buf);
+    if (t && /^image\/(jpeg|png|webp)$/.test(t.type)) metBeeld.push({ ...k, b64: r.buf.toString("base64"), type: t.type });
+  }
+  if (!metBeeld.length) return [];
+  if (env("AI_FAKE") && !globalThis.__aiFake) return metBeeld;
+  const antwoord = await claude({
+    system: "Je beoordeelt sfeerfoto's voor de website van een Nederlands bedrijf. Een foto is alleen goed als een klant hem direct herkent als HUN soort werk of omgeving. Twijfel = afkeuren. Afkeuren: ander vakgebied, buitenlands ogende winkels/borden, tekst of watermerken, overdreven poserende stockmodellen, lage kwaliteit.",
+    prompt: `Bedrijf: ${bedrijf}${vak ? ` (${vak})` : ""}. Diensten: ${diensten.join(", ") || "onbekend"}.\nDe foto's hierboven zijn genummerd 1 t/m ${metBeeld.length} (in volgorde). Welke passen echt bij dit bedrijf? Antwoord alleen met JSON: {"goed":[nummers, beste eerst]}`,
+    images: metBeeld.map((k) => ({ type: k.type, data: k.b64 })), maxTokens: 400, timeoutMs: 60000,
+  }).catch(() => "");
+  const goed = parseJson(antwoord)?.goed;
+  if (!Array.isArray(goed)) return [];
+  return [...new Set(goed.map(Number))].filter((n) => n >= 1 && n <= metBeeld.length).map((n) => metBeeld[n - 1]);
+}
+
+async function stockFotos(conceptId, termen, nodig, start, info = {}) {
+  if (!stockReady() || !termen.length || nodig <= 0) return [];
+  const gezien = new Set(), kandidaten = [];
+  for (const t of termen.slice(0, 4)) for (const p of await zoekStock(t, 6)) if (p.src && !gezien.has(p.url || p.src)) { gezien.add(p.url || p.src); kandidaten.push(p); }
+  const gekozen = await keurStock(kandidaten.slice(0, 14), info);
   const out = [];
-  for (const p of gevonden) {
+  for (const p of gekozen) {
     if (out.length >= nodig) break;
-    const r = p.src && await get(p.src, { binary: true, max: 3500000, timeout: 6000 });
+    const r = await get(p.src, { binary: true, max: 3500000, timeout: 6000 });
     const size = r?.buf && imageSize(r.buf);
     if (!size) continue;
     const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
@@ -264,10 +288,10 @@ Regels:
   diensten: lijst (prijslijst of behandelingen), rijen (een paar grote diensten), kaarten (diensten met uitleg), foto (elke dienst met een foto).
   kopstijl: lijn, midden of groot. Varieer: twee bedrijven in dezelfde branche horen er duidelijk anders uit te zien.
   vorm: rond (zacht, vriendelijk), zacht (modern), strak (zakelijk, luxe, stoer). sfeer: licht, donker (luxe, avond, horeca, beauty met donkere site), merk (vrolijk, hun kleur overal).
-- "stock": geef altijd een Nederlandse zoekterm (2-3 woorden) voor sfeerfoto's die precies bij hun werk passen, bijv. "airco installateur", "kapsalon interieur", "hovenier tuin", "loodgieter badkamer". Die gebruiken we als hun eigen foto's niet genoeg zijn.
+- "stock": geef altijd 3 of 4 ENGELSE zoektermen (2-4 woorden) voor sfeerfoto's die precies hun belangrijkste diensten laten zien, bijv. voor een klimaatinstallateur ["heating boiler technician", "air conditioning indoor unit installation", "ventilation duct building", "radiator thermostat"], voor een kapper ["hair salon stylist cutting", "balayage hair coloring", "barber shop interior"]. Concreet en vakspecifiek, niet algemeen ("installer", "worker"). Die gebruiken we als hun eigen foto's niet genoeg zijn.
 - Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
 Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
-{"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":"","kleuren":{"primair":"","accent":"","kleurBron":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
+{"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":[],"kleuren":{"primair":"","accent":"","kleurBron":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
  "seo":{"titel":"","omschrijving":""},"hero":{"label":"","titel":"","tekst":"","knop":{"tekst":"","link":"#contact"},"foto":""},
  "diensten":{"titel":"","items":[{"titel":"","tekst":"","prijs":""}]},"over":{"titel":"","tekst":"","foto":""},"fotos":[],
  "openingstijden":[{"dag":"","tijd":""}],"contact":{"titel":"","tekst":"","knop":{"tekst":"","link":""}}}`;
@@ -365,8 +389,10 @@ ${site.text}
     // Te weinig eigen foto's: aanvullen met sfeerbeelden die bij het bedrijf passen.
     const eigen = images.filter((i) => !i.logo);
     if (eigen.length < 8) {
-      const zoek = str(out.content?.stock, 60) || lead.category || "";
-      const stock = await stockFotos(c.id, zoek, Math.min(7, 8 - eigen.length), eigen.length).catch(() => []);
+      const st = out.content?.stock;
+      const termen = (Array.isArray(st) ? st : [st]).map((t) => str(t, 60)).filter(Boolean);
+      if (!termen.length && lead.category) termen.push(lead.category);
+      const stock = await stockFotos(c.id, termen, Math.min(7, 8 - eigen.length), eigen.length, { bedrijf: lead.company, vak: lead.category, diensten: content.diensten.items.map((i) => i.titel) }).catch(() => []);
       if (stock.length) {
         images.push(...stock);
         const pad = (i) => `afbeeldingen/${i.name}`;
@@ -479,7 +505,7 @@ ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voor
   if (c.html) {
     // Eigen ontwerp: zonder scripts van de agent; alleen ons eigen script (met nonce) mag draaien.
     const nonce = crypto.randomBytes(16).toString("base64");
-    const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script>`;
+    const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>`;
     const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`).replace("position:sticky;top:0;", "position:relative;"), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
     return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
       "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
@@ -497,35 +523,6 @@ var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"]
 document.querySelectorAll(".sm-tijden > div").forEach(function(el){if(hit)return;var t=(el.querySelector("dt")||el).textContent.toLowerCase(),r=[],m=t.match(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)\\s*(?:t\\/m|tot en met|-|–)\\s*(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)/);
 if(m){for(var a=D.indexOf(m[1]),i=a;;i=(i+1)%7){r.push(i);if(i===D.indexOf(m[2])||r.length>7)break}}else D.forEach(function(d,i){if(t.indexOf(d)>-1)r.push(i)});
 if(r.indexOf(vd)>-1){hit=true;el.style.fontWeight="700";var dt=el.querySelector("dt");if(dt)dt.insertAdjacentText("beforeend"," · vandaag")}});
-
-var d=document,h=d.documentElement,rm=matchMedia("(prefers-reduced-motion: reduce)").matches;
-// kop: klasse zodra er gescrold is
-var kop=d.querySelector("header");function k(){if(kop)kop.classList.toggle("is-gescrold",scrollY>8)}addEventListener("scroll",k,{passive:true});k();
-if(rm||!("IntersectionObserver"in window))return;
-h.classList.add("js");
-// 1. reveals
-var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-zichtbaar");io.unobserve(e.target)}})},{rootMargin:"0px 0px -8% 0px",threshold:.08});
-d.querySelectorAll("[data-reveal]").forEach(function(el){io.observe(el)});
-// 2. woorden die oplichten tijdens het scrollen
-var scrub=[].slice.call(d.querySelectorAll("[data-scrub]"));
-scrub.forEach(function(el){var t=el.textContent.trim().split(/\\s+/);el.setAttribute("aria-label",el.textContent.trim());el.innerHTML=t.map(function(w){return'<span class="w" aria-hidden="true">'+w.replace(/[&<>]/g,"")+"</span>"}).join(" ")});
-// 3. parallax
-var par=[].slice.call(d.querySelectorAll("[data-parallax]"));
-// 4. verhaal: stappen die actief worden
-var verhalen=[].slice.call(d.querySelectorAll("[data-verhaal]"));
-function stap(v,el){if(el.classList.contains("is-actief"))return;v.querySelectorAll("[data-stap]").forEach(function(s){s.classList.toggle("is-actief",s===el)});
- var kl=getComputedStyle(el).getPropertyValue("--kleur").trim();if(kl)v.style.setProperty("--temp",kl);
- var u=el.querySelector("use"),t=el.querySelector("h3,h2");
- v.querySelectorAll('[data-toon="icoon"] use').forEach(function(x){if(u)x.setAttribute("href",u.getAttribute("href"))});
- v.querySelectorAll('[data-toon="titel"]').forEach(function(x){if(t)x.textContent=t.textContent});
- v.querySelectorAll("[data-voortgang]").forEach(function(x){x.style.strokeDashoffset=100-Number(el.dataset.stand||0)})}
-var bezig=false;
-function frame(){bezig=false;var vh=innerHeight;
- par.forEach(function(el){var r=el.parentElement.getBoundingClientRect();if(r.bottom<-200||r.top>vh+200)return;var p=(r.top+r.height/2-vh/2);el.style.transform="translate3d(0,"+(p*Number(el.dataset.parallax||0)).toFixed(1)+"px,0)"});
- scrub.forEach(function(el){var r=el.getBoundingClientRect(),w=el.querySelectorAll(".w"),p=Math.min(1,Math.max(0,(vh*.85-r.top)/(r.height+vh*.35))),n=Math.round(p*w.length);w.forEach(function(s,i){s.classList.toggle("aan",i<n)})});
- verhalen.forEach(function(v){var best=null,bd=1e9;v.querySelectorAll("[data-stap]").forEach(function(s){var r=s.getBoundingClientRect(),dd=Math.abs(r.top+r.height/2-vh*.5);if(dd<bd){bd=dd;best=s}});if(best)stap(v,best)})}
-function req(){if(!bezig){bezig=true;requestAnimationFrame(frame)}}
-addEventListener("scroll",req,{passive:true});addEventListener("resize",req);frame();
 
 })();`;
 
