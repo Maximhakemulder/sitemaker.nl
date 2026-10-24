@@ -87,7 +87,8 @@ export async function listCustomers() {
       (SELECT COUNT(*)::int FROM change_requests cr WHERE cr.customer_id = c.id AND cr.status IN ('ontvangen','in_behandeling')) AS open_changes,
       (SELECT COUNT(*)::int FROM invoices i WHERE i.customer_id = c.id AND i.status = 'open') AS open_invoices
     FROM customers c ORDER BY c.site_status = 'opgezegd', c.company`, [monthKey()]);
-  return rows.map((c) => ({ ...adminCustomer(c), usedThisMonth: c.used, openChanges: c.open_changes, openInvoices: c.open_invoices }));
+  const groep = Object.fromEntries((await q(`SELECT a.customer_id, COUNT(DISTINCT b.customer_id)::int AS n FROM user_sites a JOIN user_sites b ON b.user_id = a.user_id GROUP BY a.customer_id`)).map((r) => [r.customer_id, r.n]));
+  return rows.map((c) => ({ ...adminCustomer(c), usedThisMonth: c.used, openChanges: c.open_changes, openInvoices: c.open_invoices, websites: groep[c.id] || 1 }));
 }
 
 function adminCustomer(c) {
@@ -105,7 +106,7 @@ export async function getCustomer(id) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [id]);
   if (!c) fail(404, "Klant niet gevonden.");
   const [users, changes, invoices, payments, log, usage] = await Promise.all([
-    q("SELECT id, email, name, active, last_login_at, created_at FROM users WHERE customer_id = $1 ORDER BY id", [id]),
+    q("SELECT id, email, name, active, last_login_at, created_at FROM users u WHERE u.customer_id = $1 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $1) ORDER BY id", [id]),
     q("SELECT * FROM change_requests WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [id]),
     q("SELECT * FROM invoices WHERE customer_id = $1 ORDER BY invoice_date DESC, id DESC", [id]),
     q("SELECT * FROM payments WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 50", [id]),
@@ -119,6 +120,7 @@ export async function getCustomer(id) {
     payments: payments.map(publicPayment), log,
     subscription: await subscriptionInfo(c),
     domein: (await (await import("./domains.mjs")).listDomains()).find((x) => x.customerId === c.id) || null,
+    websites: await (await import("./websites.mjs")).siblings(c.id),
     opzegging: c.opzeg_status ? { status: c.opzeg_status, at: c.opzeg_at, einde: c.opzeg_einde, reden: c.opzeg_reden, toelichting: c.opzeg_toelichting } : null,
   };
 }
@@ -149,7 +151,8 @@ export async function createCustomer(b, user) {
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
       [f.company, f.contact_name, f.email, f.phone, f.address, f.kvk, f.vat_number, f.siteUrl, f.site_status, f.delivered_at, f.notes, b.appointmentId || null,
         b.leadId || (b.appointmentId ? (await t.one("SELECT lead_id FROM appointments WHERE id = $1", [b.appointmentId]))?.lead_id : null) || null, b.onboarding === true]);
-    await t.q("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3)", [f.email, f.contact_name, c.id]);
+    const nu = await t.one("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3) RETURNING id", [f.email, f.contact_name, c.id]);
+    await t.q("INSERT INTO user_sites (user_id, customer_id) VALUES ($1,$2)", [nu.id, c.id]);
     if (b.appointmentId) await t.q("UPDATE appointments SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.appointmentId]);
     if (b.leadId) await t.q("UPDATE leads SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.leadId]);
     return c;
@@ -184,14 +187,17 @@ export async function addPortalUser(customerId, b, user) {
   if (!EMAIL_RE.test(email)) fail(400, "Dit e-mailadres klopt niet.");
   const c = await one("SELECT id FROM customers WHERE id = $1", [customerId]);
   if (!c) fail(404, "Klant niet gevonden.");
-  const exists = await one("SELECT customer_id, role FROM users WHERE email = $1", [email]);
-  if (exists) fail(409, exists.customer_id === customerId ? "Deze gebruiker heeft al toegang." : "Dit e-mailadres is al in gebruik.");
-  await q("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3)", [email, str(b.name, 200), customerId]);
+  const exists = await one("SELECT id, customer_id, role FROM users WHERE email = $1", [email]);
+  if (exists && exists.role !== "klant") fail(409, "Dit e-mailadres is van een medewerker.");
+  if (exists && (exists.customer_id === customerId || await one("SELECT 1 FROM user_sites WHERE user_id = $1 AND customer_id = $2", [exists.id, customerId]))) fail(409, "Deze gebruiker heeft al toegang.");
+  // Bestaande klantgebruiker: krijgt deze website erbij (meerdere websites onder één inlog).
+  const uid = exists ? exists.id : (await one("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3) RETURNING id", [email, str(b.name, 200), customerId])).id;
+  await q("INSERT INTO user_sites (user_id, customer_id) VALUES ($1,$2) ON CONFLICT DO NOTHING", [uid, customerId]);
   await audit(user.id, customerId, "portaal.gebruiker_toegevoegd", { email });
   return { ok: true };
 }
 export async function setPortalUser(customerId, userId, b, user) {
-  const u = await one("UPDATE users SET active = $3 WHERE id = $1 AND customer_id = $2 RETURNING email", [userId, customerId, !!b.active]);
+  const u = await one("UPDATE users u SET active = $3 WHERE id = $1 AND (customer_id = $2 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $2)) RETURNING email", [userId, customerId, !!b.active]);
   if (!u) fail(404, "Gebruiker niet gevonden.");
   if (!b.active) await q("DELETE FROM sessions WHERE user_id = $1", [userId]);
   await audit(user.id, customerId, b.active ? "portaal.gebruiker_actief" : "portaal.gebruiker_geblokkeerd", { email: u.email });
@@ -200,7 +206,7 @@ export async function setPortalUser(customerId, userId, b, user) {
 
 export async function sendWelcome(customerId, user) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [customerId]);
-  const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [customerId]);
+  const u = await one("SELECT u.email FROM users u WHERE u.active AND u.role = 'klant' AND (u.customer_id = $1 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $1)) ORDER BY u.customer_id = $1 DESC, u.id LIMIT 1", [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
   const link = `${portalUrl()}`;
   const st = startStage(c);

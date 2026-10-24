@@ -3,12 +3,12 @@
 // nieuw = Sitemaker registreert hem. Registreren/verhuizen doet Maxim bij zijn registrar; HQ zet alles klaar en volgt het.
 // Netlify: het domein wordt aan het Netlify-project van de klant gehangen; daarna controleert tick de DNS tot hij klopt.
 import dns from "node:dns/promises";
-import { q, one, str, fail, audit, env } from "./core.mjs";
-import { notifyStaff } from "./mail.mjs";
+import { q, one, str, fail, audit, env, escH } from "./core.mjs";
+import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { netlifyReady } from "./netlifyapi.mjs";
 
 export const APEX_IP = "75.2.60.5"; // Netlify load balancer (docs.netlify.com, externe DNS)
-export const STATUS = { wacht_op_klant: "Wacht op de klant", aangevraagd: "Geregeld, DNS instellen", verhuizen: "Verhuizen naar Sitemaker", registreren: "Registreren", dns_klaar: "Instellingen kloppen", actief: "Actief", probleem: "Probleem", opgezegd: "Opgezegd" };
+export const STATUS = { wacht_op_klant: "Wacht op de klant", aangevraagd: "Geregeld, DNS instellen", verhuizen: "Verhuizen naar Sitemaker", registreren: "Registreren", dns_klaar: "Instellingen kloppen, https volgt", actief: "Actief", probleem: "Probleem", opgezegd: "Opgezegd" };
 
 export function normDomain(v) {
   let d = String(v || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./, "").replace(/\.$/, "");
@@ -75,6 +75,30 @@ export async function linkNetlify(d, c) {
   return true;
 }
 
+// SSL: Netlify vraagt een Let's Encrypt-certificaat aan zodra de DNS klopt. We vragen het zelf aan als het er nog niet is
+// (POST /sites/{id}/ssl) en controleren daarna of https echt werkt met een geldig certificaat.
+export async function zorgSsl(d, c) {
+  if (env("DOMAIN_FAKE")) return { ok: !/geenssl/.test(d.naam), state: "issued", uitleg: /geenssl/.test(d.naam) ? "Certificaat wordt aangevraagd." : "Beveiligde verbinding (https) werkt." };
+  let state = "", expires = null;
+  if (c.site_netlify_id && netlifyReady() && !env("NETLIFY_FAKE")) {
+    const h = { authorization: `Bearer ${env("NETLIFY_API_TOKEN")}` };
+    try {
+      const r = await fetch(`https://api.netlify.com/api/v1/sites/${c.site_netlify_id}/ssl`, { headers: h, signal: AbortSignal.timeout(8000) });
+      const j = r.ok ? await r.json().catch(() => ({})) : {};
+      state = j.state || ""; expires = j.expires_at || null;
+      const dekt = (j.domains || []).some((x) => x === d.naam || x === `*.${d.naam}`);
+      if (!r.ok || !dekt) {
+        const p = await fetch(`https://api.netlify.com/api/v1/sites/${c.site_netlify_id}/ssl`, { method: "POST", headers: h, signal: AbortSignal.timeout(15000) });
+        const pj = p.ok ? await p.json().catch(() => ({})) : {};
+        state = pj.state || (p.ok ? "aangevraagd" : `fout ${p.status}`); expires = pj.expires_at || expires;
+      }
+    } catch (e) { state = state || `onbekend (${e.message})`; }
+  }
+  let https = false;
+  try { const r = await fetch(`https://${d.naam}/`, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(8000) }); https = r.status > 0; } catch { https = false; }
+  return { ok: https, state, verloopt: expires, uitleg: https ? "Beveiligde verbinding (https) werkt." : "De beveiligde verbinding (https) wordt nog geregeld; dat gebeurt automatisch zodra de instellingen kloppen en kan even duren." };
+}
+
 export async function controleer(id, { user = null } = {}) {
   const d = await one("SELECT * FROM domains WHERE id = $1", [id]);
   if (!d) fail(404, "Domein niet gevonden.");
@@ -82,9 +106,10 @@ export async function controleer(id, { user = null } = {}) {
   let gekoppeld = d.netlify_gekoppeld;
   if (!gekoppeld && c.site_netlify_id) { try { gekoppeld = await linkNetlify(d, c); } catch (e) { console.log("[domein]", e.message); } }
   const res = await checkDns(d, c);
+  if (res.ok && gekoppeld) { res.ssl = await zorgSsl(d, c); if (!res.ssl.ok) res.uitleg = `${res.uitleg} ${res.ssl.uitleg}`; }
   let status = d.status;
-  if (res.ok && gekoppeld) status = "actief";
-  else if (res.ok) status = "dns_klaar";
+  if (res.ok && gekoppeld && res.ssl?.ok) status = "actief";
+  else if (res.ok) status = d.status === "actief" ? "probleem" : "dns_klaar";
   else if (d.status === "actief") status = "probleem";
   await q("UPDATE domains SET dns = $2::jsonb, dns_at = NOW(), status = $3, netlify_gekoppeld = $4, updated_at = NOW() WHERE id = $1", [d.id, JSON.stringify(res), status, gekoppeld]);
   if (status !== d.status) {
@@ -92,6 +117,9 @@ export async function controleer(id, { user = null } = {}) {
     if (status === "actief") {
       // De klantsite heeft nu zijn eigen adres.
       await q("UPDATE customers SET site_url = $2, updated_at = NOW() WHERE id = $1 AND (site_url = '' OR site_url LIKE '%netlify.app%')", [c.id, `https://${d.naam}`]);
+      if (c.email) await sendMail({ to: c.email, kind: "domein", ref: `customer:${c.id}`, subject: `Je website staat nu op ${d.naam}`,
+        text: `Goed nieuws: je domein is verbonden. Je website is nu te bereiken op https://${d.naam}. Het beveiligingscertificaat (https) regelen wij; dat kan nog even duren voordat het overal actief is.\n\nMet vriendelijke groet,\nSitemaker`,
+        html: brandHtml({ title: `Je website staat nu op ${d.naam}`, intro: ["Goed nieuws: je domein is verbonden.", `Je website is nu te bereiken op <b>https://${escH(d.naam)}</b>. Het beveiligingscertificaat (https) regelen wij; dat kan nog even duren voordat het overal actief is.`], button: { label: "Bekijk je website", href: `https://${d.naam}` } }) }).catch(() => {});
       await notifyStaff(`Domein actief: ${d.naam}`, [`${d.naam} wijst nu naar de site van ${c.company}. Netlify regelt de beveiligde verbinding (https).`], `/hq/#domeinen`).catch(() => {});
     }
     if (status === "probleem") await notifyStaff(`Domein klopt niet meer: ${d.naam}`, [`${d.naam} (${c.company}) wijst niet meer naar de site.`, res.uitleg], `/hq/#domeinen`).catch(() => {});
@@ -115,7 +143,7 @@ export async function runDomainChecks({ max = 4 } = {}) {
 }
 
 // ---------------------------------------------------------------- klant (portaal)
-export const publicDomain = (d, c) => d ? ({ id: d.id, naam: d.naam, keuze: d.keuze, status: d.status, statusLabel: STATUS[d.status], provider: d.provider, dnsOk: !!d.dns?.ok, uitleg: d.dns?.uitleg || "", dnsAt: d.dns_at, instructies: d.keuze === "eigen" ? instructies(d, c) : null }) : null;
+export const publicDomain = (d, c) => d ? ({ id: d.id, naam: d.naam, keuze: d.keuze, status: d.status, statusLabel: STATUS[d.status], provider: d.provider, dnsOk: !!d.dns?.ok, https: !!d.dns?.ssl?.ok, uitleg: d.dns?.uitleg || "", dnsAt: d.dns_at, instructies: d.keuze === "eigen" ? instructies(d, c) : null }) : null;
 
 export async function portalDomain(customerId) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [customerId]);

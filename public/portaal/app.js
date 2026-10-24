@@ -3,6 +3,7 @@
   const { html, raw, render, api, euro, datum, datumLang, tijd, maand, toast, icon } = SM;
   const app = document.getElementById("app");
   let state = null;
+  window.SM_PORTAAL_WISSEL = null;
 
   const WIJZIGING = { ontvangen: ["Ontvangen", "s-info"], in_behandeling: ["In behandeling", "s-let"], verwerkt: ["Verwerkt", "s-ok"], afgewezen: ["Niet uitgevoerd", "s-grijs"] };
   const FACTUUR = { open: ["Openstaand", "s-let"], betaald: ["Betaald", "s-ok"], vervallen: ["Vervallen", "s-fout"], gecrediteerd: ["Gecrediteerd", "s-grijs"] };
@@ -51,7 +52,7 @@
     render(app, html`
       <header class="p-kop"><div class="binnen">
         <a href="#overzicht" aria-label="Sitemaker klantenportaal"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker"></a>
-        <div class="wie"><span>${c.company}</span><button class="knop knop-tekst" id="uit">Uitloggen</button></div>
+        <div class="wie">${state.websites?.length > 1 ? html`<label class="sr" for="site-kies">Website</label><select id="site-kies" class="site-kies">${state.websites.map((w) => html`<option value="${w.id}" ${w.id === c.id ? raw("selected") : ""}>${w.naam}${w.url ? " · " + w.url.replace(/^https?:\/\//, "") : ""}</option>`)}</select>` : html`<span>${c.company}</span>`}<button class="knop knop-tekst" id="uit">Uitloggen</button></div>
       </div></header>
       <nav class="p-tabs" aria-label="Portaal"><div class="binnen">
         <a href="#overzicht" data-tab="overzicht">${inStart() ? "Start" : "Overzicht"}</a>
@@ -62,6 +63,7 @@
       ${state.user.viaHq ? html`<div class="open-balk">Je bekijkt dit portaal zoals ${c.company} het ziet. <button class="knop knop-tekst" id="terug">Terug naar HQ</button></div>` : ""}
       <main class="p-main" id="inhoud" tabindex="-1"></main>`);
     app.querySelector("#uit").onclick = () => SM.uitloggen(true);
+    app.querySelector("#site-kies")?.addEventListener("change", (e) => wissel(Number(e.target.value)));
     app.querySelector("#terug")?.addEventListener("click", async () => { try { await api("auth/logout?portal=1", { method: "POST" }); } catch {} location.href = "/hq/#klant/" + c.id; });
   }
 
@@ -285,6 +287,12 @@
     });
   }
   const main = () => app.querySelector("#inhoud");
+  // Andere website openen (klanten met meerdere websites).
+  async function wissel(id) {
+    try { await api("portal/website", { method: "POST", body: { id } }); location.hash = "#overzicht"; await herlaadState(); toast("Je bekijkt nu " + (state.websites.find((w) => w.id === id)?.naam || "je andere website")); }
+    catch (e) { toast(e.message, "fout"); }
+  }
+  window.SM_PORTAAL_WISSEL = wissel;
   async function herlaadState() {
     try { state = await api("portal/state"); } catch (e) { toast(e.message, "fout"); return; }
     kader(); route();
