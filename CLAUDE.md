@@ -44,3 +44,11 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - Website: `#boeken` in `public/index.html` + `site.js` (GET `/api/agenda/slots`, POST `/api/agenda/boek`). Valt terug op het terugbelformulier als boeken uit staat of er geen momenten zijn. Dubbel boeken voorkomt de unieke index op `appointments.starts_at`.
 - Mail met .ics-bijlage + annuleerlink (`/api/agenda/annuleren?t=`), herinnering ~3 uur vooraf via `tick`. HQ annuleren mailt de klant. Agenda-abonnement voor Maxim: `/api/agenda/feed.ics?k=<HMAC van AUTH_SECRET>`.
 - HQ › Agenda (route `#aanvragen`): Afspraken | Beschikbaarheid (slots klikken open/dicht, vrij nemen, extra tijd) | Vaste tijden.
+
+## Concept-websites voor leads (USP)
+- `netlify/lib/concepts.mjs` + `netlify/functions/concept-background.mjs`. Tabel `concepts` (1 per lead, `token`, status wachtrij|bezig|klaar|fout|overgeslagen, `content` = content.json, `images` in Blobs `concepts/<id>/…`, `analysis` = feiten over hun site).
+- Agent: `scan()` haalt home + max. 3 subpagina's, foto's (≥ 500 px, logo apart), huisstijlkleuren. Claude (`SYSTEM`) maakt content.json; `clean()` houdt het eerlijk: telefoon/e-mail/WhatsApp/adres/prijzen/openingstijden alleen als ze in de brontekst staan, foto's alleen uit de lijst. Webshops en te weinig tekst → overgeslagen.
+- Pagina: `/voorbeeld/<token>` (redirect naar `/api/voorbeeld/…`), gerenderd met `templates/klantsite/render.mjs` (dezelfde renderer als de echte klantsites), noindex, balk + slot-CTA naar `/?concept=<token>&bedrijf=…#kennismaking`. Bekeken telt via script na 2,5 s (`?hq=1` telt niet); eerste keer → mail aan Maxim. Verloopt na `b2b.concepten.geldigDagen`. Afmelden = concept weg.
+- `tick` (`runConcepts`): leads met website (nieuw/goedgekeurd) automatisch in de wachtrij, max `perDag`; eerste mail wacht max. drie uur op het concept. Mailtekst: `{concept}` / `{conceptlink}` (oudere teksten krijgen de conceptregel na `{intro}`).
+- Afspraak via het concept koppelt de lead (`linkConcept`); "Website aanmaken" start vanuit het concept (`conceptForCustomer`, ook via afspraak → lead).
+- HQ: B2B (kolom Concept, filter "Concept bekeken", bulk "Concept maken", paneel in lead), pagina Concepten (galerij), KPI op Overzicht, instellingen bij B2B.

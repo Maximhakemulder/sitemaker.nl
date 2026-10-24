@@ -1,5 +1,6 @@
 // Sitemaker HQ: alles wat medewerkers beheren. Rollen: medewerker en admin (admin mag ook instellingen, team en abonnementen opzeggen).
 import { q, one, tx, OFFER, getSettings, saveSetting, DEFAULT_SETTINGS, str, cleanEmail, EMAIL_RE, normUrl, monthKey, dayKey, euro, escH, publicBase, fail, audit, env, portalUrl } from "./core.mjs";
+import { publicConcept, queueConcept, setTheme, deleteConcept } from "./concepts.mjs";
 import { startStage, deliveryDue, hqStart } from "./start.mjs";
 import { publicCustomer, publicChange, publicInvoice, changeUsage, mailChangeStatus, STATUS_LABEL, freeSlot } from "./portal.mjs";
 import { createInvoice, generateInvoicePdf, mailInvoice, partsFromGross, priceParts, companyComplete, vatModeSet } from "./billing.mjs";
@@ -11,7 +12,7 @@ import { THEMAS, autoReady, provisionSite, linkSite, approveChange, redoChange, 
 import { githubReady } from "./github.mjs";
 import { netlifyReady, netlifyLinkReady } from "./netlifyapi.mjs";
 import { aiReady as claudeReady } from "./ai.mjs";
-import { addLead, parseCsv, mailPreview, researchLead, runScout, scoutReady, aiReady, LEAD_STATUSES, unsubscribe } from "./b2b.mjs";
+import { addLead, parseCsv, mailPreview, researchLead, runScout, scoutReady, aiReady, LEAD_STATUSES, unsubscribe, LEAD_SELECT } from "./b2b.mjs";
 
 const SITE_STATUSES = ["in_aanbouw", "live", "gepauzeerd", "opgezegd"];
 const BILLING_STATUSES = ["geen", "wacht_op_betaling", "actief", "betaling_mislukt", "gepauzeerd", "opgezegd", "handmatig"];
@@ -35,6 +36,8 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'voorstel') AS voorstellen,
       (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'handmatig' AND status IN ('ontvangen','in_behandeling')) AS handmatig,
       (SELECT COUNT(*)::int FROM appointments WHERE status = 'nieuw') AS nieuwe_aanvragen,
+      (SELECT COUNT(*)::int FROM concepts WHERE status = 'klaar') AS concepten_klaar,
+      (SELECT COUNT(*)::int FROM concepts WHERE first_view_at > NOW() - INTERVAL '7 days') AS concepten_bekeken,
       (SELECT COUNT(*)::int FROM customers WHERE onboarding AND started_at IS NOT NULL AND site_status = 'in_aanbouw') AS te_bouwen,
       (SELECT COUNT(*)::int FROM invoices WHERE status = 'open') AS open_facturen,
       (SELECT COALESCE(SUM(amount_cents),0)::int FROM invoices WHERE status = 'open') AS open_bedrag,
@@ -137,7 +140,8 @@ export async function createCustomer(b, user) {
   const c = await tx(async (t) => {
     const c = await t.one(`INSERT INTO customers (company, contact_name, email, phone, address, kvk, vat_number, site_url, site_status, delivered_at, notes, appointment_id, lead_id, onboarding)
                            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-      [f.company, f.contact_name, f.email, f.phone, f.address, f.kvk, f.vat_number, f.siteUrl, f.site_status, f.delivered_at, f.notes, b.appointmentId || null, b.leadId || null, b.onboarding === true]);
+      [f.company, f.contact_name, f.email, f.phone, f.address, f.kvk, f.vat_number, f.siteUrl, f.site_status, f.delivered_at, f.notes, b.appointmentId || null,
+        b.leadId || (b.appointmentId ? (await t.one("SELECT lead_id FROM appointments WHERE id = $1", [b.appointmentId]))?.lead_id : null) || null, b.onboarding === true]);
     await t.q("INSERT INTO users (email, name, role, customer_id) VALUES ($1,$2,'klant',$3)", [f.email, f.contact_name, c.id]);
     if (b.appointmentId) await t.q("UPDATE appointments SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.appointmentId]);
     if (b.leadId) await t.q("UPDATE leads SET status = 'klant', customer_id = $1, updated_at = NOW() WHERE id = $2", [c.id, b.leadId]);
@@ -375,17 +379,22 @@ export async function updateAppointment(id, b, user) {
 
 // ---------------------------------------------------------------- B2B
 export async function listLeads({ status } = {}) {
-  const rows = status && LEAD_STATUSES.includes(status)
-    ? await q("SELECT * FROM leads WHERE status = $1 ORDER BY updated_at DESC LIMIT 500", [status])
-    : await q("SELECT * FROM leads ORDER BY updated_at DESC LIMIT 500");
+  const sel = "SELECT l.*, row_to_json(c.*) AS concept FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id";
+  const rows = status === "bekeken"
+    ? await q(`${sel} WHERE c.views > 0 ORDER BY c.last_view_at DESC LIMIT 500`)
+    : status && LEAD_STATUSES.includes(status)
+      ? await q(`${sel} WHERE l.status = $1 ORDER BY l.updated_at DESC LIMIT 500`, [status])
+      : await q(`${sel} ORDER BY l.updated_at DESC LIMIT 500`);
   const counts = Object.fromEntries((await q("SELECT status, COUNT(*)::int AS n FROM leads GROUP BY status")).map((r) => [r.status, r.n]));
   const s = await getSettings();
   const followupDue = await q(`SELECT id FROM leads WHERE status = 'verstuurd' AND sent_at < NOW() - ($1 || ' days')::interval`, [String(s.b2b.followupDays || 5)]);
   const [{ n: today }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  const [{ n: bekeken }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE views > 0");
+  counts.bekeken = bekeken;
   return {
     leads: rows.map((l) => ({ id: l.id, company: l.company, email: l.email, website: l.website, city: l.city, category: l.category, phone: l.phone, source: l.source, status: l.status,
       intro: l.intro, researchNote: l.research_note, rejectReason: l.reject_reason, sentAt: l.sent_at, followupAt: l.followup_at, replyAt: l.reply_at, replySnippet: l.reply_snippet,
-      error: l.error, notes: l.notes, customerId: l.customer_id, createdAt: l.created_at, updatedAt: l.updated_at })),
+      error: l.error, notes: l.notes, customerId: l.customer_id, createdAt: l.created_at, updatedAt: l.updated_at, concept: publicConcept(l.concept) })),
     counts, followupDue: followupDue.map((r) => r.id), sentToday: today, dailyMax: s.b2b.dailyMax,
     ready: { mail: mailReady(), scout: scoutReady(), ai: aiReady(), company: !!(s.company.kvk && (s.company.legalName || s.company.name)) },
   };
@@ -424,6 +433,11 @@ export async function leadAction(b, user) {
       if (!l) fail(404, "Lead niet gevonden.");
       return await researchLead(l);
     }
+    case "concept": {
+      let n = 0, fouten = 0;
+      for (const id of ids.slice(0, 50)) { try { await queueConcept(id, { instructie: b.instructie || "", direct: ids.length === 1 }); n++; } catch { fouten++; } }
+      return { changed: n, skipped: fouten };
+    }
     case "verwijderen": {
       const r = await q("DELETE FROM leads WHERE id = ANY($1) AND status IN ('kandidaat','nieuw','overgeslagen','fout') RETURNING id", [ids]);
       return { changed: r.length };
@@ -453,7 +467,7 @@ export async function importLeads(text, user) {
 }
 
 export async function leadPreview(id, kind) {
-  const l = await one("SELECT * FROM leads WHERE id = $1", [id]);
+  const l = await one(`${LEAD_SELECT} WHERE l.id = $1`, [id]);
   if (!l) fail(404, "Lead niet gevonden.");
   return mailPreview(l, kind, await getSettings());
 }
@@ -462,6 +476,7 @@ export const scoutNow = () => runScout({ force: true });
 export { addLead };
 export const sitesInfo = () => ({ themas: THEMAS, github: githubReady(), netlify: netlifyReady(), netlifyLink: netlifyLinkReady(), ai: claudeReady(), auto: autoReady() });
 export { provisionSite, linkSite, approveChange, redoChange, manualChange, queueChange };
+export { queueConcept, setTheme as setConceptTheme, deleteConcept };
 
 // ---------------------------------------------------------------- instellingen en team (admin)
 export async function getAdminSettings() {
@@ -502,6 +517,12 @@ export async function saveAdminSettings(b, user) {
       scout: { active: x.scout?.active ?? cur.scout.active, perDay: Math.min(100, Math.max(5, Number(x.scout?.perDay ?? cur.scout.perDay) || 20)),
         categories: list(x.scout?.categories ?? cur.scout.categories), places: list(x.scout?.places ?? cur.scout.places) },
       ai: { research: x.ai?.research ?? cur.ai.research },
+      concepten: {
+        auto: x.concepten?.auto ?? cur.concepten?.auto ?? true,
+        perDag: Math.min(200, Math.max(0, Number(x.concepten?.perDag ?? cur.concepten?.perDag ?? 20) || 0)),
+        geldigDagen: Math.min(365, Math.max(7, Number(x.concepten?.geldigDagen ?? cur.concepten?.geldigDagen ?? 60) || 60)),
+        wachten: x.concepten?.wachten ?? cur.concepten?.wachten ?? true,
+      },
       templates: { eerste: tpl("eerste"), opvolging: tpl("opvolging") },
     });
   }

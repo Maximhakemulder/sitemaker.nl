@@ -170,6 +170,7 @@ export async function book(b, ip) {
   }
   const lead = await one("UPDATE leads SET status = 'afspraak', updated_at = NOW() WHERE lower(email) = $1 AND status NOT IN ('klant','afgemeld') RETURNING id", [email]);
   if (lead) await q("UPDATE appointments SET lead_id = $1 WHERE id = $2", [lead.id, appt.id]);
+  const viaConcept = await linkConcept(b.concept, appt.id);
 
   const wanneer = momentLabel(startMs, a.duur);
   const hoe = a.soort === "video" ? `via een videogesprek: ${a.videoLink}` : `telefonisch: we bellen je op ${phone}`;
@@ -187,9 +188,19 @@ export async function book(b, ip) {
       attachments: [{ filename: "kennismaking-sitemaker.ics", content: calendar([vevent(appt, a, false)]), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
     }),
     notifyStaff(`Nieuwe afspraak: ${company}, ${wanneer}`, [`${name} van ${company} heeft een kennismaking geboekt.`, `Wanneer: ${wanneer}`, `Telefoon: ${phone} · E-mail: ${email}`,
-      message ? `Bericht: ${message}` : "", lead ? "Dit bedrijf staat ook in je B2B-leads (status nu: afspraak)." : ""].filter(Boolean), `/hq/#aanvragen`),
+      message ? `Bericht: ${message}` : "", viaConcept ? `Geboekt vanuit het concept van ${viaConcept}.` : lead ? "Dit bedrijf staat ook in je B2B-leads (status nu: afspraak)." : ""].filter(Boolean), `/hq/#aanvragen`),
   ]);
   return { ok: true, start: new Date(startMs).toISOString(), wanneer, hoe, token };
+}
+
+// Geboekt vanaf een concept-website: koppel aan die lead (ook als het mailadres anders is).
+export async function linkConcept(token, apptId) {
+  if (!/^[\w-]{8,40}$/.test(token || "")) return null;
+  const c = await one("SELECT c.lead_id, l.company FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.token = $1", [token]);
+  if (!c) return null;
+  await q("UPDATE appointments SET lead_id = $1, source = CASE WHEN source = 'website' THEN 'concept' ELSE source END WHERE id = $2", [c.lead_id, apptId]);
+  await q("UPDATE leads SET status = 'afspraak', updated_at = NOW() WHERE id = $1 AND status NOT IN ('klant','afgemeld')", [c.lead_id]);
+  return c.company;
 }
 
 // ---------------------------------------------------------------- annuleren

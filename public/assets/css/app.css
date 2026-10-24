@@ -386,3 +386,23 @@ dialog h3 { margin: 20px 0 8px; }
 .slot:not(:disabled):not(.geboekt):hover { border-color: var(--paars); }
 .dagen-tijden { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 14px; }
 #ag-form h2 { margin: 18px 0 4px; font-size: 20px; }
+
+/* Concept-websites */
+.concept-blok { border: 1px solid var(--lijn); border-radius: var(--r-klein); padding: 12px 14px; margin: 12px 0 16px; }
+.concept-blok h3 { margin: 0; font-size: 17px; }
+.concept-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
+.concept-kaart { background: var(--wit); border: 1px solid var(--lijn); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; }
+.concept-beeld { position: relative; display: block; aspect-ratio: 16 / 10; overflow: hidden; text-decoration: none; background: var(--c-achter); }
+.concept-beeld img { position: absolute; right: 0; top: 0; width: 55%; height: 100%; object-fit: cover; }
+.concept-mini { position: absolute; left: 0; top: 0; bottom: 0; width: 52%; padding: 14px; display: flex; flex-direction: column; justify-content: center; gap: 6px; background: var(--c-achter); color: var(--c-tekst); }
+.concept-mini .concept-naam { font-size: 11px; font-weight: 700; letter-spacing: .02em; color: var(--c-accent); }
+.concept-mini b { font-family: var(--c-kop); font-size: 17px; line-height: 1.15; }
+.concept-mini::after { content: ""; display: block; width: 64px; height: 18px; border-radius: 999px; background: var(--c-knop); margin-top: 4px; }
+.concept-gezien { position: absolute; right: 10px; top: 10px; background: var(--koraal); color: var(--wit); font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+.concept-info { padding: 12px 14px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.concept-info .knoppen { margin-top: auto; padding-top: 6px; }
+.concept-info p { margin: 2px 0; }
+.thema-natuur { --c-achter: #F6F1E7; --c-tekst: #24402B; --c-accent: #7FA36B; --c-knop: #2F5A37; --c-kop: Georgia, serif; }
+.thema-elegant { --c-achter: #141015; --c-tekst: #F2EBE2; --c-accent: #D9B77C; --c-knop: #D9B77C; --c-kop: Georgia, serif; }
+.thema-stoer { --c-achter: #F4F4F0; --c-tekst: #111111; --c-accent: #8A7200; --c-knop: #FFD400; --c-kop: "Arial Black", Arial, sans-serif; }
+.thema-zacht { --c-achter: #F7F5FF; --c-tekst: #251A57; --c-accent: #6C4CF1; --c-knop: #6C4CF1; --c-kop: system-ui, sans-serif; }

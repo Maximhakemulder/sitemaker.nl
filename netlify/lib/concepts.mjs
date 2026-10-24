@@ -1,0 +1,409 @@
+// Concept-websites voor leads ("zo kan uw nieuwe website eruitzien").
+// 1. De agent bekijkt hun huidige website: teksten, diensten, contact, openingstijden, foto's, kleuren en een paar feiten (https, mobiel, jaartal).
+// 2. Claude maakt daarvan een content.json in de Sitemaker-opmaak. Alleen feiten van hun eigen site; telefoon/e-mail/tijden worden nagecontroleerd.
+// 3. Het concept staat op sitemaker.nl/voorbeeld/<token> (noindex, verloopt), met een balk en knop naar de kennismaking.
+// 4. Wordt het een klant, dan start "Website aanmaken" vanuit dit concept.
+import crypto from "node:crypto";
+import { q, one, str, env, fail, escH, publicBase, getSettings, audit, OFFER } from "./core.mjs";
+import { putFile, getFile, deleteFile } from "./files.mjs";
+import { claude, aiReady, parseJson } from "./ai.mjs";
+import { notifyStaff } from "./mail.mjs";
+import { render } from "../../templates/klantsite/render.mjs";
+
+export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
+export const conceptUrl = (token) => `${publicBase()}/voorbeeld/${token}`;
+const UA = "Mozilla/5.0 (compatible; SitemakerBot/1.0; +https://sitemaker.nl)";
+
+// ---------------------------------------------------------------- ophalen en ontleden
+async function get(url, { max = 600000, timeout = 6000, binary = false } = {}) {
+  try {
+    const r = await fetch(url, { headers: { "user-agent": UA, accept: binary ? "image/*" : "text/html,*/*" }, redirect: "follow", signal: AbortSignal.timeout(timeout) });
+    if (!r.ok) return null;
+    const len = Number(r.headers.get("content-length") || 0);
+    if (len && len > max) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > max) return null;
+    return { url: r.url || url, type: (r.headers.get("content-type") || "").toLowerCase(), buf, text: binary ? "" : buf.toString("utf8") };
+  } catch { return null; }
+}
+const decode = (s) => String(s || "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+  .replace(/&#(\d+);/g, (m, n) => String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi, (m, n) => String.fromCodePoint(parseInt(n, 16))).replace(/&[a-z]+;/gi, " ");
+function textOf(html) {
+  return decode(html.replace(/<(script|style|noscript|svg|iframe)[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<\/(p|div|h[1-6]|li|tr|section|article|header|footer|br)>/gi, "\n").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " "))
+    .replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").trim();
+}
+const attr = (tag, name) => { const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, "i")); return m ? decode(m[2] ?? m[3] ?? m[4] ?? "") : ""; };
+const abs = (u, base) => { try { const x = new URL(u, base); return /^https?:$/.test(x.protocol) ? x.href : ""; } catch { return ""; } };
+
+function imageCandidates(html, base) {
+  const out = [];
+  const add = (u, alt = "", hint = "") => { const a = abs(u, base); if (a && !out.some((x) => x.url === a)) out.push({ url: a, alt: str(alt, 120), hint }); };
+  for (const m of html.matchAll(/<meta[^>]+>/gi)) if (/property=["']og:image["']/i.test(m[0])) add(attr(m[0], "content"), "", "og");
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+    const t = m[0];
+    const srcset = attr(t, "srcset") || attr(t, "data-srcset");
+    let src = attr(t, "data-src") || attr(t, "data-lazy-src") || attr(t, "src");
+    if (srcset) { const best = srcset.split(",").map((x) => x.trim().split(/\s+/)).sort((a, b) => parseInt(b[1] || "0") - parseInt(a[1] || "0"))[0]; if (best?.[0]) src = best[0]; }
+    if (!src || src.startsWith("data:")) continue;
+    const isLogo = /logo/i.test(src + " " + attr(t, "alt") + " " + attr(t, "class") + " " + attr(t, "id"));
+    add(src, attr(t, "alt"), isLogo ? "logo" : "");
+  }
+  for (const m of html.matchAll(/background(?:-image)?\s*:\s*url\((['"]?)([^'")]+)\1\)/gi)) add(m[2], "", "bg");
+  return out.filter((x) => !/\.(svg|gif|ico)(\?|$)/i.test(x.url) && !/(pixel|tracking|spinner|loader|icon|sprite|emoji|avatar|gravatar|badge|flag|facebook|instagram|twitter|linkedin|whatsapp|google|maps|cookie|payment|ideal|visa|mastercard)/i.test(x.url));
+}
+
+// Afmetingen uit de eerste bytes (JPEG, PNG, WebP).
+export function imageSize(buf) {
+  try {
+    if (buf[0] === 0x89 && buf[1] === 0x50) return { type: "image/png", w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      let i = 2;
+      while (i < buf.length) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const mk = buf[i + 1];
+        if (mk >= 0xc0 && mk <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(mk)) return { type: "image/jpeg", h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+    }
+    if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") {
+      const f = buf.toString("ascii", 12, 16);
+      if (f === "VP8 ") return { type: "image/webp", w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff };
+      if (f === "VP8L") { const b = buf.readUInt32LE(21); return { type: "image/webp", w: (b & 0x3fff) + 1, h: ((b >> 14) & 0x3fff) + 1 }; }
+      if (f === "VP8X") return { type: "image/webp", w: 1 + buf.readUIntLE(24, 3), h: 1 + buf.readUIntLE(27, 3) };
+    }
+  } catch {}
+  return null;
+}
+
+function colorsOf(css) {
+  const count = {};
+  for (const m of css.matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)) {
+    let h = m[1].toLowerCase(); if (h.length === 3) h = h.split("").map((x) => x + x).join("");
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    if (max - min < 40 || max < 40 || min > 225) continue; // grijs, bijna zwart of bijna wit
+    count["#" + h] = (count["#" + h] || 0) + 1;
+  }
+  return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c]) => c);
+}
+
+function analyse(home, html, text) {
+  const jaren = [...text.matchAll(/(?:©|copyright|\(c\))\s*(?:[\w&.\- ]{0,40}?)?((?:19|20)\d{2})(?:\s*[-–]\s*((?:19|20)\d{2}))?/gi)].map((m) => Number(m[2] || m[1]));
+  const gen = (html.match(/<meta[^>]+name=["']generator["'][^>]*>/i) || [""])[0];
+  return {
+    url: home.url,
+    https: home.url.startsWith("https://"),
+    mobiel: /<meta[^>]+name=["']viewport["']/i.test(html),
+    jaartal: jaren.length ? Math.max(...jaren) : null,
+    platform: str(attr(gen, "content"), 60) || (/wp-content/.test(html) ? "WordPress" : /wix\.com|wixstatic/.test(html) ? "Wix" : /jimdo/.test(html) ? "Jimdo" : ""),
+    titel: str(decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || ""), 120),
+    omschrijving: !!(html.match(/<meta[^>]+name=["']description["'][^>]*content=["'][^"']{20,}/i)),
+    formulier: /<form\b/i.test(html),
+    belknop: /href=["']tel:/i.test(html),
+  };
+}
+export function verbeterpunten(a) {
+  if (!a || !a.url) return [];
+  const p = [];
+  if (!a.https) p.push("Geen beveiligde verbinding (https)");
+  if (!a.mobiel) p.push("Niet ingericht voor mobiel");
+  if (a.jaartal && a.jaartal < new Date().getFullYear() - 1) p.push(`Jaartal in de voettekst: ${a.jaartal}`);
+  if (!a.omschrijving) p.push("Geen omschrijving voor Google");
+  if (!a.belknop) p.push("Geen bel-knop");
+  if (!a.formulier) p.push("Geen contactformulier");
+  return p;
+}
+
+// Haalt de site op: home + een paar relevante subpagina's, beelden en kleuren.
+export async function scan(website) {
+  const home = await get(website);
+  if (!home || !/html/.test(home.type || "text/html")) return { error: "Website niet bereikbaar" };
+  const html = home.text;
+  const host = new URL(home.url).host;
+  const links = [...html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)]
+    .map((m) => ({ url: abs(m[1], home.url), label: textOf(m[2]).toLowerCase() }))
+    .filter((l) => l.url && new URL(l.url).host === host && l.url !== home.url && !/\.(pdf|jpe?g|png|zip)$/i.test(l.url))
+    .filter((l) => /(dienst|behandel|prijs|tarie|over|wie|team|contact|werkwijze|aanbod|specialis|praktijk|salon|menu|openingstijd)/.test(l.url.toLowerCase() + " " + l.label));
+  const seen = new Set(), sub = [];
+  for (const l of links) { const k = l.url.replace(/\/$/, ""); if (!seen.has(k)) { seen.add(k); sub.push(l.url); } if (sub.length >= 3) break; }
+  const pages = [{ url: home.url, html }];
+  for (const p of await Promise.all(sub.map((u) => get(u)))) if (p?.text) pages.push({ url: p.url, html: p.text });
+  const text = pages.map((p) => `### ${p.url}\n${textOf(p.html)}`).join("\n\n").slice(0, 16000);
+  // kleuren: inline CSS + eerste stylesheet
+  let css = (html.match(/<style[\s\S]*?<\/style>/gi) || []).join("\n") + (html.match(/style="[^"]*"/gi) || []).join(" ");
+  const sheet = (html.match(/<link[^>]+rel=["']stylesheet["'][^>]*>/i) || [""])[0];
+  if (sheet) { const s = await get(abs(attr(sheet, "href"), home.url), { max: 400000, timeout: 4000 }); if (s?.text) css += s.text; }
+  const cands = pages.flatMap((p) => imageCandidates(p.html, p.url));
+  return { home, html, text, analysis: analyse(home, html, textOf(html)), kleuren: colorsOf(css), cands };
+}
+
+// Download de bruikbare foto's (en logo) naar Blobs.
+async function saveImages(conceptId, cands) {
+  const out = [];
+  const logo = cands.find((c) => c.hint === "logo");
+  const photos = cands.filter((c) => c.hint !== "logo").slice(0, 16);
+  const got = await Promise.all([...(logo ? [logo] : []), ...photos].map(async (c) => ({ c, r: await get(c.url, { binary: true, max: 3500000, timeout: 5000 }) })));
+  const hashes = new Set();
+  for (const { c, r } of got) {
+    if (!r?.buf?.length) continue;
+    const size = imageSize(r.buf);
+    if (!size) continue;
+    const isLogo = c === logo;
+    if (!isLogo && (size.w < 500 || size.h < 300 || size.w / size.h > 3 || size.h / size.w > 2.2)) continue;
+    if (isLogo && (size.w < 80 || size.h < 20)) continue;
+    const hash = crypto.createHash("sha1").update(r.buf).digest("hex");
+    if (hashes.has(hash)) continue; hashes.add(hash);
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
+    const name = isLogo ? `logo.${ext}` : `foto-${out.filter((x) => !x.logo).length + 1}.${ext}`;
+    const key = `concepts/${conceptId}/${name}`;
+    await putFile(key, r.buf, { type: size.type, name });
+    out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: c.alt, logo: isLogo, bron: c.url });
+    if (out.filter((x) => !x.logo).length >= 8) break;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- Claude
+const SYSTEM = `Je bent webredacteur bij Sitemaker. Je maakt een eerste opzet ("concept") van een nieuwe website voor een Nederlands bedrijf, op basis van de tekst van hun huidige website.
+Regels:
+- Gebruik ALLEEN feiten die in de aangeleverde tekst staan: diensten, werkwijze, plaats, telefoon, e-mail, adres, openingstijden, prijzen. Verzin niets: geen jaartallen, aantallen, reviews, keurmerken, prijzen of beloftes die er niet staan.
+- Schrijf de teksten wél beter: helder, warm, concreet, actief, in de stijl van het bedrijf (je- of u-vorm zoals hun site). Korte zinnen. Geen clichés als "uw partner in" of "kwaliteit staat voorop".
+- Hero-titel: krachtig, max. 8 woorden, over wat de klant krijgt. Hero-tekst: 1-2 zinnen. Knop: een duidelijke actie (bijv. "Maak een afspraak", "Vraag een offerte aan").
+- 3 tot 6 diensten, elk met een korte uitleg (max. 25 woorden). Prijs alleen als die letterlijk op hun site staat.
+- "over": 2-4 zinnen over het bedrijf, alleen uit hun tekst.
+- Foto's: kies alleen uit de lijst met beschikbare afbeeldingen (pad "afbeeldingen/…"). Hero = de mooiste, sfeervolle foto. Gebruik een foto maar één keer. Geen foto's beschikbaar = laat foto-velden leeg.
+- Kies een thema dat past bij de branche en sfeer: elegant (luxe, beauty, donker), stoer (bouw, installatie, techniek), natuur (tuin, zorg, ambacht, lokaal), zacht (modern, praktijk, coaching, zakelijk).
+- kleuren.primair/accent: alleen een huisstijlkleur uit de lijst gebruiken als die goed past; anders leeg laten.
+- Openingstijden alleen als ze in de tekst staan.
+- Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
+Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
+{"thema":"natuur","kleuren":{"primair":"","accent":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
+ "seo":{"titel":"","omschrijving":""},"hero":{"label":"","titel":"","tekst":"","knop":{"tekst":"","link":"#contact"},"foto":""},
+ "diensten":{"titel":"","items":[{"titel":"","tekst":"","prijs":""}]},"over":{"titel":"","tekst":"","foto":""},"fotos":[],
+ "openingstijden":[{"dag":"","tijd":""}],"contact":{"titel":"","tekst":"","knop":{"tekst":"","link":""}}}`;
+
+const digits = (s) => String(s || "").replace(/\D/g, "");
+const HEX = /^#[0-9a-f]{6}$/i;
+// Houdt Claude eerlijk: contactgegevens en tijden moeten echt op hun site staan; afbeeldingen alleen uit de lijst.
+export function clean(c, { text, images, lead }) {
+  const plain = text.toLowerCase(), plainDigits = digits(text);
+  const names = new Set(images.map((i) => `afbeeldingen/${i.name}`));
+  const img = (p) => (names.has(p) ? p : "");
+  const s = (v, n) => str(v, n);
+  const b = c.bedrijf || {};
+  const tel = s(b.telefoon, 30), mail = s(b.email, 120).toLowerCase();
+  const out = {
+    thema: THEMAS[c.thema] ? c.thema : "natuur",
+    kleuren: { primair: HEX.test(c.kleuren?.primair || "") ? c.kleuren.primair : "", accent: HEX.test(c.kleuren?.accent || "") ? c.kleuren.accent : "" },
+    bedrijf: {
+      naam: s(b.naam, 80) || lead.company,
+      telefoon: tel && digits(tel).length >= 9 && plainDigits.includes(digits(tel).slice(-9)) ? tel : "",
+      email: mail && plain.includes(mail) ? mail : "",
+      whatsapp: b.whatsapp && plainDigits.includes(digits(b.whatsapp).slice(-9)) ? s(b.whatsapp, 30) : "",
+      adres: s(b.adres, 120), plaats: s(b.plaats, 60) || lead.city || "", kvk: "",
+      logo: img(b.logo || (images.find((i) => i.logo) ? `afbeeldingen/${images.find((i) => i.logo).name}` : "")),
+    },
+    seo: { titel: s(c.seo?.titel, 70), omschrijving: s(c.seo?.omschrijving, 160) },
+    hero: { label: s(c.hero?.label, 60), titel: s(c.hero?.titel, 90), tekst: s(c.hero?.tekst, 260), knop: { tekst: s(c.hero?.knop?.tekst, 40) || "Neem contact op", link: "#contact" }, foto: img(c.hero?.foto) },
+    diensten: { titel: s(c.diensten?.titel, 60) || "Wat we doen", items: (c.diensten?.items || []).slice(0, 6).map((i) => ({ titel: s(i.titel, 60), tekst: s(i.tekst, 220), prijs: i.prijs && plainDigits.includes(digits(i.prijs)) ? s(i.prijs, 40) : "" })).filter((i) => i.titel) },
+    over: { titel: s(c.over?.titel, 60) || "Over ons", tekst: s(c.over?.tekst, 900), foto: img(c.over?.foto) },
+    fotos: [...new Set((c.fotos || []).map(img).filter(Boolean))].slice(0, 6),
+    openingstijden: (c.openingstijden || []).slice(0, 8).map((r) => ({ dag: s(r.dag, 40), tijd: s(r.tijd, 40) })).filter((r) => r.dag && r.tijd),
+    contact: { titel: s(c.contact?.titel, 80) || "Contact", tekst: s(c.contact?.tekst, 260), knop: { tekst: s(c.contact?.knop?.tekst, 40), link: "" } },
+  };
+  // Tijden en adres moeten in de bron staan (anders liever niets dan iets verkeerds).
+  const tijdOk = (t) => (t.match(/\d{1,2}[:.]\d{2}|\d{1,2}/g) || []).every((x) => plainDigits.includes(digits(x).replace(/^0+(?=\d)/, "")));
+  if (out.openingstijden.some((r) => !tijdOk(r.tijd))) out.openingstijden = [];
+  if (out.bedrijf.adres && !plain.includes(out.bedrijf.adres.toLowerCase().slice(0, 8))) out.bedrijf.adres = "";
+  // Geen foto's gebruikt maar wel beschikbaar: vul aan.
+  const vrij = images.filter((i) => !i.logo).map((i) => `afbeeldingen/${i.name}`);
+  if (!out.hero.foto && vrij.length) out.hero.foto = vrij[0];
+  if (!out.over.foto && vrij.length > 1) out.over.foto = vrij.find((p) => p !== out.hero.foto) || "";
+  if (!out.fotos.length && vrij.length > 2) out.fotos = vrij.filter((p) => p !== out.hero.foto && p !== out.over.foto).slice(0, 6);
+  if (!out.hero.titel || !out.diensten.items.length) return null;
+  return out;
+}
+
+// ---------------------------------------------------------------- verwerken
+export async function processConcept(conceptId) {
+  const c = await one(`UPDATE concepts SET status = 'bezig', started_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
+                       WHERE id = $1 AND status IN ('wachtrij','fout') AND pogingen < 3 RETURNING *`, [conceptId]);
+  if (!c) return { skipped: true };
+  const lead = await one("SELECT * FROM leads WHERE id = $1", [c.lead_id]);
+  const klaar = async (status, fields = {}) => {
+    const s = await getSettings();
+    const dagen = Number(s.b2b.concepten?.geldigDagen || 60);
+    await q(`UPDATE concepts SET status = $2, content = COALESCE($3::jsonb, content), images = COALESCE($4::jsonb, images), analysis = COALESCE($5::jsonb, analysis), reden = $6,
+             ready_at = CASE WHEN $2 = 'klaar' THEN NOW() ELSE ready_at END, expires_at = CASE WHEN $2 = 'klaar' THEN NOW() + ($7 || ' days')::interval ELSE expires_at END, updated_at = NOW() WHERE id = $1`,
+      [c.id, status, fields.content ? JSON.stringify(fields.content) : null, fields.images ? JSON.stringify(fields.images) : null, fields.analysis ? JSON.stringify(fields.analysis) : null, fields.reden || "", String(dagen)]);
+    return { status, ...fields };
+  };
+  try {
+    if (!lead?.website) return await klaar("overgeslagen", { reden: "Geen website om naar te kijken." });
+    if (!aiReady()) return await klaar("fout", { reden: "Claude is nog niet gekoppeld (ANTHROPIC_API_KEY of AI Gateway)." });
+    const site = await scan(lead.website);
+    if (site.error) return await klaar("overgeslagen", { reden: site.error });
+    if (site.text.length < 300) return await klaar("overgeslagen", { reden: "Te weinig tekst op hun site om een goed concept te maken.", analysis: site.analysis });
+    // oude afbeeldingen van een eerdere poging opruimen
+    for (const i of c.images || []) await deleteFile(i.key).catch(() => {});
+    const images = await saveImages(c.id, site.cands);
+    const prompt = `Bedrijf: ${lead.company}${lead.category ? ` (${lead.category})` : ""}${lead.city ? `, ${lead.city}` : ""}. Website: ${site.home.url}
+Huisstijlkleuren op hun site: ${site.kleuren.join(", ") || "onbekend"}
+Beschikbare afbeeldingen:
+${images.length ? images.map((i) => `- afbeeldingen/${i.name} (${i.w}x${i.h}${i.logo ? ", LOGO" : ""}${i.alt ? `, alt: "${i.alt}"` : ""})`).join("\n") : "- geen"}
+${c.instructie ? `\nExtra wens van Sitemaker voor dit concept: ${c.instructie}\n` : ""}
+Tekst van hun website (ingekort):
+"""
+${site.text}
+"""`;
+    const out = parseJson(await claude({ system: SYSTEM, prompt, maxTokens: 6000, timeoutMs: 240000 }));
+    if (!out) return await klaar("fout", { reden: "Claude gaf geen bruikbaar antwoord.", images, analysis: site.analysis });
+    if (out.kan === false) return await klaar("overgeslagen", { reden: str(out.reden, 300) || "Niet geschikt voor een concept.", images, analysis: site.analysis });
+    const content = clean(out.content || {}, { text: site.text, images, lead });
+    if (!content) return await klaar("fout", { reden: "Het concept was onvolledig.", images, analysis: site.analysis });
+    return await klaar("klaar", { content, images, analysis: site.analysis });
+  } catch (e) {
+    console.log("[concept]", c.id, e.message);
+    return await klaar("fout", { reden: str(e.message, 300) });
+  }
+}
+
+const triggerKey = (id) => crypto.createHash("sha256").update(`${env("AUTH_SECRET", "x")}:concept:${id}`).digest("hex");
+export const checkTriggerKey = (id, key) => { const a = Buffer.from(String(key || "")), b = Buffer.from(triggerKey(id)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+async function trigger(id) {
+  if (env("SM_INLINE_AI") === "1") return processConcept(id).catch((e) => console.log("[concept]", e.message));
+  const base = env("URL") || publicBase();
+  await fetch(`${base}/.netlify/functions/concept-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, key: triggerKey(id) }), signal: AbortSignal.timeout(5000) }).catch((e) => console.log("[concept] trigger", e.message));
+}
+
+// Concept (opnieuw) in de wachtrij zetten.
+export async function queueConcept(leadId, { instructie = "", direct = false } = {}) {
+  const lead = await one("SELECT id, website, status FROM leads WHERE id = $1", [leadId]);
+  if (!lead) fail(404, "Lead niet gevonden.");
+  if (!lead.website) fail(400, "Deze lead heeft geen website.");
+  if (lead.status === "afgemeld") fail(400, "Deze lead heeft zich afgemeld.");
+  const c = await one(`INSERT INTO concepts (lead_id, token, instructie) VALUES ($1, $2, $3)
+                       ON CONFLICT (lead_id) DO UPDATE SET status = 'wachtrij', pogingen = 0, instructie = EXCLUDED.instructie, reden = '', updated_at = NOW()
+                       WHERE concepts.status <> 'bezig' RETURNING *`, [leadId, crypto.randomBytes(9).toString("base64url"), str(instructie, 500)]);
+  if (!c) fail(409, "Er wordt al aan dit concept gewerkt.");
+  if (direct) await trigger(c.id);
+  return { id: c.id, status: c.status };
+}
+
+// tick: nieuwe leads met een website automatisch in de wachtrij, en een paar starten (binnen de daglimiet).
+export async function runConcepts({ max = 2 } = {}) {
+  const s = await getSettings();
+  const cfg = s.b2b.concepten || {};
+  if (!aiReady()) return { skipped: "ai" };
+  const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  const room = Math.max(0, Number(cfg.perDag ?? 20) - vandaag);
+  if (cfg.auto !== false && room) {
+    await q(`INSERT INTO concepts (lead_id, token) SELECT l.id, md5(random()::text || l.id::text || clock_timestamp()::text) FROM leads l
+             WHERE l.website <> '' AND l.status IN ('nieuw','goedgekeurd') AND NOT EXISTS (SELECT 1 FROM concepts c WHERE c.lead_id = l.id)
+             ORDER BY l.created_at LIMIT $1 ON CONFLICT DO NOTHING`, [room]);
+  }
+  // vastgelopen (> 20 min bezig) opnieuw
+  await q("UPDATE concepts SET status = 'wachtrij', updated_at = NOW() WHERE status = 'bezig' AND started_at < NOW() - INTERVAL '20 minutes' AND pogingen < 3");
+  const todo = await q("SELECT id FROM concepts WHERE status = 'wachtrij' ORDER BY created_at LIMIT $1", [Math.min(max, room)]);
+  for (const t of todo) await trigger(t.id);
+  return { started: todo.length };
+}
+
+// ---------------------------------------------------------------- de voorbeeldpagina
+export async function conceptByToken(token) {
+  if (!/^[\w-]{8,40}$/.test(token || "")) return null;
+  return one("SELECT c.*, l.company, l.email AS lead_email, l.status AS lead_status FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.token = $1", [token]);
+}
+
+const page = (title, body) => new Response(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escH(title)}</title>
+<style>body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#E7F4FF;color:#1C0747;display:grid;place-items:center;min-height:100vh;padding:16px;box-sizing:border-box}main{background:#fff;border-radius:18px;padding:30px;max-width:460px}h1{font-size:24px;margin:0 0 12px}p{line-height:1.55}a.k{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none}</style></head>
+<body><main>${body}</main></body></html>`, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
+
+export async function conceptPage(token, { hq = false } = {}) {
+  const c = await conceptByToken(token);
+  const kennis = `${publicBase()}/?concept=${encodeURIComponent(token)}${c?.company ? `&bedrijf=${encodeURIComponent(c.content?.bedrijf?.naam || c.company)}` : ""}#kennismaking`;
+  if (!c || c.status !== "klaar" || c.lead_status === "afgemeld") return page("Voorbeeld niet beschikbaar", `<h1>Dit voorbeeld is niet (meer) beschikbaar</h1><p>Benieuwd hoe jouw nieuwe website eruit kan zien? Plan een kennismaking van 15 minuten.</p><a class="k" href="${publicBase()}/#kennismaking">Plan een kennismaking</a>`);
+  if (c.expires_at && new Date(c.expires_at) < new Date() && !hq) return page("Voorbeeld verlopen", `<h1>Dit voorbeeld is verlopen</h1><p>We maken graag een nieuw voorbeeld voor ${escH(c.company)}. Plan een kennismaking van 15 minuten.</p><a class="k" href="${kennis}">Plan een kennismaking</a>`);
+  const naam = c.content?.bedrijf?.naam || c.company;
+  const balk = `<style>.sm-balk{position:sticky;top:0;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
+.sm-balk b{color:#0CC0DF}.sm-balk a{background:#D93636;color:#fff;font-weight:700;padding:8px 14px;border-radius:9px;text-decoration:none;white-space:nowrap}
+.sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:inline}.sm-balk a{padding:7px 11px;font-size:13px}}
+.sm-eind{background:#1C0747;color:#fff;padding:48px 20px;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.sm-eind h2{font-size:28px;margin:0 0 10px;font-family:inherit;color:#fff}.sm-eind p{max-width:560px;margin:0 auto 20px;color:#E3DDF5}
+.sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
+<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Zo kan de nieuwe website van ${escH(naam)} eruitzien. Gemaakt door Sitemaker.</span><span class="sm-kort"> door Sitemaker</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
+  const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
+<p>Dit voorbeeld hebben we gemaakt op basis van jullie huidige website. Wil je hem echt? Dan staat hij binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
+<a href="${kennis}">Plan een kennismaking</a><small>Teksten en foto's komen van jullie eigen website. Dit voorbeeld is alleen via deze link te zien.</small></section>
+${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
+  const html = render(c.content, { imgBase: `/api/voorbeeld/${token}/afbeeldingen/`, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
+}
+
+export async function conceptImage(token, name) {
+  const c = await conceptByToken(token);
+  const i = c && (c.images || []).find((x) => x.name === name);
+  if (!i) return new Response("Niet gevonden", { status: 404 });
+  const buf = await getFile(i.key);
+  if (!buf) return new Response("Niet gevonden", { status: 404 });
+  return new Response(buf, { headers: { "content-type": i.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+}
+
+// Bekeken (via een klein script na 2,5 s, zodat mailscanners niet meetellen). Eerste keer: seintje aan Maxim.
+export async function markViewed(token) {
+  const c = await one(`UPDATE concepts SET views = views + 1, first_view_at = COALESCE(first_view_at, NOW()), last_view_at = NOW() WHERE token = $1 AND status = 'klaar'
+                       RETURNING id, lead_id, views, (SELECT company FROM leads WHERE id = lead_id) AS company, (SELECT phone FROM leads WHERE id = lead_id) AS phone`, [token]);
+  if (c && c.views === 1) {
+    await audit(null, null, "concept.bekeken", { lead: c.lead_id });
+    await notifyStaff(`${c.company} bekijkt nu het concept`, [`${c.company} heeft zojuist het concept van hun nieuwe website geopend.`, c.phone ? `Goed moment om te bellen: ${c.phone}` : "Goed moment om contact op te nemen."], `/hq/#b2b`).catch(() => {});
+  }
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- HQ
+export function publicConcept(c) {
+  if (!c || !c.status) return null;
+  return {
+    id: c.id, status: c.status, reden: c.reden, url: c.token ? conceptUrl(c.token) : "", views: c.views || 0, firstViewAt: c.first_view_at, lastViewAt: c.last_view_at,
+    readyAt: c.ready_at, expiresAt: c.expires_at, thema: c.content?.thema || "", instructie: c.instructie, punten: verbeterpunten(c.analysis), fotos: (c.images || []).filter((i) => !i.logo).length,
+  };
+}
+export async function setTheme(leadId, thema, user) {
+  if (!THEMAS[thema]) fail(400, "Onbekend thema.");
+  const c = await one("UPDATE concepts SET content = jsonb_set(content, '{thema}', to_jsonb($2::text)), updated_at = NOW() WHERE lead_id = $1 AND status = 'klaar' RETURNING id", [leadId, thema]);
+  if (!c) fail(400, "Er is nog geen klaar concept.");
+  await audit(user.id, null, "concept.thema", { lead: leadId, thema });
+  return { ok: true };
+}
+export async function deleteConcept(leadId) {
+  const c = await one("DELETE FROM concepts WHERE lead_id = $1 RETURNING images", [leadId]);
+  for (const i of c?.images || []) await deleteFile(i.key).catch(() => {});
+  return { ok: !!c };
+}
+// Voor "Website aanmaken": content en afbeeldingen van het concept van deze klant.
+export async function conceptForCustomer(customer) {
+  if (!customer.lead_id) return null;
+  const c = await one("SELECT * FROM concepts WHERE lead_id = $1 AND status = 'klaar'", [customer.lead_id]);
+  if (!c) return null;
+  const files = [];
+  for (const i of c.images || []) { const buf = await getFile(i.key); if (buf) files.push({ path: `afbeeldingen/${i.name}`, content: buf }); }
+  return { content: c.content, files };
+}
+
+// Galerij in HQ.
+export async function listConcepts({ filter = "" } = {}) {
+  const where = { klaar: "c.status = 'klaar'", bekeken: "c.views > 0", bezig: "c.status IN ('wachtrij','bezig')", overgeslagen: "c.status IN ('overgeslagen','fout')" }[filter] || "TRUE";
+  const rows = await q(`SELECT c.*, l.company, l.city, l.category, l.status AS lead_status, l.website, l.phone FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE ${where}
+                        ORDER BY (c.views > 0) DESC, c.last_view_at DESC NULLS LAST, COALESCE(c.ready_at, c.created_at) DESC LIMIT 300`);
+  const counts = (await q("SELECT status, COUNT(*)::int AS n, SUM(CASE WHEN views > 0 THEN 1 ELSE 0 END)::int AS b FROM concepts GROUP BY status"));
+  const tel = { alle: 0, klaar: 0, bekeken: 0, bezig: 0, overgeslagen: 0 };
+  for (const r of counts) { tel.alle += r.n; tel.bekeken += r.b; if (r.status === "klaar") tel.klaar += r.n; else if (["wachtrij", "bezig"].includes(r.status)) tel.bezig += r.n; else tel.overgeslagen += r.n; }
+  return {
+    counts: tel,
+    concepts: rows.map((c) => {
+      const hero = (c.content?.hero?.foto || "").replace(/^afbeeldingen\//, "");
+      return { ...publicConcept(c), leadId: c.lead_id, company: c.company, city: c.city, category: c.category, leadStatus: c.lead_status, website: c.website, phone: c.phone,
+        titel: c.content?.hero?.titel || "", heroImg: hero && c.token ? `/api/voorbeeld/${c.token}/afbeeldingen/${hero}` : "", hqUrl: c.token ? `/voorbeeld/${c.token}?hq=1` : "" };
+    }),
+  };
+}

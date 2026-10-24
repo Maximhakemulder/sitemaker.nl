@@ -1,5 +1,6 @@
 // Klantsites: aanmaken (repo + Netlify-project) en wijzigingen automatisch verwerken met Claude.
 // Elke wijziging wordt een voorstel (branch + pull request + voorbeeldlink). Maxim keurt goed in HQ.
+import { conceptForCustomer } from "./concepts.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -53,10 +54,19 @@ export async function provisionSite(customerId, b, user) {
   content.bedrijf = { ...content.bedrijf, naam: c.company, email: c.email || "", telefoon: c.phone || "", adres: c.address.split("\n")[0] || "", kvk: c.kvk || "", plaats: "" };
   content.seo = { titel: c.company, omschrijving: "" };
   content.hero = { ...content.hero, label: "", titel: `Welkom bij ${c.company}`, tekst: "Hier komt een korte, krachtige zin over wat jullie doen." };
-  const files = templateFiles(dir).filter((f) => f.path !== "content.json");
-  files.push({ path: "content.json", content: JSON.stringify(content, null, 2) + "\n" });
+  let files = templateFiles(dir).filter((f) => f.path !== "content.json");
+  // Was deze klant eerst een lead met een concept? Dan starten we vanuit dat concept (teksten, foto's, thema).
+  const concept = await conceptForCustomer(c).catch(() => null);
+  let start = content, bron = "sjabloon";
+  if (concept) {
+    start = { ...concept.content, thema: b.thema && THEMAS[b.thema] ? b.thema : concept.content.thema || thema };
+    start.bedrijf = { ...start.bedrijf, naam: start.bedrijf?.naam || c.company, email: start.bedrijf?.email || c.email || "", telefoon: start.bedrijf?.telefoon || c.phone || "", kvk: c.kvk || "" };
+    files = files.filter((f) => !f.path.startsWith("afbeeldingen/")).concat(concept.files);
+    bron = "concept";
+  }
+  files.push({ path: "content.json", content: JSON.stringify(start, null, 2) + "\n" });
   await waitForMain(repo.full_name);
-  await commitFiles(repo.full_name, "main", files, "Startsjabloon Sitemaker");
+  await commitFiles(repo.full_name, "main", files, bron === "concept" ? "Start vanuit het concept" : "Startsjabloon Sitemaker");
   // 3. Netlify-project
   let site = { id: "", name: "", url: "", linked: false };
   if (netlifyReady()) {
@@ -67,8 +77,8 @@ export async function provisionSite(customerId, b, user) {
   }
   await q("UPDATE customers SET site_repo = $1, site_netlify_id = $2, site_netlify_name = $3, site_theme = $4, updated_at = NOW() WHERE id = $5",
     [repo.full_name, site.id, site.name, thema, c.id]);
-  await audit(user.id, c.id, "site.aangemaakt", { repo: repo.full_name, netlify: site.name, gekoppeld: site.linked });
-  return { repo: repo.full_name, repoUrl: repo.html_url, netlify: site, needsLink: !site.linked };
+  await audit(user.id, c.id, "site.aangemaakt", { repo: repo.full_name, netlify: site.name, gekoppeld: site.linked, bron });
+  return { repo: repo.full_name, repoUrl: repo.html_url, netlify: site, needsLink: !site.linked, bron };
 }
 async function waitForMain(repo) {
   for (let i = 0; i < 10; i++) { try { if (await readFile(repo, "README.md")) return; } catch {} await new Promise((r) => setTimeout(r, 800)); }

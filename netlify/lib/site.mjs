@@ -29,6 +29,8 @@ export async function submitAppointment(b, ip) {
   const lead = await one("UPDATE leads SET status = 'afspraak', updated_at = NOW() WHERE lower(email) = $1 AND status NOT IN ('klant','afgemeld') RETURNING id", [email]);
   const a = await one(`INSERT INTO appointments (name, company, email, phone, preference, message, ip_hash, lead_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
     [name, company, email, phone, preference, message, ipHash, lead?.id || null]);
+  const { linkConcept } = await import("./agenda.mjs");
+  await linkConcept(b.concept, a.id).catch(() => null);
 
   const pending = [];
   pending.push(notifyStaff(`Nieuwe aanvraag: ${company}`, [

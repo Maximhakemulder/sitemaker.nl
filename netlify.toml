@@ -46,6 +46,12 @@
   status = 200
   force = true
 
+# Concept-websites voor leads: sitemaker.nl/voorbeeld/<token>
+[[redirects]]
+  from = "/voorbeeld/*"
+  to = "/api/voorbeeld/:splat"
+  status = 200
+
 # Oude adressen op de website sturen door naar het subdomein (querystring zoals ?betaling=1 gaat mee).
 [[redirects]]
   from = "https://sitemaker.nl/portaal/"

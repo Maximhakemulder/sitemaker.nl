@@ -19,6 +19,12 @@
     if (vak) new IntersectionObserver(([e]) => cta.classList.toggle("weg", e.isIntersecting), { threshold: 0.05 }).observe(vak);
   }
 
+  // Komt de bezoeker van een concept-website? Dan koppelen we de afspraak aan dat concept en vullen we de bedrijfsnaam in.
+  const qs = new URLSearchParams(location.search);
+  const conceptToken = /^[\w-]{8,40}$/.test(qs.get("concept") || "") ? qs.get("concept") : "";
+  const bedrijfNaam = (qs.get("bedrijf") || "").slice(0, 120);
+  if (bedrijfNaam) document.querySelectorAll('input[name="company"]').forEach((i) => { if (!i.value) i.value = bedrijfNaam; });
+
   // ------------------------------------------------ Kennismaking boeken
   const boeken = $("#boeken"), aanvraagForm = $("#aanvraag");
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -75,7 +81,7 @@
       if (Object.keys(fouten).length) { Object.entries(fouten).forEach(([k, v]) => bzet(k, v)); f[Object.keys(fouten)[0]].focus(); return; }
       const knop = bform.querySelector("[type=submit]"); knop.disabled = true; knop.textContent = "Bezig…";
       try {
-        const r = await fetch("/api/agenda/boek", { method: "POST", headers: { "content-type": "application/json", "x-sm": "1" }, body: JSON.stringify({ ...Object.fromEntries(new FormData(bform)), start: gekozen.start, t: geopendB }) });
+        const r = await fetch("/api/agenda/boek", { method: "POST", headers: { "content-type": "application/json", "x-sm": "1" }, body: JSON.stringify({ ...Object.fromEntries(new FormData(bform)), start: gekozen.start, t: geopendB, concept: conceptToken }) });
         const res = await r.json().catch(() => ({}));
         if (!r.ok) {
           if (res.errors) { Object.entries(res.errors).forEach(([k, v]) => bzet(k, v)); f[Object.keys(res.errors)[0]]?.focus(); }
@@ -129,7 +135,7 @@
     const knop = form.querySelector("button[type=submit]");
     knop.disabled = true; knop.textContent = "Bezig met versturen…";
     const data = Object.fromEntries(new FormData(form));
-    data.t = geopend;
+    data.t = geopend; data.concept = conceptToken;
     try {
       const r = await fetch("/api/aanvraag", { method: "POST", headers: { "content-type": "application/json", "x-sm": "1" }, body: JSON.stringify(data) });
       const res = await r.json().catch(() => ({}));
