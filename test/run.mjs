@@ -758,6 +758,20 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     assert.equal(c.opzeg_status, "afgerond"); assert.equal(c.site_status, "opgezegd");
     assert.equal((await call("POST", `hq/customers/${c1}/opzegging/intrekken`, { cookie: admin })).status, 400);
   });
+  await test("scout: resultaten van 'Scout nu zoeken' komen binnen, ook als de scout uit staat", async () => {
+    const { runScout } = await import("../netlify/lib/b2b.mjs");
+    process.env.OUTSCRAPER_API_KEY = "test";
+    const at = new Date().toISOString();
+    await q(`INSERT INTO settings (key, value) VALUES ('scout_state', $1::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify({ lastDay: "2000-01-01", pending: [{ id: "req1", cat: "dakdekker", place: "Gouda", at }], history: [{ cat: "dakdekker", place: "Gouda", at, status: "bezig" }] })]);
+    const echt = globalThis.fetch;
+    globalThis.fetch = async (url, o) => String(url).includes("outscraper.com/requests/req1")
+      ? new Response(JSON.stringify({ status: "Success", data: [[{ name: "Dakdekker Gouda BV", site: "https://dakgouda.test", city: "Gouda", phone: "0182" }, { name: "Dak Zonder Site", site: "", city: "Gouda" }]] }), { headers: { "content-type": "application/json" } })
+      : echt(url, o);
+    try { const r = await runScout(); assert.equal(r.added, 2, JSON.stringify(r)); } finally { globalThis.fetch = echt; delete process.env.OUTSCRAPER_API_KEY; }
+    const [l] = await q("SELECT * FROM leads WHERE company = 'Dakdekker Gouda BV'"); assert.equal(l.category, "dakdekker"); assert.equal(l.status, "kandidaat");
+    const d = (await call("GET", "hq/b2b", { cookie: admin })).data;
+    assert.equal(d.scout.geschiedenis[0].status, "klaar"); assert.equal(d.scout.geschiedenis[0].gevonden, 2); assert.equal(d.scout.bezig, 0);
+  });
   await test("B2B-overzicht: zoekplan, vandaag, funnel en per branche", async () => {
     const r = await call("GET", "hq/b2b", { cookie: admin });
     assert.equal(r.status, 200, JSON.stringify(r.data));
