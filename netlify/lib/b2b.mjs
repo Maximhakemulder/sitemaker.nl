@@ -172,8 +172,10 @@ async function osc(path, params) {
 export async function runScout({ force = false } = {}) {
   const s = await getSettings();
   const sc = s.b2b.scout || {};
-  if (!scoutReady() || (!sc.active && !force)) return { skipped: true };
+  if (!scoutReady()) return { skipped: true };
   const st = (await one("SELECT value FROM settings WHERE key = 'scout_state'"))?.value || {};
+  // Lopende zoekopdrachten altijd ophalen, ook als de scout (nog) uit staat (bijv. na "Scout nu zoeken").
+  if (!sc.active && !force) return st.pending?.length ? collect(st) : { skipped: true };
   const day = dayKey();
   const wd = new Date(day + "T12:00:00Z").getUTCDay();
   if (!force && (st.lastDay === day || wd === 0 || wd === 6 || hourAms() < 7)) return collect(st);
