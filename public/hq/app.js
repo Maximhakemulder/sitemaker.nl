@@ -1186,8 +1186,8 @@ ${p.body}</div>
     const { domeinen: lijst } = await api("hq/domeinen");
     const werk = lijst.filter((d) => ["verhuizen", "registreren", "probleem"].includes(d.status));
     render(main, html`
-      <div class="hq-kop"><div><h1>Domeinen</h1><p>Per klant: domein zelf houden, naar Sitemaker verhuizen of nieuw registreren. De DNS wordt elk halfuur gecontroleerd tot hij klopt, daarna dagelijks.</p></div></div>
-      ${werk.length ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>${werk.length === 1 ? "1 domein wacht" : `${werk.length} domeinen wachten`} op jou.</b> Verhuizen en registreren doe je bij je eigen registrar; zet daarna hier de status op "DNS instellen" of "Actief".</p></div>` : ""}
+      <div class="hq-kop"><div><h1>Domeinen</h1><p>Klanten kopen en beheren hun domein zelf; wij verbinden het met hun site. De DNS wordt elk halfuur gecontroleerd tot hij klopt, daarna dagelijks.</p></div></div>
+      ${werk.length ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>${werk.length === 1 ? "1 domein wijst" : `${werk.length} domeinen wijzen`} niet (meer) naar de site.</b> Vraag de klant de instellingen bij zijn provider na te lopen.</p></div>` : ""}
       <section class="paneel">${lijst.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Domein</th><th>Klant</th><th>Keuze</th><th>Status</th><th>DNS</th><th>Verloopt</th><th class="acties"></th></tr></thead><tbody>
         ${lijst.map((d) => html`<tr><td><b>${d.naam}</b>${d.notitie ? html`<br><span class="klein dempen">${d.notitie}</span>` : ""}</td><td><a href="#klant/${d.customerId}">${d.company}</a></td>
           <td>${L.domeinKeuze[d.keuze]}${d.provider ? html`<br><span class="klein dempen">${d.provider}</span>` : ""}${d.verhuiscode ? html`<br><span class="klein">Verhuiscode: <code>${d.verhuiscode}</code></span>` : ""}</td>
@@ -1205,7 +1205,7 @@ ${p.body}</div>
       const dlg = SM.dialoog(d.naam, html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <div class="rij2"><div class="veld"><label for="dm-st">Status</label><select id="dm-st" name="status">${opties(L.domein, d.status)}</select></div>
           <div class="veld"><label for="dm-prov">Provider / registrar</label><input id="dm-prov" name="provider" value="${d.provider || ""}"></div></div>
-        <div class="rij2"><div class="veld"><label for="dm-ver">Verloopt op <span class="opt">(optioneel)</span></label><input id="dm-ver" name="verlooptOp" type="date" value="${d.verlooptOp || ""}"><div class="hulp">30 dagen vooraf krijg je een seintje.</div></div>
+        <div class="rij2"><div class="veld"><label for="dm-ver">Verloopt op <span class="opt">(optioneel)</span></label><input id="dm-ver" name="verlooptOp" type="date" value="${d.verlooptOp || ""}"><div class="hulp">Als je hem weet: 30 dagen vooraf krijg je een seintje om de klant te herinneren.</div></div>
           <div class="veld"><label for="dm-code">Verhuiscode</label><input id="dm-code" name="verhuiscode" value="${d.verhuiscode || ""}" autocomplete="off"><div class="hulp">Wordt gewist zodra het domein klopt.</div></div></div>
         <div class="veld"><label for="dm-not">Notitie</label><textarea id="dm-not" name="notitie" rows="2">${d.notitie || ""}</textarea></div>
         <button class="knop knop-actie" type="submit">Opslaan</button></form>`);

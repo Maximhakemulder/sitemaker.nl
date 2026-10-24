@@ -110,7 +110,7 @@
       ${state.pendingFirstPayment ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p><b>Rond je eerste betaling af</b> om je abonnement te starten.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div>` : ""}
 
       ${state.opzegging ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p>Je hebt opgezegd. Je website blijft online tot en met ${datumLang(state.opzegging)}.</p><a class="knop knop-licht knop-klein" href="#account">Bekijken</a></div>` : ""}
-      ${!state.domeinGekozen ? html`<div class="melding melding-info p-melding">${raw(icon.let)}<p><b>Op welk adres komt je website?</b> Kies of je je domeinnaam zelf houdt of door ons laat beheren.</p><a class="knop knop-actie knop-klein" href="#account/domein">Domein kiezen</a></div>` : ""}
+      ${!state.domeinGekozen ? html`<div class="melding melding-info p-melding">${raw(icon.let)}<p><b>Op welk adres komt je website?</b> Vul je domeinnaam in, dan verbinden wij hem met je website.</p><a class="knop knop-actie knop-klein" href="#account/domein">Domein invullen</a></div>` : ""}
       ${state.start?.stage === "bouwen" ? html`<section class="paneel start-bouwen"><h2>We bouwen je website</h2><p>We hebben je informatie ontvangen. Je website staat uiterlijk <b>${datumTijd(state.start.dueAt)}</b> online; je krijgt dan een mail.</p></section>` : ""}
       <section class="site-kaart" aria-label="Je website">
         <div class="site-icoon" aria-hidden="true"><img src="/assets/brand/mark.png" alt=""></div>
@@ -236,7 +236,7 @@
           ${tekstvak("socials", "Social media", i.socials, { opt: true, rows: 2, plaats: "Links naar Instagram, Facebook, LinkedIn…" })}
         </fieldset>
         <fieldset><legend>Domein en stijl</legend>
-          <div class="rij2">${veld("domein", "Domeinnaam", i.domein, { opt: true, hulp: "Je huidige domein, of welke je graag wilt" })}${veld("huidigeSite", "Huidige website", i.huidigeSite, { opt: true })}</div>
+          <div class="rij2">${veld("domein", "Domeinnaam", i.domein, { opt: true, hulp: "Heb je er nog geen? Koop hem zelf bij een provider; wij verbinden hem met je site." })}${veld("huidigeSite", "Huidige website", i.huidigeSite, { opt: true })}</div>
           <div class="veld"><span class="label" id="l-stijl">Welke stijl past bij je?</span>
             <div class="stijl-keuze" role="radiogroup" aria-labelledby="l-stijl">${Object.entries({ kies: "Kies maar voor mij", ...st.themas }).map(([k, t]) => html`<label class="stijl-optie"><input type="radio" name="stijl" value="${k}" ${(i.stijl || "kies") === k ? raw("checked") : ""}><span>${t}</span></label>`)}</div></div>
           <div class="rij2">${veld("kleuren", "Kleuren", i.kleuren, { opt: true, hulp: "Bijv. de kleuren van je logo" })}${veld("voorbeelden", "Websites die je mooi vindt", i.voorbeelden, { opt: true })}</div>

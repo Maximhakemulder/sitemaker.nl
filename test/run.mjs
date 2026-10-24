@@ -686,13 +686,12 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     assert.ok(lijst.some((d) => d.naam === "tweebedrijf.nl"));
     assert.equal((await call("GET", "hq/domeinen", { cookie: kb })).status, 403);
   });
-  await test("nieuw domein: bezet wordt geweigerd, ander klant kan hetzelfde domein niet claimen", async () => {
-    assert.equal((await call("POST", "portal/domein", { cookie: ka, body: { keuze: "nieuw", naam: "bezet-bedrijf.nl" } })).status, 409);
-    assert.equal((await call("POST", "portal/domein", { cookie: ka, body: { keuze: "eigen", naam: "tweebedrijf.nl" } })).status, 409);
-    const r = await call("POST", "portal/domein", { cookie: ka, body: { keuze: "verhuizen", naam: "eenbedrijf.nl", provider: "TransIP", verhuiscode: "ABC123" } });
-    assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.domein.status, "verhuizen");
+  await test("alleen verbinden: geen verhuizen of registreren; andere klant kan hetzelfde domein niet claimen", async () => {
+    assert.equal((await call("POST", "portal/domein", { cookie: ka, body: { naam: "tweebedrijf.nl" } })).status, 409);
+    const r = await call("POST", "portal/domein", { cookie: ka, body: { keuze: "verhuizen", naam: "eenbedrijf.nl", provider: "TransIP" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.domein.keuze, "eigen"); assert.equal(r.data.domein.status, "wacht_op_klant");
     const d = (await call("GET", "hq/domeinen", { cookie: admin })).data.domeinen.find((x) => x.naam === "eenbedrijf.nl");
-    assert.equal(d.verhuiscode, "ABC123");
+    assert.equal(d.provider, "TransIP");
     assert.equal((await call("PUT", "hq/domeinen/" + d.id, { cookie: admin, body: { status: "aangevraagd", verlooptOp: "2027-10-01" } })).status, 200);
   });
   await test("klantvraag via portaal: Emma zet antwoord klaar, Maxim verstuurt, klant ziet het", async () => {

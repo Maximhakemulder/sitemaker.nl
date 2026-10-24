@@ -109,7 +109,7 @@ export async function runDomainChecks({ max = 4 } = {}) {
                            AND d.verloopt_op < CURRENT_DATE + 30 AND (d.waarschuwing_at IS NULL OR d.waarschuwing_at < NOW() - INTERVAL '14 days')`);
   for (const d of verloop) {
     await q("UPDATE domains SET waarschuwing_at = NOW() WHERE id = $1", [d.id]);
-    await notifyStaff(`Domein verloopt binnenkort: ${d.naam}`, [`${d.naam} van ${d.company} verloopt op ${new Date(d.verloopt_op).toLocaleDateString("nl-NL")}. Verleng hem bij ${d.provider || "de registrar"}.`], `/hq/#domeinen`).catch(() => {});
+    await notifyStaff(`Domein verloopt binnenkort: ${d.naam}`, [`${d.naam} van ${d.company} verloopt op ${new Date(d.verloopt_op).toLocaleDateString("nl-NL")}. De klant verlengt hem zelf bij ${d.provider || "zijn provider"}; herinner hem er even aan.`], `/hq/#domeinen`).catch(() => {});
   }
   return { checked: todo.length };
 }
@@ -124,15 +124,11 @@ export async function portalDomain(customerId) {
 }
 
 export async function chooseDomain(user, b) {
-  const keuze = ["eigen", "verhuizen", "nieuw"].includes(b.keuze) ? b.keuze : null;
-  if (!keuze) fail(400, "Kies wat je met je domein wilt.", { field: "keuze" });
+  // Sitemaker registreert en beheert geen domeinen: de klant koopt het zelf, wij verbinden het.
+  const keuze = "eigen";
   const naam = normDomain(b.naam);
   if (!naam) fail(400, "Vul een geldige domeinnaam in, bijvoorbeeld jouwbedrijf.nl.", { field: "naam" });
   if (await one("SELECT 1 FROM domains WHERE naam = $1 AND status <> 'opgezegd' AND customer_id <> $2", [naam, user.customer_id])) fail(409, "Deze domeinnaam is al aan een andere klant gekoppeld. Neem contact met ons op.", { field: "naam" });
-  if (keuze === "nieuw") {
-    const r = await beschikbaar(naam);
-    if (r.vrij === false) fail(409, `${naam} is al geregistreerd. Kies een andere naam, of kies "Ik heb al een domein" als hij van jou is.`, { field: "naam" });
-  }
   const bestaand = await one("SELECT id FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' ORDER BY id DESC LIMIT 1", [user.customer_id]);
   const status = keuze === "eigen" ? "wacht_op_klant" : keuze === "verhuizen" ? "verhuizen" : "registreren";
   const vals = [naam, keuze, status, str(b.provider, 80), str(b.verhuiscode, 120)];
