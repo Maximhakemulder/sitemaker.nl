@@ -44,6 +44,9 @@ function imageCandidates(html, base) {
   // Logo: plaatjes in de kop of in de link naar de homepage, of met "logo" in naam/alt/class. Score bepaalt de volgorde.
   const kopEind = Math.max(0, html.search(/<\/header>/i));
   const thuis = [...html.matchAll(/<a\b[^>]*href=["'](\/|\.\/|https?:\/\/[^"'\/]+\/?)["'][^>]*>([\s\S]{0,600}?)<\/a>/gi)].map((m) => m[2]).join(" ");
+  // Logo uit gestructureerde data (schema.org) of het site-icoon in de kop.
+  for (const m of html.matchAll(/"logo"\s*:\s*(?:\{[^}]*?"url"\s*:\s*)?"([^"]+\.(?:png|jpe?g|webp|svg)[^"]*)"/gi)) { const a = abs(m[1].replace(/\\\//g, "/"), base); if (a && !out.some((x) => x.url === a)) out.push({ url: a, alt: "", hint: "logo", score: 4 }); }
+  let eersteInKop = true;
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
     const t = m[0];
     const srcset = attr(t, "srcset") || attr(t, "data-srcset");
@@ -52,7 +55,8 @@ function imageCandidates(html, base) {
     if (!src || src.startsWith("data:")) continue;
     const naamLogo = /logo/i.test(src + " " + attr(t, "alt") + " " + attr(t, "class") + " " + attr(t, "id"));
     const inKop = kopEind && m.index < kopEind, inThuis = thuis.includes(t);
-    const score = (naamLogo ? 3 : 0) + (inThuis ? 3 : 0) + (inKop ? 2 : 0) - (/award|badge|keurmerk|review|rating|partner|sponsor|certific/i.test(src + " " + attr(t, "alt")) ? 6 : 0);
+    const eerste = inKop && eersteInKop; if (inKop) eersteInKop = false;
+    const score = (naamLogo ? 3 : 0) + (inThuis ? 3 : 0) + (inKop ? 2 : 0) + (eerste ? 1 : 0) - (/award|badge|keurmerk|review|rating|partner|sponsor|certific/i.test(src + " " + attr(t, "alt")) ? 6 : 0);
     if (score >= 3) { const a = abs(src, base); if (a && !out.some((x) => x.url === a)) out.push({ url: a, alt: str(attr(t, "alt"), 120), hint: "logo", score }); continue; }
     add(src, attr(t, "alt"), "");
   }
