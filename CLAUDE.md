@@ -34,3 +34,7 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - Portaal (`netlify/lib/start.mjs`, `startStage`): gegevens (KvK 8 cijfers, adres, telefoon) → akkoord voorwaarden + incasso (`terms_at/ip/by`) en eerste Mollie-betaling → webhook zet `started_at` (`markStarted`, mail aan klant) → informatie aanleveren (`intake` JSONB + `intake_files`, max 20 bestanden van 4 MB, concept opslaan kan) → `intake_at`: klok van 2 werkdagen (`deliveryDue`).
 - HQ: paneel "Nieuwe klanten" op Overzicht, badge op Klanten (= betaald en nog in aanbouw), paneel "Start in het portaal" bij de klant met antwoorden en downloads.
 - Lokaal: `scripts/dev.mjs` heeft een nep-betaalpagina (`/__dev/betaal`) die de nep-Mollie-betaling op betaald zet.
+
+## Subdomeinen
+- Eén Netlify-project. `mijn.sitemaker.nl` = klantenportaal, `hq.sitemaker.nl` = HQ, via host-regels bovenaan `netlify.toml` (200-rewrite van `/` naar `/portaal/` resp. `/hq/`; oude paden op sitemaker.nl 301 naar het subdomein). Alle assets/API werken op elk host.
+- Links in mails en Mollie-redirects via `portalUrl()` / `hqUrl()` in core (env `PORTAL_URL`, `HQ_URL`; zonder env: `<site>/portaal/` en `<site>/hq/`). Sessies zijn per subdomein (host-only cookies).

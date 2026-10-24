@@ -1,6 +1,6 @@
 // Klantenportaal. Elke query filtert op de customer_id van de ingelogde gebruiker.
 import crypto from "node:crypto";
-import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase, getSettings } from "./core.mjs";
+import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase, getSettings, portalUrl } from "./core.mjs";
 import { putFile, getFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady } from "./mollie.mjs";
@@ -128,11 +128,11 @@ export async function submitChange(user, form) {
   pending.push(sendMail({
     to: user.email, kind: "wijziging-ontvangen", ref: `change:${res.row.id}`,
     subject: "We hebben je wijziging ontvangen",
-    text: `We hebben je wijziging ontvangen en verwerken die binnen ${OFFER.changeHours} uur.\n\nJouw omschrijving:\n${description}\n\nJe kunt de status volgen in je klantenportaal: ${publicBase()}/portaal/#wijzigingen\n\nDeze maand heb je nog ${res.usage.left} van de ${res.usage.limit} wijzigingen over.`,
+    text: `We hebben je wijziging ontvangen en verwerken die binnen ${OFFER.changeHours} uur.\n\nJouw omschrijving:\n${description}\n\nJe kunt de status volgen in je klantenportaal: ${portalUrl()}#wijzigingen\n\nDeze maand heb je nog ${res.usage.left} van de ${res.usage.limit} wijzigingen over.`,
     html: brandHtml({
       title: "We hebben je wijziging ontvangen",
       intro: [`We verwerken je wijziging binnen <b>${OFFER.changeHours} uur</b>. Je krijgt een mail zodra hij klaar is.`, `<i>${escH(description.slice(0, 800)).replace(/\n/g, "<br>")}</i>`, `Deze maand heb je nog <b>${res.usage.left} van de ${res.usage.limit}</b> wijzigingen over.`],
-      button: { label: "Bekijk de status", href: `${publicBase()}/portaal/#wijzigingen` },
+      button: { label: "Bekijk de status", href: `${portalUrl()}#wijzigingen` },
     }),
   }).catch(() => {}));
   await Promise.allSettled(pending);
@@ -168,8 +168,8 @@ export async function mailChangeStatus(changeId) {
     : ["We hebben je verzoek bekeken maar kunnen het niet zo uitvoeren.", r.staff_note ? `Toelichting: ${escH(r.staff_note)}` : "", r.counts ? "" : "Deze aanvraag telt niet mee voor je vier wijzigingen van deze maand."];
   return sendMail({
     to: r.to_email, kind: "wijziging-status", ref: `change:${r.id}`, subject: title,
-    text: `${lines.filter(Boolean).join("\n\n").replace(/<[^>]+>/g, "")}\n\nJouw verzoek:\n${r.description}\n\n${publicBase()}/portaal/#wijzigingen`,
-    html: brandHtml({ title, intro: [...lines.filter(Boolean), `<i>${escH(r.description.slice(0, 600)).replace(/\n/g, "<br>")}</i>`], button: { label: "Open je portaal", href: `${publicBase()}/portaal/#wijzigingen` } }),
+    text: `${lines.filter(Boolean).join("\n\n").replace(/<[^>]+>/g, "")}\n\nJouw verzoek:\n${r.description}\n\n${portalUrl()}#wijzigingen`,
+    html: brandHtml({ title, intro: [...lines.filter(Boolean), `<i>${escH(r.description.slice(0, 600)).replace(/\n/g, "<br>")}</i>`], button: { label: "Open je portaal", href: `${portalUrl()}#wijzigingen` } }),
   });
 }
 
