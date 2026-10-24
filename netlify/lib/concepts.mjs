@@ -9,7 +9,7 @@ import { putFile, getFile, deleteFile } from "./files.mjs";
 import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
-import { ontwerp, toonOntwerp } from "./ontwerp.mjs";
+import { ontwerp, toonOntwerp, sanitize } from "./ontwerp.mjs";
 
 export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
@@ -88,7 +88,11 @@ export function imageSize(buf) {
   return null;
 }
 
-const THEMA_STANDAARD = new Set(["#2ea3f2", "#0073aa", "#21759b", "#007bff", "#0d6efd", "#337ab7", "#1e73be", "#0274be", "#3858e9", "#2271b1", "#135e96", "#00a0d2", "#46b450", "#dc3232", "#ffb900", "#e74c3c", "#3498db", "#7ad03a", "#a46497", "#96588a", "#0693e3", "#cf2e2e", "#ff6900", "#fcb900", "#7bdcb5", "#00d084", "#8ed1fc", "#9b51e0", "#f78da7", "#abb8c3", "#6c757d", "#17a2b8", "#28a745", "#dc3545", "#ffc107"]);
+const THEMA_STANDAARD = new Set(["#2ea3f2", "#0073aa", "#21759b", "#007bff", "#0d6efd", "#337ab7", "#1e73be", "#0274be", "#3858e9", "#2271b1", "#135e96", "#00a0d2", "#46b450", "#dc3232", "#ffb900", "#e74c3c", "#3498db", "#7ad03a", "#a46497", "#96588a", "#0693e3", "#cf2e2e", "#ff6900", "#fcb900", "#7bdcb5", "#00d084", "#8ed1fc", "#9b51e0", "#f78da7", "#abb8c3", "#6c757d", "#17a2b8", "#28a745", "#dc3545", "#ffc107",
+  // standaardkleuren van websitebouwers (Hostinger, Elementor, Astra, Kadence, Wix, Squarespace, Bootstrap 5)
+  "#673de6", "#5025d1", "#8c85ff", "#d5dfff", "#2f1c6a", "#1f1346", "#ebe4ff", "#22a857", "#fc5185", "#ffcd35", "#00b090",
+  "#6ec1e4", "#54595f", "#7a7a7a", "#61ce70", "#4054b2", "#23a455", "#0170b9", "#3a3a3a", "#2b6cb0", "#215387", "#3182ce", "#2c5282",
+  "#116dff", "#3899ec", "#4eb7f5", "#0f62fe", "#6610f2", "#6f42c1", "#d63384", "#fd7e14", "#20c997", "#0dcaf0", "#198754"]);
 function colorsOf(css) {
   const count = {};
   for (const m of css.matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)) {
@@ -152,6 +156,19 @@ export async function scan(website) {
   return { home, html, text, analysis: analyse(home, html, textOf(html)), kleuren: colorsOf(css), cands };
 }
 
+// Kleuren uit een SVG-logo (betrouwbaarder dan de CSS van de site).
+export function svgKleuren(buf) {
+  const t = buf.toString("utf8");
+  const tel = {};
+  for (const m of t.matchAll(/(?:fill|stroke|stop-color|color)\s*[:=]\s*["']?\s*#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)) {
+    let h = m[1].toLowerCase(); if (h.length === 3) h = h.split("").map((x) => x + x).join("");
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+    if (Math.max(r, g, b) - Math.min(r, g, b) < 30 && (Math.max(r, g, b) < 50 || Math.min(r, g, b) > 220)) continue; // zwart/wit
+    tel["#" + h] = (tel["#" + h] || 0) + 1;
+  }
+  return Object.entries(tel).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([c]) => c);
+}
+
 // Download de bruikbare foto's (en logo) naar Blobs.
 async function saveImages(conceptId, cands) {
   const out = [];
@@ -179,6 +196,7 @@ async function saveImages(conceptId, cands) {
     const key = `concepts/${conceptId}/${name}`;
     await putFile(key, r.buf, { type: size.type, name });
     out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: c.alt, logo: isLogo, bron: c.url });
+    if (isLogo) Object.defineProperty(out, "logoBuf", { value: { buf: r.buf, type: size.type }, enumerable: false });
     if (out.filter((x) => !x.logo).length >= 10) break;
   }
   return out;
@@ -238,7 +256,7 @@ Regels:
 - "over": 2-4 zinnen over het bedrijf, alleen uit hun tekst.
 - Foto's: kies alleen uit de lijst met beschikbare afbeeldingen (pad "afbeeldingen/…"). Hero = de mooiste, sfeervolle foto. Gebruik een foto maar één keer. Geen foto's beschikbaar = laat foto-velden leeg.
 - Het concept moet herkenbaar voelen als HUN bedrijf: neem de sfeer en huisstijl van hun huidige site over. Kies het thema dat daar het dichtst bij ligt: elegant (luxe, beauty, donker), stoer (bouw, installatie, techniek), natuur (tuin, zorg, ambacht, lokaal), zacht (modern, praktijk, coaching, zakelijk).
-- kleuren.primair: hun belangrijkste huisstijlkleur uit de lijst (meestal de eerste die bij hun logo/knoppen past). kleuren.accent: een tweede huisstijlkleur als die er is. Laat alleen leeg als er geen bruikbare kleur in de lijst staat.
+- kleuren: de huisstijl komt uit hun LOGO. Zit het logo als afbeelding bij dit bericht, kijk er dan goed naar en neem de kleuren daaruit over (als hex, zo exact mogelijk). "Kleuren uit het logo" in het bericht zijn betrouwbaar. "Kleuren uit de CSS" zijn ONBETROUWBAAR: vaak standaardkleuren van de websitebouwer (bijv. paars van Hostinger of blauw van WordPress); gebruik die alleen als ze duidelijk bij het logo passen. kleuren.primair = hoofdkleur van het logo, kleuren.accent = tweede logokleur als die er is. Zwart/wit logo of geen logo: kies een rustige kleur die bij hun vak en foto's past en zet "kleurBron":"gekozen" in kleuren; anders "kleurBron":"logo".
 - Openingstijden alleen als ze in de tekst staan.
 - "ontwerp": maak elke site anders en passend bij HUN merk. Kies:
   fonts: klassiek (verfijnd, schoonheid), luxe (high-end, mode, juwelen), editorial (stijlvol, horeca, makelaar), warm (ambacht, bakker, zorg), modern (creatief, eigentijds), ambacht (bouw, timmerman, garage), stoer (installatie, sloop, sport), strak (techniek, zakelijk, advies), speels (kinderen, coaching, hobby, dieren).
@@ -249,7 +267,7 @@ Regels:
 - "stock": geef altijd een Nederlandse zoekterm (2-3 woorden) voor sfeerfoto's die precies bij hun werk passen, bijv. "airco installateur", "kapsalon interieur", "hovenier tuin", "loodgieter badkamer". Die gebruiken we als hun eigen foto's niet genoeg zijn.
 - Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
 Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
-{"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":"","kleuren":{"primair":"","accent":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
+{"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":"","kleuren":{"primair":"","accent":"","kleurBron":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
  "seo":{"titel":"","omschrijving":""},"hero":{"label":"","titel":"","tekst":"","knop":{"tekst":"","link":"#contact"},"foto":""},
  "diensten":{"titel":"","items":[{"titel":"","tekst":"","prijs":""}]},"over":{"titel":"","tekst":"","foto":""},"fotos":[],
  "openingstijden":[{"dag":"","tijd":""}],"contact":{"titel":"","tekst":"","knop":{"tekst":"","link":""}}}`;
@@ -267,7 +285,7 @@ export function clean(c, { text, images, lead }) {
   const out = {
     thema: THEMAS[c.thema] ? c.thema : "natuur",
     ontwerp: Object.fromEntries(Object.entries(ONTWERP).map(([k, opties]) => [k, opties.includes(c.ontwerp?.[k]) ? c.ontwerp[k] : ""]).filter(([, v]) => v)),
-    kleuren: { primair: HEX.test(c.kleuren?.primair || "") ? c.kleuren.primair : "", accent: HEX.test(c.kleuren?.accent || "") ? c.kleuren.accent : "" },
+    kleuren: { primair: HEX.test(c.kleuren?.primair || "") ? c.kleuren.primair : "", accent: HEX.test(c.kleuren?.accent || "") ? c.kleuren.accent : "", bron: c.kleuren?.kleurBron === "logo" ? "logo" : "gekozen" },
     bedrijf: {
       naam: s(b.naam, 80) || lead.company,
       telefoon: tel && digits(tel).length >= 9 && plainDigits.includes(digits(tel).slice(-9)) ? tel : "",
@@ -326,8 +344,12 @@ export async function processConcept(conceptId) {
     // oude afbeeldingen van een eerdere poging opruimen
     for (const i of c.images || []) await deleteFile(i.key).catch(() => {});
     const images = await saveImages(c.id, site.cands);
+    // Logo meesturen zodat Claude de echte huisstijlkleuren ziet (SVG: kleuren uitlezen).
+    const lb = images.logoBuf, logoKleuren = lb?.type === "image/svg+xml" ? svgKleuren(lb.buf) : [];
+    const beeld = lb && /^image\/(png|jpeg|webp)$/.test(lb.type) && lb.buf.length < 3000000 ? [{ type: lb.type, data: lb.buf.toString("base64") }] : [];
     const prompt = `Bedrijf: ${lead.company}${lead.category ? ` (${lead.category})` : ""}${lead.city ? `, ${lead.city}` : ""}. Website: ${site.home.url}
-Huisstijlkleuren op hun site: ${site.kleuren.join(", ") || "onbekend"}
+${beeld.length ? "Het logo zit als afbeelding bij dit bericht: haal de huisstijlkleuren daaruit.\n" : ""}Kleuren uit het logo: ${logoKleuren.join(", ") || (beeld.length ? "zie afbeelding" : "geen logo gevonden")}
+Kleuren uit de CSS (onbetrouwbaar, vaak standaard van de websitebouwer): ${site.kleuren.join(", ") || "geen"}
 Beschikbare afbeeldingen:
 ${images.length ? images.map((i) => `- afbeeldingen/${i.name} (${i.w}x${i.h}${i.logo ? ", LOGO" : ""}${i.alt ? `, alt: "${i.alt}"` : ""})`).join("\n") : "- geen"}
 ${c.instructie ? `\nExtra wens van Sitemaker voor dit concept: ${c.instructie}\n` : ""}
@@ -335,7 +357,7 @@ Tekst van hun website (ingekort):
 """
 ${site.text}
 """`;
-    const out = parseJson(await claude({ system: SYSTEM, prompt, maxTokens: 6000, timeoutMs: 240000 }));
+    const out = parseJson(await claude({ system: SYSTEM, prompt, images: beeld, maxTokens: 6000, timeoutMs: 240000 }));
     if (!out) return await klaar("fout", { reden: "Claude gaf geen bruikbaar antwoord.", images, analysis: site.analysis });
     if (out.kan === false) return await klaar("overgeslagen", { reden: str(out.reden, 300) || "Niet geschikt voor een concept.", images, analysis: site.analysis });
     const content = clean(out.content || {}, { text: site.text, images, lead });
@@ -358,7 +380,7 @@ ${site.text}
     // Ontwerp-agent: een volledig eigen ontwerp voor dit bedrijf. Lukt dat niet, dan de vaste opmaak als vangnet.
     let html = "", ontwerpFout = "";
     try {
-      const r = await ontwerp(content, images, { category: lead.category, kleuren: site.kleuren, platform: site.analysis?.platform, instructie: c.instructie, model: env("AI_MODEL_ONTWERP") || undefined });
+      const r = await ontwerp(content, images, { category: lead.category, kleuren: logoKleuren, platform: site.analysis?.platform, instructie: c.instructie, model: env("AI_MODEL_ONTWERP") || undefined });
       html = r.html || ""; ontwerpFout = r.fout || "";
     } catch (e) { ontwerpFout = str(e.message, 200); }
     await q("UPDATE concepts SET html = $2, ontwerp_fout = $3 WHERE id = $1", [c.id, html, ontwerpFout]);
@@ -420,6 +442,20 @@ const page = (title, body) => new Response(`<!doctype html><html lang="nl"><head
 <style>body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#E7F4FF;color:#1C0747;display:grid;place-items:center;min-height:100vh;padding:16px;box-sizing:border-box}main{background:#fff;border-radius:18px;padding:30px;max-width:460px}h1{font-size:24px;margin:0 0 12px}p{line-height:1.55}a.k{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none}</style></head>
 <body><main>${body}</main></body></html>`, { status: 200, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" } });
 
+// "Wat is er beter dan jullie huidige site": eerlijk, uit wat de agent op hun site zag, plus wat dit voorbeeld standaard doet.
+function beter(a) {
+  const p = [];
+  if (a && a.url) {
+    if (!a.https) p.push(["Beveiligde verbinding (https)", "Jullie huidige site heeft geen https; browsers waarschuwen bezoekers daarvoor."]);
+    if (!a.mobiel) p.push(["Gemaakt voor mobiel", "Jullie huidige site is niet ingericht voor telefoons, terwijl de meeste bezoekers daarop kijken."]);
+    if (a.jaartal && a.jaartal < new Date().getFullYear() - 1) p.push(["Actueel en verzorgd", `Jullie huidige site toont nog ${a.jaartal} onderaan.`]);
+    if (!a.omschrijving) p.push(["Beter vindbaar in Google", "Jullie huidige site mist een omschrijving voor zoekmachines."]);
+    if (!a.belknop) p.push(["Bellen met één tik", "Op jullie huidige site kun je niet direct bellen."]);
+  }
+  p.push(["Altijd een knop in beeld", "Op mobiel staan bellen en een afspraak maken onderin altijd klaar."]);
+  return `<h3>Wat dit voorbeeld beter doet</h3><ul class="sm-beter">${p.slice(0, 5).map(([t, u]) => `<li>${escH(t)}<small>${escH(u)}</small></li>`).join("")}</ul>`;
+}
+
 export async function conceptPage(token, { hq = false } = {}) {
   const c = await conceptByToken(token);
   const kennis = `${publicBase()}/?concept=${encodeURIComponent(token)}${c?.company ? `&bedrijf=${encodeURIComponent(c.content?.bedrijf?.naam || c.company)}` : ""}#kennismaking`;
@@ -430,11 +466,13 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-balk b{color:#0CC0DF}.sm-balk a{background:#D93636;color:#fff;font-weight:700;padding:8px 14px;border-radius:9px;text-decoration:none;white-space:nowrap}
 .sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:inline}.sm-balk a{padding:7px 11px;font-size:13px}}
 .sm-eind{background:#1C0747;color:#fff;padding:48px 20px;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.sm-eind h2{font-size:28px;margin:0 0 10px;font-family:inherit;color:#fff}.sm-eind p{max-width:560px;margin:0 auto 20px;color:#E3DDF5}
+.sm-beter{list-style:none;padding:0;margin:0 auto 26px;max-width:560px;text-align:left;display:grid;gap:8px}.sm-beter li{background:rgba(255,255,255,.07);border-radius:10px;padding:10px 14px 10px 40px;position:relative;color:#fff}.sm-beter li::before{content:"✓";position:absolute;left:14px;color:#0CC0DF;font-weight:700}.sm-beter small{display:block;margin:2px 0 0;color:#B8AEDB}
+.sm-eind h3{font-size:18px;margin:6px 0 12px;color:#fff}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
 <div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit is een eerste voorbeeld, automatisch gemaakt op basis van jullie huidige website. De echte website maken we samen helemaal naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
-<a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
+${beter(c.analysis)}<a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   // Versie in het pad: bij een nieuw concept met dezelfde bestandsnamen geen oude foto's uit de cache.
   const imgBase = `/api/voorbeeld/${token}/a${c.ready_at ? new Date(c.ready_at).getTime().toString(36) : "0"}/`;
@@ -442,7 +480,7 @@ ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voor
     // Eigen ontwerp: zonder scripts van de agent; alleen ons eigen script (met nonce) mag draaien.
     const nonce = crypto.randomBytes(16).toString("base64");
     const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script>`;
-    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
+    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`).replace("position:sticky;top:0;", "position:relative;"), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
     return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
       "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
   }
@@ -458,7 +496,38 @@ document.querySelectorAll("img.logo-img").forEach(function(i){i.complete&&i.natu
 var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"],vd=new Date().getDay(),hit=false;
 document.querySelectorAll(".sm-tijden > div").forEach(function(el){if(hit)return;var t=(el.querySelector("dt")||el).textContent.toLowerCase(),r=[],m=t.match(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)\\s*(?:t\\/m|tot en met|-|–)\\s*(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)/);
 if(m){for(var a=D.indexOf(m[1]),i=a;;i=(i+1)%7){r.push(i);if(i===D.indexOf(m[2])||r.length>7)break}}else D.forEach(function(d,i){if(t.indexOf(d)>-1)r.push(i)});
-if(r.indexOf(vd)>-1){hit=true;el.style.fontWeight="700";var dt=el.querySelector("dt");if(dt)dt.insertAdjacentText("beforeend"," · vandaag")}})})();`;
+if(r.indexOf(vd)>-1){hit=true;el.style.fontWeight="700";var dt=el.querySelector("dt");if(dt)dt.insertAdjacentText("beforeend"," · vandaag")}});
+
+var d=document,h=d.documentElement,rm=matchMedia("(prefers-reduced-motion: reduce)").matches;
+// kop: klasse zodra er gescrold is
+var kop=d.querySelector("header");function k(){if(kop)kop.classList.toggle("is-gescrold",scrollY>8)}addEventListener("scroll",k,{passive:true});k();
+if(rm||!("IntersectionObserver"in window))return;
+h.classList.add("js");
+// 1. reveals
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-zichtbaar");io.unobserve(e.target)}})},{rootMargin:"0px 0px -8% 0px",threshold:.08});
+d.querySelectorAll("[data-reveal]").forEach(function(el){io.observe(el)});
+// 2. woorden die oplichten tijdens het scrollen
+var scrub=[].slice.call(d.querySelectorAll("[data-scrub]"));
+scrub.forEach(function(el){var t=el.textContent.trim().split(/\\s+/);el.setAttribute("aria-label",el.textContent.trim());el.innerHTML=t.map(function(w){return'<span class="w" aria-hidden="true">'+w.replace(/[&<>]/g,"")+"</span>"}).join(" ")});
+// 3. parallax
+var par=[].slice.call(d.querySelectorAll("[data-parallax]"));
+// 4. verhaal: stappen die actief worden
+var verhalen=[].slice.call(d.querySelectorAll("[data-verhaal]"));
+function stap(v,el){if(el.classList.contains("is-actief"))return;v.querySelectorAll("[data-stap]").forEach(function(s){s.classList.toggle("is-actief",s===el)});
+ var kl=getComputedStyle(el).getPropertyValue("--kleur").trim();if(kl)v.style.setProperty("--temp",kl);
+ var u=el.querySelector("use"),t=el.querySelector("h3,h2");
+ v.querySelectorAll('[data-toon="icoon"] use').forEach(function(x){if(u)x.setAttribute("href",u.getAttribute("href"))});
+ v.querySelectorAll('[data-toon="titel"]').forEach(function(x){if(t)x.textContent=t.textContent});
+ v.querySelectorAll("[data-voortgang]").forEach(function(x){x.style.strokeDashoffset=100-Number(el.dataset.stand||0)})}
+var bezig=false;
+function frame(){bezig=false;var vh=innerHeight;
+ par.forEach(function(el){var r=el.parentElement.getBoundingClientRect();if(r.bottom<-200||r.top>vh+200)return;var p=(r.top+r.height/2-vh/2);el.style.transform="translate3d(0,"+(p*Number(el.dataset.parallax||0)).toFixed(1)+"px,0)"});
+ scrub.forEach(function(el){var r=el.getBoundingClientRect(),w=el.querySelectorAll(".w"),p=Math.min(1,Math.max(0,(vh*.85-r.top)/(r.height+vh*.35))),n=Math.round(p*w.length);w.forEach(function(s,i){s.classList.toggle("aan",i<n)})});
+ verhalen.forEach(function(v){var best=null,bd=1e9;v.querySelectorAll("[data-stap]").forEach(function(s){var r=s.getBoundingClientRect(),dd=Math.abs(r.top+r.height/2-vh*.5);if(dd<bd){bd=dd;best=s}});if(best)stap(v,best)})}
+function req(){if(!bezig){bezig=true;requestAnimationFrame(frame)}}
+addEventListener("scroll",req,{passive:true});addEventListener("resize",req);frame();
+
+})();`;
 
 export async function conceptImage(token, name) {
   const c = await conceptByToken(token);
@@ -526,4 +595,16 @@ export async function listConcepts({ filter = "" } = {}) {
         titel: c.content?.hero?.titel || "", heroImg: hero && c.token ? `/api/voorbeeld/${c.token}/afbeeldingen/${hero}` : "", hqUrl: c.token ? `/voorbeeld/${c.token}?hq=1` : "" };
     }),
   };
+}
+
+// Beheer: een (handmatig verbeterd) ontwerp plaatsen bij een concept. Zelfde veiligheidsfilter als de ontwerp-agent.
+export async function setConceptHtml(conceptId, html, user) {
+  const c = await one("SELECT * FROM concepts WHERE id = $1", [conceptId]);
+  if (!c) fail(404, "Concept niet gevonden.");
+  const namen = new Set((c.images || []).map((i) => i.name));
+  const schoon = sanitize(String(html || ""), { imgBase: "afbeeldingen/", namen });
+  if (!schoon || schoon.length < 2000) fail(400, "Geen geldig HTML-document.");
+  await q("UPDATE concepts SET html = $2, ontwerp_fout = '', ready_at = NOW(), updated_at = NOW() WHERE id = $1", [conceptId, schoon]);
+  await audit(user, "concept_ontwerp", "concept", conceptId, { bytes: schoon.length });
+  return { ok: true, bytes: schoon.length };
 }
