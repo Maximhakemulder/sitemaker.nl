@@ -809,6 +809,21 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     assert.equal(d.afgeleverd, d.verstuurd - d.bounces);
     void leadId;
   });
+  await test("ontwerp-agent: eigen ontwerp wordt opgeschoond en op feiten gecontroleerd", async () => {
+    const { sanitize, feitencheck, toonOntwerp } = await import("../netlify/lib/ontwerp.mjs");
+    const namen = new Set(["foto-1.jpg", "logo.png"]);
+    const vies = `<!doctype html><html><head><link rel="stylesheet" href="https://fonts.bunny.net/css?family=fraunces:600"><link rel="stylesheet" href="https://evil.test/x.css"><style>body{background:url(https://evil.test/a.png)} .h{background:url(afbeeldingen/foto-1.jpg)}</style><script>alert(1)</script></head>
+      <body><img src="afbeeldingen/foto-1.jpg" onerror="alert(2)"><img src="https://evil.test/x.jpg"><a href="javascript:alert(3)">x</a><iframe src="https://evil.test"></iframe><form action="https://evil.test"><input></form><a href="tel:0101234567">Bel</a></body></html>`;
+    const h = sanitize(vies, { imgBase: "afbeeldingen/", namen });
+    assert.ok(h && !/script|onerror|evil\.test|javascript:|iframe|<form|<input/i.test(h), h);
+    assert.ok(h.includes("fonts.bunny.net") && h.includes('src="afbeeldingen/foto-1.jpg"') && h.includes('url("afbeeldingen/foto-1.jpg")'));
+    const content = { bedrijf: { naam: "Zon", telefoon: "010 1234567", email: "info@zon.test" }, diensten: { items: [{ titel: "Brood", prijs: "€ 3,50" }] } };
+    assert.deepEqual(feitencheck(h, content), []);
+    const verzonnen = feitencheck(`<p>Al 25 jaar ervaring sinds 1998. Bel 06 99887766 of mail nep@zon.test. Taart €12,95. ★★★★★</p>`, content);
+    assert.ok(verzonnen.length >= 5, JSON.stringify(verzonnen));
+    const t = toonOntwerp(h, { imgBase: "/api/voorbeeld/x/afbeeldingen/", bodyStart: "<div id=balk></div>" });
+    assert.ok(t.includes("/api/voorbeeld/x/afbeeldingen/foto-1.jpg") && t.includes("<div id=balk></div>") && t.includes("noindex"));
+  });
   await test("B2B-overzicht: zoekplan, vandaag, funnel en per branche", async () => {
     const r = await call("GET", "hq/b2b", { cookie: admin });
     assert.equal(r.status, 200, JSON.stringify(r.data));
