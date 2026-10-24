@@ -28,15 +28,18 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
     strak: { kop: '"Sora", system-ui, sans-serif', tekst: '"DM Sans", system-ui, sans-serif', f: "sora:600,700|dm-sans:400,500,600,700", g: 700, sp: "-0.035em", hoofd: "none" },
     speels: { kop: '"Bricolage Grotesque", system-ui, sans-serif', tekst: '"Figtree", system-ui, sans-serif', f: "bricolage-grotesque:600,700,800|figtree:400,500,600,700", g: 700, sp: "-0.03em", hoofd: "none" },
   };
-  const OPTIES = { hero: ["split", "volbeeld", "kader", "typo"], diensten: ["kaarten", "rijen", "lijst"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"] };
+  const OPTIES = { hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
+  const aantalFotos = new Set([c.hero?.foto, c.over?.foto, ...(c.fotos || [])].filter(Boolean)).size;
   const STANDAARD = { elegant: { fonts: ["klassiek", "luxe", "editorial"], sfeer: "donker", vorm: "strak" }, stoer: { fonts: ["stoer", "ambacht", "strak"], sfeer: "licht", vorm: "strak" }, natuur: { fonts: ["warm", "modern", "ambacht"], sfeer: "licht", vorm: "rond" }, zacht: { fonts: ["speels", "strak", "modern"], sfeer: "licht", vorm: "zacht" } }[thema];
   let hash = 0; for (const ch of String(c.bedrijf?.naam || "x")) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   const kies = (lijst, n) => lijst[(hash >>> n) % lijst.length];
   const w = c.ontwerp || {};
   const O = {
     fonts: FONTS[w.fonts] ? w.fonts : kies(STANDAARD.fonts, 0),
-    hero: OPTIES.hero.includes(w.hero) ? w.hero : kies(["split", "volbeeld", "kader"], 3),
-    diensten: OPTIES.diensten.includes(w.diensten) ? w.diensten : kies(["kaarten", "rijen"], 6),
+    hero: OPTIES.hero.includes(w.hero) ? w.hero : kies(aantalFotos >= 4 ? ["split", "volbeeld", "kader", "collage"] : ["split", "volbeeld", "kader"], 3),
+    diensten: OPTIES.diensten.includes(w.diensten) ? w.diensten : kies(aantalFotos >= 4 ? ["kaarten", "rijen", "foto", "foto"] : ["kaarten", "rijen"], 6),
+    volgorde: kies(aantalFotos >= 5 ? [0, 1, 2] : [0, 1], 9),
+    kopstijl: OPTIES.kopstijl.includes(w.kopstijl) ? w.kopstijl : kies(OPTIES.kopstijl, 12),
     vorm: OPTIES.vorm.includes(w.vorm) ? w.vorm : STANDAARD.vorm,
     sfeer: OPTIES.sfeer.includes(w.sfeer) ? w.sfeer : STANDAARD.sfeer,
   };
@@ -72,7 +75,7 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
   let knopBg = kandidaten.find((k) => contrast(k, bg) >= (hoofdletters && strak ? 1.6 : 2.2)) || leesbaar(kandidaten[0], bg, 3);
   knopBg = metTekst(knopBg);
   const knopTx = opTekst(knopBg);
-  const nadruk = leesbaar(T.donker ? accent : merk, bg, 4.5);
+  const nadruk = leesbaar(leesbaar(T.donker ? accent : merk, bg, 4.5), vlak, 4.5);
   const band = metTekst(hoofdletters && lum(accent) > 0.35 ? accent : T.donker ? mix(accent, "#000000", 0.08) : merk);
   const bandTx = opTekst(band);
 
@@ -113,6 +116,12 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
 
   // ---------- secties
   const S = [];
+  // Alle foto's op een rij; elk onderdeel pakt er een paar, zodat de site vol beeld staat zonder dat dezelfde foto steeds terugkomt.
+  const pool = [...new Set([heroFoto, overFoto, ...fotos].filter(Boolean))];
+  let wijzer = 0;
+  const volgende = (behalve = []) => { if (!pool.length) return ""; for (let i = 0; i < pool.length; i++) { const p = pool[(wijzer + i) % pool.length]; if (!behalve.includes(p)) { wijzer = (wijzer + i + 1) % pool.length; return p; } } return pool[0]; };
+  const img = (p, alt = "", extra = "") => (p ? `<img src="${e(p)}" alt="${e(alt)}" loading="lazy"${extra}>` : "");
+  const kopBlok = (titel, intro = "") => `<div class="sectie-kop ks-${O.kopstijl}">${O.kopstijl === "groot" ? `<span class="watermerk" aria-hidden="true">${e(titel)}</span>` : ""}<h2>${e(titel)}</h2>${intro ? `<p>${e(intro)}</p>` : ""}</div>`;
 
   // Hero
   const heroInfo = [
@@ -127,19 +136,25 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
       <div class="acties">${knop(actie)}${tel && actie.link !== "tel:" + tel ? `<a class="knop-rand" href="tel:${e(tel)}"><span class="ic">${ICON.tel}</span>${e(telTekst)}</a>` : ""}</div>
       ${heroInfo ? `<ul class="hero-info">${heroInfo}</ul>` : ""}${extra}
     </div>`;
-  const tweede = fotos[0] || overFoto;
-  const heroVariant = heroFoto ? O.hero : "typo";
+  const heroVariant = heroFoto ? (O.hero === "collage" && pool.length < 4 ? "split" : O.hero) : "typo";
+  const gebruikt = [heroFoto];
   if (heroVariant === "volbeeld") {
     S.push(`<section class="hero v-volbeeld" id="top"><div class="vol-foto"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></div><div class="wrap">${heroTekst()}</div></section>`);
   } else if (heroVariant === "kader") {
+    const t = volgende(gebruikt); gebruikt.push(t);
     S.push(`<section class="hero v-kader" id="top"><div class="wrap">${heroTekst()}
-      <div class="kader-beeld"><div class="kader-foto"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></div>${tweede ? `<div class="kader-klein"><img src="${e(tweede)}" alt="" loading="lazy"></div>` : ""}</div></div></section>`);
+      <div class="kader-beeld"><div class="kader-foto"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></div>${t && t !== heroFoto ? `<div class="kader-klein">${img(t)}</div>` : ""}</div></div></section>`);
+  } else if (heroVariant === "collage") {
+    const extra = [volgende(gebruikt)]; extra.push(volgende([...gebruikt, ...extra])); extra.push(volgende([...gebruikt, ...extra]));
+    S.push(`<section class="hero v-collage" id="top"><div class="wrap hero-grid">${heroTekst()}
+      <div class="collage"><figure class="c0"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></figure>${extra.filter((p) => p && p !== heroFoto).map((p, i) => `<figure class="c${i + 1}">${img(p)}</figure>`).join("")}</div></div></section>`);
   } else if (heroVariant === "typo") {
-    const strip = [heroFoto, ...fotos, overFoto].filter(Boolean).filter((p, i, a) => a.indexOf(p) === i).slice(0, 3);
-    S.push(`<section class="hero v-typo" id="top"><div class="wrap">${heroTekst()}</div>${strip.length ? `<div class="wrap typo-strip n${strip.length}">${strip.map((p) => `<figure><img src="${e(p)}" alt="" loading="lazy"></figure>`).join("")}</div>` : ""}</section>`);
+    const strip = pool.slice(0, 3);
+    S.push(`<section class="hero v-typo" id="top"><div class="wrap">${heroTekst()}</div>${strip.length ? `<div class="wrap typo-strip n${strip.length}">${strip.map((p) => `<figure>${img(p)}</figure>`).join("")}</div>` : ""}</section>`);
   } else {
+    const t = volgende(gebruikt); gebruikt.push(t);
     S.push(`<section class="hero v-split" id="top"><div class="wrap hero-grid">${heroTekst()}
-    <div class="hero-beeld"><div class="hero-foto"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></div>${tweede ? `<div class="hero-klein"><img src="${e(tweede)}" alt="" loading="lazy"></div>` : ""}<span class="hero-vorm" aria-hidden="true"></span></div>
+    <div class="hero-beeld"><div class="hero-foto"><img src="${e(heroFoto)}" alt="${e(naam)}" fetchpriority="high"></div>${t && t !== heroFoto ? `<div class="hero-klein">${img(t)}</div>` : ""}<span class="hero-vorm" aria-hidden="true"></span></div>
   </div></section>`);
   }
 
@@ -149,40 +164,61 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
     S.push(`<div class="strook" aria-hidden="true"><div class="strook-rol">${rij}${rij}${rij}</div></div>`);
   }
 
-  // Diensten: prijslijst of kaarten
+  const blok = {};
+  // Diensten
   if (items.length) {
-    const kop = `<div class="sectie-kop"><h2>${e(d.titel || "Wat we doen")}</h2>${d.intro ? `<p>${e(d.intro)}</p>` : ""}</div>`;
+    const kop = kopBlok(d.titel || "Wat we doen", d.intro);
     if (prijslijst || O.diensten === "lijst") {
-      S.push(`<section class="blok" id="diensten"><div class="wrap">${kop}
-      <ul class="prijzen">${items.map((i) => `<li><div class="pr-kop"><h3>${e(i.titel)}</h3>${i.prijs ? `<span class="stip" aria-hidden="true"></span><b>${e(i.prijs)}</b>` : ""}</div>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}</li>`).join("")}</ul>
-      <div class="na-lijst">${knop(actie)}</div></div></section>`);
+      const zij = pool.length >= 3 ? volgende([heroFoto]) : "";
+      blok.diensten = `<section class="blok" id="diensten"><div class="wrap">${kop}
+      <div class="${zij ? "lijst-met-foto" : ""}"><ul class="prijzen${zij ? " smal" : ""}">${items.map((i) => `<li><div class="pr-kop"><h3>${e(i.titel)}</h3>${i.prijs ? `<span class="stip" aria-hidden="true"></span><b>${e(i.prijs)}</b>` : ""}</div>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}</li>`).join("")}</ul>
+      ${zij ? `<figure class="lijst-foto">${img(zij)}</figure>` : ""}</div>
+      <div class="na-lijst">${knop(actie)}</div></div></section>`;
     } else if (O.diensten === "rijen") {
-      S.push(`<section class="blok" id="diensten"><div class="wrap">${kop}
-      <ol class="rijen">${items.map((i, n) => `<li><span class="rij-nr" aria-hidden="true">${String(n + 1).padStart(2, "0")}</span><h3>${e(i.titel)}</h3><div>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}${i.prijs ? `<p class="prijs">${e(i.prijs)}</p>` : ""}</div></li>`).join("")}</ol>
-      <div class="na-lijst">${knop(actie)}</div></div></section>`);
+      blok.diensten = `<section class="blok" id="diensten"><div class="wrap">${kop}
+      <ol class="rijen">${items.map((i, n) => `<li><span class="rij-nr" aria-hidden="true">${String(n + 1).padStart(2, "0")}</span><h3>${e(i.titel)}</h3><div>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}${i.prijs ? `<p class="prijs">${e(i.prijs)}</p>` : ""}</div>${pool.length >= 3 ? `<figure class="rij-foto">${img(volgende([heroFoto]))}</figure>` : ""}</li>`).join("")}</ol>
+      <div class="na-lijst">${knop(actie)}</div></div></section>`;
+    } else if (O.diensten === "foto" && pool.length >= 2) {
+      blok.diensten = `<section class="blok" id="diensten"><div class="wrap">${kop}
+      <div class="fotokaarten n${Math.min(items.length, 6)}">${items.map((i) => `<article class="fotokaart"><figure>${img(volgende([heroFoto]))}</figure><div class="fk-tekst"><h3>${e(i.titel)}</h3>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}${i.prijs ? `<p class="prijs">${e(i.prijs)}</p>` : ""}</div></article>`).join("")}</div>
+      <div class="na-lijst">${knop(actie)}</div></div></section>`;
     } else {
-      S.push(`<section class="blok" id="diensten"><div class="wrap">${kop}
-      <div class="kaarten n${Math.min(items.length, 6)}">${items.map((i, n) => `<article class="kaart${n === 0 && items.length !== 4 ? " groot" : ""}"><span class="kaart-nr" aria-hidden="true">${String(n + 1).padStart(2, "0")}</span><h3>${e(i.titel)}</h3>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}${i.prijs ? `<p class="prijs">${e(i.prijs)}</p>` : ""}</article>`).join("")}</div></div></section>`);
+      blok.diensten = `<section class="blok" id="diensten"><div class="wrap">${kop}
+      <div class="kaarten n${Math.min(items.length, 6)}">${items.map((i, n) => {
+        const groot = n === 0 && items.length !== 4;
+        const f = groot && pool.length >= 2 ? volgende([heroFoto]) : "";
+        return `<article class="kaart${groot ? " groot" : ""}${f ? " met-foto" : ""}">${f ? `<div class="kaart-bg">${img(f)}</div>` : ""}<span class="kaart-nr" aria-hidden="true">${String(n + 1).padStart(2, "0")}</span><h3>${e(i.titel)}</h3>${i.tekst ? `<p>${e(i.tekst)}</p>` : ""}${i.prijs ? `<p class="prijs">${e(i.prijs)}</p>` : ""}</article>`;
+      }).join("")}</div></div></section>`;
     }
   }
 
-  // Over
+  // Over: met één foto, of een collage van twee
   if (o.tekst) {
     const zinnen = String(o.tekst).split(/(?<=[.!?])\s+/);
     const eerste = zinnen.shift() || "";
-    S.push(`<section class="blok over" id="over"><div class="wrap over-grid">
-      ${overFoto ? `<div class="over-beeld"><img src="${e(overFoto)}" alt="" loading="lazy"><span class="over-vorm" aria-hidden="true"></span></div>` : ""}
+    const f1 = overFoto || volgende([heroFoto]);
+    const f2 = pool.length >= 4 ? volgende([heroFoto, f1]) : "";
+    blok.over = `<section class="blok over" id="over"><div class="wrap over-grid">
+      ${f1 ? `<div class="over-beeld${f2 ? " duo" : ""}">${img(f1, "", ' class="o1"')}${f2 ? img(f2, "", ' class="o2"') : ""}<span class="over-vorm" aria-hidden="true"></span></div>` : ""}
       <div class="over-tekst"><p class="label">${e(o.titel || "Over ons")}</p><p class="quote">${e(eerste)}</p>${zinnen.length ? `<p>${e(zinnen.join(" ")).replace(/\n/g, "<br>")}</p>` : ""}
       <div class="acties">${knop(actie)}</div></div>
-    </div></section>`);
+    </div></section>`;
   }
 
-  // Galerij
-  const gal = fotos.slice(0, 7);
-  if (gal.length >= 2) S.push(`<section class="blok galerij-blok" id="fotos"><div class="wrap"><div class="galerij g${Math.min(gal.length, 5)}">${gal.slice(0, 5).map((p, i) => `<figure class="f${i}"><img src="${e(p)}" alt="" loading="lazy"></figure>`).join("")}</div></div></section>`);
+  // Galerij: alle overige foto's. Veel foto's = metselwerk (geen gaten), weinig = vaste opbouw.
+  const gal = pool.filter((p) => p !== heroFoto).slice(0, 9);
+  if (gal.length >= 2) {
+    blok.galerij = gal.length >= 6
+      ? `<section class="blok galerij-blok" id="fotos"><div class="wrap">${kopBlok("Foto's")}<div class="massa">${gal.map((p) => `<figure>${img(p)}</figure>`).join("")}</div></div></section>`
+      : `<section class="blok galerij-blok" id="fotos"><div class="wrap"><div class="galerij g${Math.min(gal.length, 5)}">${gal.slice(0, 5).map((p, i) => `<figure class="f${i}">${img(p)}</figure>`).join("")}</div></div></section>`;
+  }
 
-  // Actieband
-  S.push(`<section class="band"><div class="wrap band-grid"><h2>${e(/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel || "") ? ct.titel : h.titel || "Klaar voor de volgende stap?")}</h2><div class="acties">${knop(actie, "knop knop-band")}${tel ? `<a class="knop-rand op-band" href="tel:${e(tel)}"><span class="ic">${ICON.tel}</span>${e(telTekst)}</a>` : ""}</div></div></section>`);
+  const VOLGORDES = [["diensten", "over", "galerij"], ["over", "diensten", "galerij"], ["galerij", "diensten", "over"]];
+  for (const k of VOLGORDES[O.volgorde] || VOLGORDES[0]) if (blok[k]) S.push(blok[k]);
+
+  // Actieband, met een foto erachter als die er is (afgedekt in hun merkkleur, dus altijd leesbaar)
+  const bandFoto = pool.length >= 3 ? volgende([heroFoto]) : "";
+  S.push(`<section class="band${bandFoto ? " met-foto" : ""}">${bandFoto ? `<div class="band-foto">${img(bandFoto)}</div>` : ""}<div class="wrap band-grid"><h2>${e(/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel || "") ? ct.titel : h.titel || "Klaar voor de volgende stap?")}</h2><div class="acties">${knop(actie, "knop knop-band")}${tel ? `<a class="knop-rand op-band" href="tel:${e(tel)}"><span class="ic">${ICON.tel}</span>${e(telTekst)}</a>` : ""}</div></div></section>`);
 
   // Contact
   const regels = [
@@ -264,6 +300,41 @@ ${strak ? ".hero-vorm{transform:rotate(6deg)}" : ""}
 .rijen li:last-child{border-bottom:1px solid var(--lijn)}.rijen li:hover{padding-left:12px}
 .rij-nr{font:600 14px/1 var(--tekst);color:var(--nadruk);letter-spacing:.08em}.rijen h3{margin:0;font-size:clamp(24px,2.6vw,34px)}.rijen p{margin:0;opacity:.8}.rijen .prijs{margin-top:10px;opacity:1;color:var(--nadruk);font-weight:600}
 
+/* collage-hero */
+.collage{display:grid;grid-template-columns:1.2fr 1fr;grid-template-rows:1fr 1fr;gap:12px;aspect-ratio:1/1.05}
+.collage figure{margin:0;overflow:hidden;border-radius:var(--r)}.collage img{width:100%;height:100%;object-fit:cover}
+.collage .c0{grid-row:span 2}.collage .c3{display:none}
+.collage figure:first-child img{animation:zoom 1.6s cubic-bezier(.2,.7,.2,1) both}
+
+/* kopstijlen */
+.sectie-kop{position:relative}
+.ks-midden{display:block;text-align:center;margin-inline:auto;max-width:760px}.ks-midden p{margin:14px auto 0}
+.ks-groot .watermerk{position:absolute;right:0;top:-.5em;text-align:right;font-family:var(--kop);font-size:clamp(70px,13vw,190px);line-height:1;white-space:nowrap;color:var(--ink);opacity:.05;pointer-events:none;text-transform:${T.kopCase};letter-spacing:${T.kopSpatie};overflow:hidden;max-width:100%}
+.ks-groot h2{position:relative}
+
+/* diensten met foto's */
+.fotokaarten{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.fotokaarten.n4,.fotokaarten.n2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fotokaart{background:var(--kaart);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:transform .25s ease;${T.donker ? "border:1px solid var(--lijn);" : "box-shadow:0 1px 0 var(--lijn),0 18px 40px -28px rgba(0,0,0,.35);"}}
+.fotokaart:hover{transform:translateY(-4px)}.fotokaart figure{margin:0;aspect-ratio:4/3;overflow:hidden}.fotokaart img{width:100%;height:100%;object-fit:cover;transition:transform .6s ease}.fotokaart:hover img{transform:scale(1.05)}
+.fk-tekst{padding:24px 24px 28px}.fk-tekst p{margin:0;opacity:.8}
+.kaart.met-foto{overflow:hidden;color:#fff;background:#000}.kaart-bg{position:absolute;inset:0}.kaart-bg img{width:100%;height:100%;object-fit:cover;opacity:.55}
+.kaart.met-foto>*:not(.kaart-bg){position:relative}.kaart.met-foto p{opacity:.92}
+.lijst-met-foto{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:56px;align-items:start}.prijzen.smal{grid-template-columns:1fr}
+.lijst-foto{margin:0;position:sticky;top:100px;border-radius:var(--r);overflow:hidden;aspect-ratio:3/4}.lijst-foto img{width:100%;height:100%;object-fit:cover}
+.rijen li{grid-template-columns:70px minmax(0,1fr) minmax(0,1.1fr) 160px}.rij-foto{margin:0;aspect-ratio:4/3;border-radius:calc(var(--r) * .6);overflow:hidden}.rij-foto img{width:100%;height:100%;object-fit:cover}
+.rijen li:not(:has(.rij-foto)){grid-template-columns:70px minmax(0,1fr) minmax(0,1.1fr)}
+
+/* over met twee foto's */
+.over-beeld.duo{display:grid;grid-template-columns:1fr .8fr;gap:14px;align-items:end}.over-beeld.duo .o2{aspect-ratio:3/4;margin-bottom:-40px}
+.over-beeld.duo .over-vorm{display:none}
+
+/* metselwerk-galerij */
+.massa{columns:3 280px;column-gap:14px}.massa figure{margin:0 0 14px;break-inside:avoid;border-radius:var(--r);overflow:hidden}.massa img{width:100%;height:auto;transition:transform .6s ease}.massa figure:hover img{transform:scale(1.04)}
+
+/* band met foto */
+.band.met-foto{isolation:isolate}.band-foto{position:absolute;inset:0;z-index:-1}.band-foto img{width:100%;height:100%;object-fit:cover}
+.band-foto::after{content:"";position:absolute;inset:0;background:var(--band);opacity:.88}
+
 /* strook */
 .strook{background:var(--band);color:var(--band-tx);overflow:hidden;padding:18px 0;${hoofdletters ? "transform:rotate(-1.2deg);margin:0 -10px;" : ""}}
 .strook-rol{display:flex;gap:28px;width:max-content;animation:rol 38s linear infinite;font-family:var(--kop);font-size:clamp(22px,2.6vw,32px);text-transform:${T.kopCase};white-space:nowrap;align-items:center}
@@ -342,13 +413,20 @@ footer .woordmerk{font-size:19px;opacity:1}
   .hero-grid,.over-grid,.contact-grid{grid-template-columns:1fr;gap:44px}
   .prijzen{grid-template-columns:1fr}
   .kaarten,.kaarten.n4{grid-template-columns:1fr 1fr}.kaart.groot{grid-row:auto;grid-column:span 2;min-height:220px}
+  .fotokaarten{grid-template-columns:1fr 1fr}.rijen li{grid-template-columns:60px minmax(0,1fr) minmax(0,1fr)}.rij-foto{display:none}
   .hero-beeld{max-width:560px}
 }
 @media (max-width:760px){
   .v-volbeeld{min-height:86vh}.v-volbeeld .wrap{padding:110px 0 40px}
   .v-kader{padding:28px 0 64px;text-align:left}.v-kader .acties,.v-kader .hero-info{justify-content:flex-start}.kader-beeld{margin-top:36px}.kader-foto{aspect-ratio:4/3}.kader-klein{width:34%;bottom:-24px;border-width:4px}
   .v-typo{padding:36px 0 56px}.v-typo h1{font-size:clamp(46px,14vw,72px)}.typo-strip{margin-top:36px;gap:8px}.typo-strip{grid-auto-rows:150px}.typo-strip.n3{grid-template-columns:1fr 1fr}.typo-strip.n3 figure:first-child{grid-column:span 2;grid-row:span 1}.typo-strip.n3 figure:first-child img{height:100%}
-  .rijen li{grid-template-columns:1fr;gap:8px;padding:24px 0}
+  .rijen li,.rijen li:not(:has(.rij-foto)){grid-template-columns:1fr;gap:8px;padding:24px 0}.rij-foto{order:-1;aspect-ratio:16/9}
+  .fotokaarten,.fotokaarten.n4,.fotokaarten.n2{grid-template-columns:1fr}
+  .lijst-met-foto{grid-template-columns:1fr;gap:28px}.lijst-foto{position:static;aspect-ratio:16/10;order:-1}
+  .collage{aspect-ratio:1/1;gap:8px}
+  .massa{columns:2;column-gap:8px}.massa figure{margin-bottom:8px}
+  .over-beeld.duo .o2{margin-bottom:-24px}
+  .ks-groot .watermerk{top:-.4em}
   body{font-size:16px;padding-bottom:76px}
   .kop nav{display:none}.kop .wrap{min-height:64px;gap:12px}.kop .knop{display:none}.woordmerk{font-size:19px}.merk img{max-height:38px;max-width:150px}
   .hero{padding:16px 0 56px}.hero-grid{gap:30px}

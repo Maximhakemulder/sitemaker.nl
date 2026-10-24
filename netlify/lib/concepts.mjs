@@ -10,7 +10,7 @@ import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
 
-export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo"], diensten: ["kaarten", "rijen", "lijst"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"] };
+export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
 export const conceptUrl = (token) => `${publicBase()}/voorbeeld/${token}`;
 const UA = "Mozilla/5.0 (compatible; SitemakerBot/1.0; +https://sitemaker.nl)";
@@ -174,7 +174,7 @@ async function saveImages(conceptId, cands) {
     const key = `concepts/${conceptId}/${name}`;
     await putFile(key, r.buf, { type: size.type, name });
     out.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: c.alt, logo: isLogo, bron: c.url });
-    if (out.filter((x) => !x.logo).length >= 8) break;
+    if (out.filter((x) => !x.logo).length >= 10) break;
   }
   return out;
 }
@@ -237,10 +237,11 @@ Regels:
 - Openingstijden alleen als ze in de tekst staan.
 - "ontwerp": maak elke site anders en passend bij HUN merk. Kies:
   fonts: klassiek (verfijnd, schoonheid), luxe (high-end, mode, juwelen), editorial (stijlvol, horeca, makelaar), warm (ambacht, bakker, zorg), modern (creatief, eigentijds), ambacht (bouw, timmerman, garage), stoer (installatie, sloop, sport), strak (techniek, zakelijk, advies), speels (kinderen, coaching, hobby, dieren).
-  hero: volbeeld (sterke sfeerfoto, groot en meeslepend), split (tekst + foto naast elkaar), kader (grote kop, brede foto eronder), typo (weinig of zwakke foto's: grote typografie).
-  diensten: lijst (prijslijst of behandelingen), rijen (een paar grote diensten), kaarten (diensten met uitleg).
+  hero: volbeeld (sterke sfeerfoto, groot en meeslepend), split (tekst + foto naast elkaar), kader (grote kop, brede foto eronder), collage (veel mooie foto's), typo (grote typografie).
+  diensten: lijst (prijslijst of behandelingen), rijen (een paar grote diensten), kaarten (diensten met uitleg), foto (elke dienst met een foto).
+  kopstijl: lijn, midden of groot. Varieer: twee bedrijven in dezelfde branche horen er duidelijk anders uit te zien.
   vorm: rond (zacht, vriendelijk), zacht (modern), strak (zakelijk, luxe, stoer). sfeer: licht, donker (luxe, avond, horeca, beauty met donkere site), merk (vrolijk, hun kleur overal).
-- "stock": staan er minder dan 4 goede foto's in de lijst, geef dan een Nederlandse zoekterm voor sfeerbeelden die bij het bedrijf passen (bijv. "airco installateur", "kapsalon interieur", "hovenier tuin"). Anders leeg.
+- "stock": geef altijd een Nederlandse zoekterm (2-3 woorden) voor sfeerfoto's die precies bij hun werk passen, bijv. "airco installateur", "kapsalon interieur", "hovenier tuin", "loodgieter badkamer". Die gebruiken we als hun eigen foto's niet genoeg zijn.
 - Is het een webshop (online producten verkopen is de hoofdzaak), staat er te weinig informatie, of is het geen bedrijf: geef {"kan": false, "reden": "..."}.
 Antwoord ALLEEN met JSON: {"kan": true, "content": { ...content.json... }} met exact deze opbouw:
 {"thema":"natuur","ontwerp":{"fonts":"","hero":"","diensten":"","vorm":"","sfeer":""},"stock":"","kleuren":{"primair":"","accent":""},"bedrijf":{"naam":"","telefoon":"","email":"","whatsapp":"","adres":"","plaats":"","kvk":"","logo":""},
@@ -274,7 +275,7 @@ export function clean(c, { text, images, lead }) {
     hero: { label: s(c.hero?.label, 60), titel: s(c.hero?.titel, 90), tekst: s(c.hero?.tekst, 260), knop: { tekst: s(c.hero?.knop?.tekst, 40) || "Neem contact op", link: "#contact" }, foto: img(c.hero?.foto) },
     diensten: { titel: s(c.diensten?.titel, 60) || "Wat we doen", items: (c.diensten?.items || []).slice(0, 6).map((i) => ({ titel: s(i.titel, 60), tekst: s(i.tekst, 220), prijs: i.prijs && plainDigits.includes(digits(i.prijs)) ? s(i.prijs, 40) : "" })).filter((i) => i.titel) },
     over: { titel: s(c.over?.titel, 60) || "Over ons", tekst: s(c.over?.tekst, 900), foto: img(c.over?.foto) },
-    fotos: [...new Set((c.fotos || []).map(img).filter(Boolean))].slice(0, 6),
+    fotos: [...new Set((c.fotos || []).map(img).filter(Boolean))].slice(0, 9),
     openingstijden: (c.openingstijden || []).slice(0, 8).map((r) => ({ dag: s(r.dag, 40), tijd: s(r.tijd, 40) })).filter((r) => r.dag && r.tijd),
     contact: { titel: s(c.contact?.titel, 80) || "Contact", tekst: s(c.contact?.tekst, 260), knop: { tekst: s(c.contact?.knop?.tekst, 40), link: "" } },
   };
@@ -286,7 +287,8 @@ export function clean(c, { text, images, lead }) {
   const vrij = images.filter((i) => !i.logo).map((i) => `afbeeldingen/${i.name}`);
   if (!out.hero.foto && vrij.length) out.hero.foto = vrij[0];
   if (!out.over.foto && vrij.length > 1) out.over.foto = vrij.find((p) => p !== out.hero.foto) || "";
-  if (!out.fotos.length && vrij.length > 2) out.fotos = vrij.filter((p) => p !== out.hero.foto && p !== out.over.foto).slice(0, 6);
+  // Alle bruikbare eigen foto's gebruiken (meer beeld = beter), niet alleen wat Claude koos.
+  out.fotos = [...new Set([...out.fotos, ...vrij])].filter((p) => p !== out.hero.foto && p !== out.over.foto).slice(0, 9);
   // Hero: liever een grote liggende foto dan een kleine of staande.
   const info = (p) => images.find((i) => `afbeeldingen/${i.name}` === p);
   const goed = (i) => i && i.w >= 1000 && i.w / i.h >= 1.2;
@@ -335,16 +337,16 @@ ${site.text}
     if (!content) return await klaar("fout", { reden: "Het concept was onvolledig.", images, analysis: site.analysis });
     // Te weinig eigen foto's: aanvullen met sfeerbeelden die bij het bedrijf passen.
     const eigen = images.filter((i) => !i.logo);
-    if (eigen.length < 4) {
+    if (eigen.length < 8) {
       const zoek = str(out.content?.stock, 60) || lead.category || "";
-      const stock = await stockFotos(c.id, zoek, 5 - eigen.length, eigen.length).catch(() => []);
+      const stock = await stockFotos(c.id, zoek, Math.min(7, 8 - eigen.length), eigen.length).catch(() => []);
       if (stock.length) {
         images.push(...stock);
         const pad = (i) => `afbeeldingen/${i.name}`;
         const groot = (p) => { const i = images.find((x) => pad(x) === p); return i && i.w >= 1000; };
         if (!content.hero.foto || !groot(content.hero.foto)) { if (content.hero.foto) content.fotos.unshift(content.hero.foto); content.hero.foto = pad(stock[0]); }
         if (!content.over.foto) content.over.foto = pad(stock[1] || stock[0]);
-        content.fotos = [...new Set([...content.fotos, ...stock.map(pad)])].filter((p) => p !== content.hero.foto && p !== content.over.foto).slice(0, 6);
+        content.fotos = [...new Set([...content.fotos, ...stock.map(pad)])].filter((p) => p !== content.hero.foto && p !== content.over.foto).slice(0, 9);
         content.sfeerbeelden = true;
       }
     }
@@ -417,9 +419,9 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:inline}.sm-balk a{padding:7px 11px;font-size:13px}}
 .sm-eind{background:#1C0747;color:#fff;padding:48px 20px;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}.sm-eind h2{font-size:28px;margin:0 0 10px;font-family:inherit;color:#fff}.sm-eind p{max-width:560px;margin:0 auto 20px;color:#E3DDF5}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
-<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Zo kan de nieuwe website van ${escH(naam)} eruitzien. Gemaakt door Sitemaker.</span><span class="sm-kort"> door Sitemaker</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
+<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
-<p>Dit voorbeeld hebben we gemaakt op basis van jullie huidige website. Wil je hem echt? Dan staat hij binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
+<p>Dit is een eerste voorbeeld, automatisch gemaakt op basis van jullie huidige website. De echte website maken we samen helemaal naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
 <a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   const html = render(c.content, { imgBase: `/api/voorbeeld/${token}/afbeeldingen/`, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
