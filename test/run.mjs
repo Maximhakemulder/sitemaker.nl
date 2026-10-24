@@ -634,6 +634,41 @@ console.log("Concept-websites voor leads");
   globalThis.fetch = echteFetch; globalThis.__aiFake = vorigeAi;
 }
 
+console.log("Bedrijf (afdelingen, briefings, vragen)");
+{
+  const vorigeAi2 = globalThis.__aiFake;
+  globalThis.__aiFake = ({ system, prompt }) => /Vraag van Maxim/.test(prompt) ? "Deze maand: zie de cijfers. Voor jou: niets." : /directiebriefing/.test(prompt) ? "Het bedrijf draait.\nVandaag voor jou:\n- Concepten beoordelen" : /ochtendbriefing/.test(prompt) ? "Alles loopt.\nVoor jou: niets." : vorigeAi2({ system, prompt });
+  await test("HQ toont per afdeling cijfers, teamstatus en logboek uit echte gegevens", async () => {
+    const r = await call("GET", "hq/team", { cookie: admin });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    for (const k of ["b2b", "projecten", "klantenservice", "incidenten", "finance", "marketing", "directie"]) assert.ok(r.data.depts[k], k);
+    assert.ok(r.data.depts.b2b.people.conceptmaker.text && r.data.depts.finance.metrics.some((m) => /MRR/.test(m.label)));
+    assert.ok(r.data.feed.some((f) => f.wie === "Sam"), "logboek bevat echte concepten");
+    assert.ok(r.data.feed.some((f) => f.wie === "Ruben"), "logboek bevat afspraken");
+    assert.equal((await call("GET", "hq/team", { cookie: k2 })).status, 403);
+  });
+  await test("briefings van managers en directeur; vraag aan een manager", async () => {
+    assert.equal((await call("POST", "hq/team/briefings", { cookie: admin })).status, 200);
+    const r = (await call("GET", "hq/team", { cookie: admin })).data;
+    assert.match(r.depts.directie.briefing.text, /Vandaag voor jou/); assert.equal(r.depts.b2b.briefing.ai, true);
+    const v = await call("POST", "hq/team/vraag", { cookie: admin, body: { dept: "finance", vraag: "Hoeveel hebben we deze maand verdiend?" } });
+    assert.equal(v.status, 200, JSON.stringify(v.data));
+    const lijst = (await call("GET", "hq/team/vragen?dept=finance", { cookie: admin })).data.vragen;
+    assert.equal(lijst[0].status, "klaar"); assert.match(lijst[0].antwoord, /Voor jou/);
+    assert.equal((await call("POST", "hq/team/vraag", { cookie: admin, body: { dept: "finance", vraag: "" } })).status, 400);
+  });
+  await test("hartslag: wie net echt werk deed staat op 'bezig'", async () => {
+    const { pulse } = await import("../netlify/lib/team.mjs");
+    await pulse("research", { done: 0 });
+    let r = (await call("GET", "hq/team", { cookie: admin })).data;
+    const voor = r.busy.researcher;
+    await pulse("research", { done: 2 });
+    r = (await call("GET", "hq/team", { cookie: admin })).data;
+    assert.equal(r.busy.researcher, true); assert.equal(voor, false);
+  });
+  globalThis.__aiFake = vorigeAi2;
+}
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});

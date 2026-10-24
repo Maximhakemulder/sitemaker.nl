@@ -6,15 +6,17 @@ import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
 import { runConcepts } from "../lib/concepts.mjs";
+import { pulse, maybeBriefings } from "../lib/team.mjs";
 
 export default async () => {
   const started = Date.now();
   const left = () => 13000 - (Date.now() - started);
-  const step = async (name, fn, ttl = 20000) => { try { return await withLock(name, fn, ttl); } catch (e) { console.log(`[tick] ${name}:`, e.message); } };
+  const step = async (name, fn, ttl = 20000) => { try { const r = await withLock(name, fn, ttl); await pulse(name, r).catch(() => {}); return r; } catch (e) { console.log(`[tick] ${name}:`, e.message); } };
 
   await step("uptime", () => runChecks({ max: 8 }));
   await step("agenda-herinnering", () => sendReminders());
   await step("concepten", () => runConcepts({ max: 2 }));
+  await step("briefings", () => maybeBriefings());
   if (autoReady()) await step("ai-retry", () => retryStuck());
   if (left() > 9000) await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(8000, left() - 3000) }));
   const last = (await one("SELECT value FROM settings WHERE key = 'inbox_scan'"))?.value;

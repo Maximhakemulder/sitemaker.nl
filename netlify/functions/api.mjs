@@ -1,4 +1,5 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
+import * as team from "../lib/team.mjs";
 import * as concepts from "../lib/concepts.mjs";
 import * as agenda from "../lib/agenda.mjs";
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
@@ -196,6 +197,10 @@ export default async (req, context) => {
         case "POST agenda/uitzondering": return json(await agenda.addException(await body(req), user));
         case "DELETE agenda/uitzondering/:id": return json(await agenda.deleteException(Number(seg[3]), user));
         case "POST appointments/:id/annuleren": { const a = await one("SELECT * FROM appointments WHERE id = $1", [id]); if (!a) fail(404, "Afspraak niet gevonden."); return json(await agenda.cancel(a, "sitemaker", user)); }
+        case "GET team": return json(await team.teamState());
+        case "POST team/briefings": return json(await team.refreshBriefings());
+        case "POST team/vraag": return json(await team.askQuestion(user, await body(req)));
+        case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
         case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
         case "PUT leads/:id/concept": return json(await hq.setConceptTheme(id, (await body(req)).thema, user));
