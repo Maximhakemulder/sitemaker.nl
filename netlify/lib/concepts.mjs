@@ -83,6 +83,7 @@ export function imageSize(buf) {
   return null;
 }
 
+const THEMA_STANDAARD = new Set(["#2ea3f2", "#0073aa", "#21759b", "#007bff", "#0d6efd", "#337ab7", "#1e73be", "#0274be", "#3858e9", "#2271b1", "#135e96", "#00a0d2", "#46b450", "#dc3232", "#ffb900", "#e74c3c", "#3498db", "#7ad03a", "#a46497", "#96588a", "#0693e3", "#cf2e2e", "#ff6900", "#fcb900", "#7bdcb5", "#00d084", "#8ed1fc", "#9b51e0", "#f78da7", "#abb8c3", "#6c757d", "#17a2b8", "#28a745", "#dc3545", "#ffc107"]);
 function colorsOf(css) {
   const count = {};
   for (const m of css.matchAll(/#([0-9a-f]{6}|[0-9a-f]{3})\b/gi)) {
@@ -90,6 +91,7 @@ function colorsOf(css) {
     const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
     const max = Math.max(r, g, b), min = Math.min(r, g, b);
     if (max - min < 40 || max < 40 || min > 225) continue; // grijs, bijna zwart of bijna wit
+    if (THEMA_STANDAARD.has("#" + h)) continue; // standaardkleuren van WordPress-thema's en frameworks, niet hun huisstijl
     count["#" + h] = (count["#" + h] || 0) + 1;
   }
   return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c]) => c);
@@ -160,6 +162,8 @@ async function saveImages(conceptId, cands) {
     const size = imageSize(r.buf) || (isLogo ? svgSize(r.buf) : null);
     if (!size) continue;
     if (!isLogo && (size.w < 500 || size.h < 300 || size.w / size.h > 3 || size.h / size.w > 2.2)) continue;
+    // Geen echte foto: een (bijna) egaal vlak of simpele afbeelding comprimeert extreem klein.
+    if (!isLogo && r.buf.length / (size.w * size.h) < 0.035) continue;
     // Een echt logo: niet te klein en geen lange strook (zoals een rij keurmerken).
     if (isLogo && (size.w < 60 || size.h < 16 || size.w / size.h > 5.5)) continue;
     if (isLogo) logoGehad = true;

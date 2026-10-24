@@ -526,7 +526,8 @@ console.log("Agenda (kennismaking boeken)");
 console.log("Concept-websites voor leads");
 {
   const { q: dbq } = await import("../netlify/lib/core.mjs");
-  const pngVan = (w, h, n) => { const b = Buffer.alloc(64 + n); Buffer.from("89504e470d0a1a0a0000000d49484452", "hex").copy(b); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20); b[40 + n % 20] = n; return b; };
+  // Nep-PNG met echte afmetingen; groot genoeg in bytes om als foto te tellen (een egaal vlak comprimeert extreem klein).
+  const pngVan = (w, h, n) => { const b = Buffer.alloc(Math.ceil(w * h * 0.04) + 64 + n); Buffer.from("89504e470d0a1a0a0000000d49484452", "hex").copy(b); b.writeUInt32BE(w, 16); b.writeUInt32BE(h, 20); b[40 + n % 20] = n; return b; };
   const SITE = `<!doctype html><html><head><title>Bakkerij Zon</title><link rel="stylesheet" href="/stijl.css"><meta property="og:image" content="/img/winkel.png"></head><body>
     <img src="/img/logo-zon.png" alt="Bakkerij Zon logo"><h1>Welkom bij Bakkerij Zon</h1><p>Ambachtelijke bakker in Utrecht sinds jaar en dag. Wij bakken elke dag vers brood, taarten en koekjes met biologisch meel.</p>
     <p>Bestel uw taart voor verjaardag of bruiloft. Ook glutenvrij brood op bestelling.</p><img src="/img/brood.png" alt="Vers brood"><img src="/img/icon-klein.png">
