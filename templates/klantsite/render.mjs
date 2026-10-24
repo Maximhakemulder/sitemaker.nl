@@ -228,7 +228,7 @@ export function render(c, { imgBase = "afbeeldingen/", year = new Date().getFull
     b.adres || b.plaats ? `<a class="c-regel" href="${e(kaartLink)}" target="_blank" rel="noopener"><span class="c-ic">${ICON.pin}</span><span><small>Route plannen</small>${e([b.adres, b.adres && b.adres.includes(b.plaats || "§") ? "" : b.plaats].filter(Boolean).join(", "))}</span></a>` : "",
   ].join("");
   S.push(`<section class="blok contact" id="contact"><div class="wrap contact-grid">
-    <div><p class="label">Contact</p><h2>${e(ct.titel && !/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel) ? ct.titel : b.plaats ? `Langskomen in ${b.plaats}` : "Contact en openingstijden")}</h2>${ct.tekst ? `<p class="c-tekst">${e(ct.tekst)}</p>` : ""}<div class="c-lijst">${regels || knop(actie)}</div></div>
+    <div>${logo ? `<img class="logo-img contact-logo" src="${e(logo)}" alt="" loading="lazy">` : ""}<p class="label">Contact</p><h2>${e(ct.titel && !/^(maak|plan|bel|boek|vraag|reserveer)/i.test(ct.titel) ? ct.titel : b.plaats ? `Langskomen in ${b.plaats}` : "Contact en openingstijden")}</h2>${ct.tekst ? `<p class="c-tekst">${e(ct.tekst)}</p>` : ""}<div class="c-lijst">${regels || knop(actie)}</div></div>
     ${ot.length ? `<div class="tijden"><h3>${ICON.klok}Openingstijden</h3><dl>${ot.map((r, i) => `<div data-dag="${i}"><dt>${e(r.dag)}</dt><dd>${e(r.tijd)}</dd></div>`).join("")}</dl></div>` : ""}
   </div></section>`);
 
@@ -254,7 +254,9 @@ h3{line-height:1.2;font-size:21px}
 .kop{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
 .kop.vast{border-bottom-color:var(--lijn)}
 .kop .wrap{display:flex;align-items:center;gap:24px;min-height:74px}
-.merk{display:flex;align-items:center;text-decoration:none;min-width:0}.merk img{max-height:46px;max-width:190px;width:auto;object-fit:contain}
+.merk{display:flex;align-items:center;text-decoration:none;min-width:0}.merk img{max-height:54px;max-width:220px;width:auto;object-fit:contain}
+.logo-img{transition:background .2s}.logo-img.plaat{padding:8px 12px;border-radius:${strak ? "2px" : "10px"};box-sizing:content-box}
+.voet-logo{max-height:44px;max-width:180px;width:auto;object-fit:contain}.contact-logo{max-height:70px;max-width:240px;width:auto;object-fit:contain;margin-bottom:24px}
 .woordmerk{font-family:var(--kop);font-weight:${T.kopGewicht};font-size:23px;letter-spacing:${T.kopSpatie};text-transform:${T.kopCase};line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kop nav{margin-left:auto;display:flex;gap:28px;font-size:15px;font-weight:500}.kop nav a{text-decoration:none;opacity:.78}.kop nav a:hover{opacity:1}
 .kop .knop{min-height:44px;padding:0 18px;font-size:15px}.kop .knop .ic{display:none}
@@ -428,7 +430,7 @@ footer .woordmerk{font-size:19px;opacity:1}
   .over-beeld.duo .o2{margin-bottom:-24px}
   .ks-groot .watermerk{top:-.4em}
   body{font-size:16px;padding-bottom:76px}
-  .kop nav{display:none}.kop .wrap{min-height:64px;gap:12px}.kop .knop{display:none}.woordmerk{font-size:19px}.merk img{max-height:38px;max-width:150px}
+  .kop nav{display:none}.kop .wrap{min-height:64px;gap:12px}.kop .knop{display:none}.woordmerk{font-size:19px}.merk img{max-height:44px;max-width:170px}
   .hero{padding:16px 0 56px}.hero-grid{gap:30px}
   .hero-beeld{order:-1;padding:0 0 26px 26px}.hero-foto{aspect-ratio:5/4;border-radius:${rond ? "140px 140px var(--r) var(--r)" : "var(--r)"}}.hero-klein{width:36%;border-width:5px}
   .hero-woord{aspect-ratio:auto;padding:46px 24px}
@@ -447,7 +449,13 @@ footer .woordmerk{font-size:19px;opacity:1}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}`;
 
   // Vandaag open (uit hun eigen openingstijden) + kop met lijn bij scrollen. Klein en zonder afhankelijkheden.
-  const script = ot.length || true ? `<script>(function(){var k=document.querySelector(".kop");addEventListener("scroll",function(){k&&k.classList.toggle("vast",scrollY>8)},{passive:true});
+  const script = ot.length || true ? `<script>(function(){
+/* Logo altijd zichtbaar: meet hoe licht het logo is; valt het weg tegen de achtergrond, dan krijgt het een plaatje in een contrasterende kleur. */
+function L(r,g,b){return(0.2126*r+0.7152*g+0.0722*b)/255}
+function bgL(el){var n=el;while(n&&n!==document.documentElement){var c=getComputedStyle(n).backgroundColor,m=c.match(/[\d.]+/g);if(m&&(m.length<4||+m[3]>0.5))return L(+m[0],+m[1],+m[2]);n=n.parentElement}var m2=getComputedStyle(document.body).backgroundColor.match(/[\d.]+/g);return m2?L(+m2[0],+m2[1],+m2[2]):1}
+function check(img){try{var w=Math.min(120,img.naturalWidth),h=Math.max(1,Math.round(w*img.naturalHeight/img.naturalWidth));var cv=document.createElement("canvas");cv.width=w;cv.height=h;var x=cv.getContext("2d");x.drawImage(img,0,0,w,h);var d=x.getImageData(0,0,w,h).data,s=0,n=0,ondoorz=0;for(var i=0;i<d.length;i+=4){if(d[i+3]>40){s+=L(d[i],d[i+1],d[i+2]);n++}if(d[i+3]>240)ondoorz++}if(!n)return;var lg=s/n,achter=bgL(img.parentElement);var vol=ondoorz>d.length/4*0.9;if(vol)return;if(Math.abs(lg-achter)<0.28){img.classList.add("plaat");img.style.background=lg>0.5?"#16151a":"#ffffff"}}catch(e){}}
+document.querySelectorAll(".logo-img").forEach(function(i){i.complete&&i.naturalWidth?check(i):i.addEventListener("load",function(){check(i)})});
+var k=document.querySelector(".kop");addEventListener("scroll",function(){k&&k.classList.toggle("vast",scrollY>8)},{passive:true});
 var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"],nu=new Date(),vd=nu.getDay(),rows=document.querySelectorAll(".tijden [data-dag]"),hit=null;
 function dagen(t){t=t.toLowerCase();var r=[],m=t.match(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)\\s*(?:t\\/m|tot en met|-|–|—)\\s*(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)/);
 if(m){var a=D.indexOf(m[1]),b=D.indexOf(m[2]);for(var i=a;;i=(i+1)%7){r.push(i);if(i===b||r.length>7)break}return r}D.forEach(function(d,i){if(t.indexOf(d)>-1||t.indexOf(d.slice(0,2)+" ")===0)r.push(i)});return r}
@@ -464,8 +472,8 @@ if(txt){li.querySelector("span").innerHTML=txt;li.hidden=false}}})();</script>` 
 <title>${e(c.seo?.titel || naam)}</title><meta name="description" content="${e(c.seo?.omschrijving || "")}">
 <meta property="og:title" content="${e(c.seo?.titel || naam)}"><meta property="og:description" content="${e(c.seo?.omschrijving || "")}">${heroFoto ? `<meta property="og:image" content="${e(heroFoto)}">` : ""}
 <meta name="theme-color" content="${e(bg)}">${robots ? `<meta name="robots" content="${e(robots)}">` : ""}${fontsLink}<style>${css}</style>${extraHead}</head><body>${bodyStart}
-<header class="kop"><div class="wrap"><a class="merk" href="#top" aria-label="${e(naam)}">${logo ? `<img src="${e(logo)}" alt="${e(naam)}">` : `<span class="woordmerk">${e(naam)}</span>`}</a><nav aria-label="Menu">${nav}</nav>${knop(actie)}</div></header>
+<header class="kop"><div class="wrap"><a class="merk" href="#top" aria-label="${e(naam)}">${logo ? `<img class="logo-img" src="${e(logo)}" alt="${e(naam)}">` : `<span class="woordmerk">${e(naam)}</span>`}</a><nav aria-label="Menu">${nav}</nav>${knop(actie)}</div></header>
 <main>${S.join("\n")}</main>
-<footer><div class="wrap"><span class="woordmerk">${e(naam)}</span><span>© ${year} ${e(naam)}${b.plaats ? " · " + e(b.plaats) : ""}${b.kvk ? " · KvK " + e(b.kvk) : ""}</span></div></footer>
+<footer><div class="wrap">${logo ? `<img class="logo-img voet-logo" src="${e(logo)}" alt="${e(naam)}" loading="lazy">` : `<span class="woordmerk">${e(naam)}</span>`}<span>© ${year} ${e(naam)}${b.plaats ? " · " + e(b.plaats) : ""}${b.kvk ? " · KvK " + e(b.kvk) : ""}</span></div></footer>
 ${balk}${script}${bodyEnd}</body></html>`;
 }
