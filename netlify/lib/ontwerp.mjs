@@ -27,6 +27,7 @@ Harde regels:
   - openingstijden (als die er zijn) als <dl class="sm-tijden"> met per regel <div><dt>dag</dt><dd>tijd</dd></div>;
   - bellen via <a href="tel:...">, mailen via mailto:, WhatsApp via https://wa.me/<nummer in internationaal formaat zonder +>, route via https://www.google.com/maps/search/?api=1&query=<adres>;
   - een footer met bedrijfsnaam en plaats.
+- Verhoudingen: elk beeldvlak krijgt een vaste aspect-ratio tussen 3:4 en 16:9 (of een vaste hoogte) met object-fit: cover. Nooit extreem lange of smalle vlakken. De hero is op desktop maximaal één schermhoogte (max ~100vh) en de tekst staat daar duidelijk in beeld naast/op het beeld, niet ver eronder.
 - Eerste indruk: op mobiel moet in het eerste scherm al sterk beeld te zien zijn (een foto, of hun logo groot), niet alleen tekst. De hero is elke keer anders: kies wat bij dit bedrijf het sterkst is (bijv. foto over de volle breedte met tekst erop, een collage, een grote foto met een tekstblok dat overlapt, een gesplitst scherm, een foto in een bijzondere vorm).
 - Vermijd AI-clichés: niet standaard één woord van de kop cursief of in een andere kleur, geen standaard "tekst links, foto rechts", geen generieke kaartjes met schaduw voor alles, geen hoofdletters-labels boven elke sectie.
 - Kwaliteit: dit moet eruitzien als een website van €3000+ van een goed bureau. Ruimte, ritme, sterke typografie, verzorgde details (hover-states, focus-states, subtiele schaduwen of lijnen die bij de stijl passen). Hooguit één rustige animatie bij het laden.
@@ -125,6 +126,8 @@ export async function ontwerp(content, images, extra = {}) {
 export function toonOntwerp(html, { imgBase, bodyStart = "", bodyEnd = "", headExtra = "" }) {
   let h = html.replace(/(["'(])afbeeldingen\//g, `$1${imgBase}`);
   h = h.replace(/<head\b[^>]*>/i, (m) => `${m}<meta name="robots" content="noindex,nofollow">${headExtra}`);
+  // Vangnet tegen uit de hand gelopen beeldvlakken (te hoog/smal) en horizontaal scrollen.
+  h = h.replace(/<\/head>/i, `<style>html,body{max-width:100%;overflow-x:hidden}img{max-width:100%}main>:first-child img,body>header+section img,main>:first-child *:has(>img){max-height:min(88vh,820px)}section img{max-height:min(90vh,900px)}</style></head>`);
   h = h.replace(/<body\b[^>]*>/i, (m) => `${m}${bodyStart}`);
   h = h.replace(/<\/body>/i, `${bodyEnd}</body>`);
   return h;
