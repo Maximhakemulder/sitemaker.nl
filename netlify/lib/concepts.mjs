@@ -9,6 +9,7 @@ import { putFile, getFile, deleteFile } from "./files.mjs";
 import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
+import { ontwerp, toonOntwerp } from "./ontwerp.mjs";
 
 export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
@@ -354,6 +355,13 @@ ${site.text}
         content.sfeerbeelden = true;
       }
     }
+    // Ontwerp-agent: een volledig eigen ontwerp voor dit bedrijf. Lukt dat niet, dan de vaste opmaak als vangnet.
+    let html = "", ontwerpFout = "";
+    try {
+      const r = await ontwerp(content, images, { category: lead.category, kleuren: site.kleuren, platform: site.analysis?.platform, instructie: c.instructie, model: env("AI_MODEL_ONTWERP") || undefined });
+      html = r.html || ""; ontwerpFout = r.fout || "";
+    } catch (e) { ontwerpFout = str(e.message, 200); }
+    await q("UPDATE concepts SET html = $2, ontwerp_fout = $3 WHERE id = $1", [c.id, html, ontwerpFout]);
     return await klaar("klaar", { content, images, analysis: site.analysis });
   } catch (e) {
     console.log("[concept]", c.id, e.message);
@@ -428,9 +436,28 @@ export async function conceptPage(token, { hq = false } = {}) {
 <p>Dit is een eerste voorbeeld, automatisch gemaakt op basis van jullie huidige website. De echte website maken we samen helemaal naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand.</p>
 <a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
-  const html = render(c.content, { imgBase: `/api/voorbeeld/${token}/afbeeldingen/`, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
+  const imgBase = `/api/voorbeeld/${token}/afbeeldingen/`;
+  if (c.html) {
+    // Eigen ontwerp: zonder scripts van de agent; alleen ons eigen script (met nonce) mag draaien.
+    const nonce = crypto.randomBytes(16).toString("base64");
+    const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script>`;
+    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
+    return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
+      "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
+  }
+  const html = render(c.content, { imgBase, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
 }
+
+// Klein script voor eigen ontwerpen: "vandaag" bij de openingstijden en het logo altijd zichtbaar.
+const ONTWERP_SCRIPT = `(function(){function L(r,g,b){return(0.2126*r+0.7152*g+0.0722*b)/255}
+function bgL(el){var n=el;while(n&&n!==document.documentElement){var c=getComputedStyle(n).backgroundColor,m=c.match(/[\\d.]+/g);if(m&&(m.length<4||+m[3]>0.5))return L(+m[0],+m[1],+m[2]);n=n.parentElement}return 1}
+function check(img){try{var w=Math.min(120,img.naturalWidth),h=Math.max(1,Math.round(w*img.naturalHeight/img.naturalWidth)),cv=document.createElement("canvas");cv.width=w;cv.height=h;var x=cv.getContext("2d");x.drawImage(img,0,0,w,h);var d=x.getImageData(0,0,w,h).data,s=0,n=0,v=0;for(var i=0;i<d.length;i+=4){if(d[i+3]>40){s+=L(d[i],d[i+1],d[i+2]);n++}if(d[i+3]>240)v++}if(!n||v>d.length/4*0.9)return;var lg=s/n;if(Math.abs(lg-bgL(img.parentElement))<0.28){img.style.background=lg>0.5?"#16151a":"#ffffff";img.style.padding="8px 12px";img.style.borderRadius="10px";img.style.boxSizing="content-box"}}catch(e){}}
+document.querySelectorAll("img.logo-img").forEach(function(i){i.complete&&i.naturalWidth?check(i):i.addEventListener("load",function(){check(i)})});
+var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"],vd=new Date().getDay(),hit=false;
+document.querySelectorAll(".sm-tijden > div").forEach(function(el){if(hit)return;var t=(el.querySelector("dt")||el).textContent.toLowerCase(),r=[],m=t.match(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)\\s*(?:t\\/m|tot en met|-|–)\\s*(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)/);
+if(m){for(var a=D.indexOf(m[1]),i=a;;i=(i+1)%7){r.push(i);if(i===D.indexOf(m[2])||r.length>7)break}}else D.forEach(function(d,i){if(t.indexOf(d)>-1)r.push(i)});
+if(r.indexOf(vd)>-1){hit=true;el.style.fontWeight="700";var dt=el.querySelector("dt");if(dt)dt.insertAdjacentText("beforeend"," · vandaag")}})})();`;
 
 export async function conceptImage(token, name) {
   const c = await conceptByToken(token);
@@ -457,7 +484,7 @@ export function publicConcept(c) {
   if (!c || !c.status) return null;
   return {
     id: c.id, status: c.status, reden: c.reden, url: c.token ? conceptUrl(c.token) : "", views: c.views || 0, firstViewAt: c.first_view_at, lastViewAt: c.last_view_at,
-    readyAt: c.ready_at, expiresAt: c.expires_at, thema: c.content?.thema || "", instructie: c.instructie, punten: verbeterpunten(c.analysis), fotos: (c.images || []).filter((i) => !i.logo).length,
+    readyAt: c.ready_at, expiresAt: c.expires_at, thema: c.content?.thema || "", uniek: !!c.html, ontwerpFout: c.ontwerp_fout || "", instructie: c.instructie, punten: verbeterpunten(c.analysis), fotos: (c.images || []).filter((i) => !i.logo).length,
   };
 }
 export async function setTheme(leadId, thema, user) {
