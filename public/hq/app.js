@@ -16,7 +16,7 @@
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
     start: { gegevens: ["Vult gegevens in", "s-grijs"], betalen: ["Moet nog betalen", "s-let"], informatie: ["Betaald · levert info aan", "s-info"], bouwen: ["Bouwen!", "s-fout"], klaar: ["Gestart", "s-ok"] },
-    concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Wordt gemaakt", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
+    concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Site wordt gescand", "s-info"], ontwerp: ["Wacht op de ontwerper", "s-grijs"], ontwerpen: ["Wordt ontworpen", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
     opzeg: { aangevraagd: ["Opgezegd", "s-fout"], afgerond: ["Beëindigd", "s-grijs"], ingetrokken: ["Ingetrokken", "s-ok"] },
     reden: { te_duur: "Te duur", geen_resultaat: "Levert te weinig op", zelf_doen: "Zelf of ander bureau", stoppen: "Stopt met bedrijf", ontevreden: "Niet tevreden over de service", anders: "Andere reden" },
     domein: { wacht_op_klant: ["Wacht op de klant", "s-let"], aangevraagd: ["DNS instellen", "s-let"], verhuizen: ["Verhuizen", "s-fout"], registreren: ["Registreren", "s-fout"], dns_klaar: ["DNS klopt, https volgt", "s-info"], actief: ["Actief", "s-ok"], probleem: ["Probleem", "s-fout"], opgezegd: ["Opgezegd", "s-grijs"] },
@@ -1253,7 +1253,7 @@ ${p.body}</div>
     const d = await api("hq/concepten?filter=" + conceptFilter);
     const f = [["beoordelen", "Te beoordelen", d.counts.beoordelen], ["bekeken", "Bekeken", d.counts.bekeken], ["", "Alle", d.counts.alle], ["klaar", "Klaar", d.counts.klaar], ["bezig", "Wordt gemaakt", d.counts.bezig], ["overgeslagen", "Overgeslagen", d.counts.overgeslagen]];
     render(main, html`
-      <div class="hq-kop"><div><h1>Concepten</h1><p>Voorbeeldsites die de agent voor leads heeft gemaakt. Bekijk ze en klik op "Akkoord, verstuur mail". Bekeken = de lead heeft de link geopend: bel ze!</p></div><a class="knop knop-licht" href="#b2b">Naar B2B-mail</a></div>
+      <div class="hq-kop"><div><h1>Concepten</h1><p>Voorbeeldsites voor leads. De ontwerper (geplande Claude-taak) maakt ze in rondes, drie keer per dag. Bekijk ze en klik op "Akkoord, verstuur mail". Bekeken = de lead heeft de link geopend: bel ze!</p></div><a class="knop knop-licht" href="#b2b">Naar B2B-mail</a></div>
       <div class="filters" role="group" aria-label="Filter">${f.map(([k, t, n]) => html`<button aria-pressed="${k === conceptFilter}" data-f="${k}">${t}<span class="n">${n}</span></button>`)}</div>
       ${d.concepts.length ? html`<div class="concept-raster">${d.concepts.map((c) => html`<article class="concept-kaart thema-${c.thema || "natuur"}">
           <a class="concept-beeld" ${c.status === "klaar" ? raw(`href="${SM.esc(c.hqUrl)}" target="_blank" rel="noopener"`) : ""} aria-label="${c.company} openen">
@@ -1274,7 +1274,7 @@ ${p.body}</div>
       const dlg = SM.dialoog("Opnieuw maken", html`<form novalidate><div class="veld"><label for="o-w">Wat moet anders? <span class="opt">(optioneel)</span></label><input id="o-w" name="instructie" placeholder="Bijv. meer nadruk op spoedservice"></div><button class="knop knop-actie" type="submit">Opnieuw maken</button></form>`);
       dlg.querySelector("form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        try { await api(`hq/leads/${b.dataset.opnieuw}/concept`, { method: "POST", body: { instructie: e.target.elements.instructie.value } }); dlg.close(); toast("De agent maakt een nieuw concept (1 à 2 minuten)."); concepten(main); } catch (err) { toast(err.message, "fout"); }
+        try { await api(`hq/leads/${b.dataset.opnieuw}/concept`, { method: "POST", body: { instructie: e.target.elements.instructie.value } }); dlg.close(); toast("Staat klaar voor de ontwerper: in de volgende ronde wordt hij opnieuw gemaakt."); concepten(main); } catch (err) { toast(err.message, "fout"); }
       });
     }));
     main.querySelectorAll("[data-lead]").forEach((b) => b.addEventListener("click", async () => {

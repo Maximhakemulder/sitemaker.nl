@@ -542,6 +542,7 @@ export async function saveAdminSettings(b, user) {
         perDag: Math.min(200, Math.max(0, Number(x.concepten?.perDag ?? cur.concepten?.perDag ?? 20) || 0)),
         geldigDagen: Math.min(365, Math.max(7, Number(x.concepten?.geldigDagen ?? cur.concepten?.geldigDagen ?? 60) || 60)),
         wachten: x.concepten?.wachten ?? cur.concepten?.wachten ?? true,
+        maker: ["taak", "netlify"].includes(x.concepten?.maker) ? x.concepten.maker : (cur.concepten?.maker || "taak"),
       },
       templates: { eerste: tpl("eerste"), opvolging: tpl("opvolging") },
     });

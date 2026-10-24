@@ -2,6 +2,7 @@
 import * as domains from "../lib/domains.mjs";
 import * as team from "../lib/team.mjs";
 import * as concepts from "../lib/concepts.mjs";
+import * as taak from "../lib/concepttaak.mjs";
 import * as agenda from "../lib/agenda.mjs";
 import * as service from "../lib/service.mjs";
 import * as kosten from "../lib/kosten.mjs";
@@ -106,6 +107,21 @@ export default async (req, context) => {
     }
 
     if (path === "reviews" && m === "GET") return json(await publishedReviews(), 200, { "cache-control": "public, max-age=300" });
+
+    // ------------------------------------------------ geplande Claude-taak die concepten ontwerpt (sleutel in x-taak-sleutel)
+    if (seg[0] === "taak") {
+      taak.checkTaak(req);
+      const tid = Number(seg[2]) || 0;
+      if (path === "taak/instructies" && m === "GET") return json(taak.instructies());
+      if (path === "taak/status" && m === "GET") return json(await taak.status());
+      if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
+      if (seg[1] === "concepten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await taak.afbeelding(tid, seg[4]);
+      if (seg[1] === "concepten" && tid && seg[3] === "stock" && m === "POST") return json(await taak.stockZoeken(tid, (await body(req)).termen));
+      if (seg[1] === "concepten" && tid && seg[3] === "kies" && m === "POST") return json(await taak.stockKiezen(tid, (await body(req)).nummers));
+      if (seg[1] === "concepten" && tid && !seg[3] && m === "PUT") return json(await taak.opslaan(tid, await body(req)));
+      if (seg[1] === "concepten" && tid && seg[3] === "afmelden" && m === "POST") return json(await taak.afmelden(tid, await body(req)));
+      fail(404, "Onbekend.");
+    }
 
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");
 
@@ -243,6 +259,7 @@ export default async (req, context) => {
         case "POST team/vraag": return json(await team.askQuestion(user, await body(req)));
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
+        case "GET concepten/taak": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json({ sleutel: taak.taakSleutel(), ...(await taak.status()) });
         case "PUT concepten/:id/ontwerp": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await concepts.setConceptHtml(id, (await body(req)).html, user));
         case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
         case "PUT leads/:id/concept": return json(await hq.setConceptTheme(id, (await body(req)).thema, user));

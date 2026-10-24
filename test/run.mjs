@@ -536,7 +536,7 @@ console.log("Concept-websites voor leads");
   const echteFetch = globalThis.fetch;
   globalThis.fetch = async (url, opt) => {
     const u = String(url);
-    if (!u.startsWith("https://bakkerij-zon.test") && !u.startsWith("https://webwinkel.test")) return echteFetch(url, opt);
+    if (!u.startsWith("https://bakkerij-zon.test") && !u.startsWith("https://zon-twee.test") && !u.startsWith("https://webwinkel.test")) return echteFetch(url, opt);
     const r = (body, type) => new Response(body, { status: 200, headers: { "content-type": type } });
     const pad = new URL(u).pathname;
     if (u.startsWith("https://webwinkel.test")) return r(`<html><body><h1>Webwinkel</h1><p>${"Bestel online schoenen en tassen, gratis verzending, in winkelmand. ".repeat(10)}</p></body></html>`, "text/html");
@@ -564,6 +564,9 @@ console.log("Concept-websites voor leads");
       fotos: [], openingstijden: [{ dag: "Maandag t/m zaterdag", tijd: "07:00 - 18:00" }, { dag: "Zondag", tijd: "10:00 - 14:00" }],
       contact: { titel: "Bestel of kom langs", tekst: "Bel of mail ons." } } }) + "\n```";
   };
+  const core = await import("../netlify/lib/core.mjs");
+  const zetMaker = async (maker) => { const b = (await core.getSettings()).b2b; await core.saveSetting("b2b", { ...b, concepten: { ...b.concepten, maker } }); };
+  await zetMaker("netlify");
   let lead, token;
   await test("concept: agent bekijkt de site, Claude maakt een eerlijk concept", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Bakkerij Zon", email: "info@bakkerij-zon.test", website: "https://bakkerij-zon.test/", city: "Utrecht", category: "bakker" } });
@@ -642,6 +645,38 @@ console.log("Concept-websites voor leads");
     await call("POST", "hq/leads", { cookie: admin, body: { company: "Slagerij Twee", email: "info@slagerij-twee.test", website: "https://slagerij-twee.test/" } });
     const r = await runConcepts({ max: 2 });
     assert.ok(r.started >= 1, JSON.stringify(r));
+  });
+  await test("geplande Claude-taak: Netlify scant alleen, de taak maakt teksten en ontwerp via de taak-API", async () => {
+    await zetMaker("taak");
+    const { taakSleutel } = await import("../netlify/lib/concepttaak.mjs");
+    const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Bakkerij Zon Twee", email: "info@zon-twee.test", website: "https://zon-twee.test/", city: "Utrecht", category: "bakker" } });
+    const id2 = r.data.lead.id;
+    await call("POST", `hq/leads/${id2}/concept`, { cookie: admin, body: {} });
+    let l = (await call("GET", "hq/leads?status=nieuw", { cookie: admin })).data.leads.find((x) => x.id === id2);
+    assert.equal(l.concept.status, "ontwerp", JSON.stringify(l.concept));
+    assert.equal((await call("POST", "taak/claim", { body: { max: 5 } })).status, 403, "zonder sleutel geen toegang");
+    const k = { "x-taak-sleutel": taakSleutel() };
+    const ins = await call("GET", "taak/instructies", { headers: k });
+    assert.ok(ins.data.ontwerpRegels.includes("data-verhaal") && ins.data.beweging.includes("IntersectionObserver") && ins.data.sprite.includes("i-telefoon"));
+    const cl = await call("POST", "taak/claim", { headers: k, body: { max: 5 } });
+    const c = cl.data.concepten.find((x) => x.bedrijf.company === "Bakkerij Zon Twee");
+    assert.ok(c && c.bron.tekst.includes("Bakkerij Zon") && c.afbeeldingen.some((i) => i.logo), JSON.stringify(cl.data).slice(0, 300));
+    const foto = c.afbeeldingen.find((i) => !i.logo).naam;
+    const img = await call("GET", `taak/concepten/${c.id}/afbeeldingen/${foto}`, { headers: k, raw: true });
+    assert.equal(img.status, 200);
+    const content = { thema: "natuur", kleuren: { primair: "#c8102e", kleurBron: "logo" }, bedrijf: { naam: "Bakkerij Zon", telefoon: "030 123 45 67" },
+      hero: { titel: "Elke dag vers gebakken", tekst: "Brood en taart.", foto: `afbeeldingen/${foto}` }, diensten: { items: [{ titel: "Vers brood", tekst: "Elke ochtend." }] }, over: { tekst: "Een familiebedrijf." } };
+    const body = `<p>${"Vers brood uit Utrecht. ".repeat(200)}</p><img src="afbeeldingen/${foto}" data-parallax="-0.08"><a href="tel:0301234567">030 123 45 67</a>`;
+    const fout = await call("PUT", `taak/concepten/${c.id}`, { headers: k, body: { content, html: `<!doctype html><html><head><style>h1{color:#c8102e}</style></head><body>${body}<p>Al 25 jaar de beste bakker, 500 tevreden klanten.</p></body></html>` } });
+    assert.equal(fout.status, 400, "verzonnen feiten worden geweigerd"); assert.match(fout.data.error, /Feitencontrole/);
+    const ok = await call("PUT", `taak/concepten/${c.id}`, { headers: k, body: { content, html: `<!doctype html><html><head><style>h1{color:#c8102e}</style></head><body>${body}<script>alert(1)</script></body></html>` } });
+    assert.equal(ok.status, 200, JSON.stringify(ok.data));
+    l = (await call("GET", "hq/leads?status=nieuw", { cookie: admin })).data.leads.find((x) => x.id === id2);
+    assert.equal(l.concept.status, "klaar"); assert.ok(l.concept.uniek);
+    const page = String((await call("GET", "voorbeeld/" + l.concept.url.split("/").pop())).data);
+    assert.ok(page.includes("data-parallax") && !page.includes("alert(1)") && page.includes("IntersectionObserver"));
+    const ts = await call("GET", "hq/concepten/taak", { cookie: admin });
+    assert.equal(ts.data.sleutel, taakSleutel());
   });
   globalThis.fetch = echteFetch; globalThis.__aiFake = vorigeAi;
 }

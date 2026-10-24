@@ -1,0 +1,139 @@
+// API voor de geplande Claude-taak die concepten maakt (teksten, sfeerfoto's kiezen, ontwerp, zelf bekijken en verbeteren).
+// Netlify scant alleen de site; alle AI gebeurt in de taak (Claude-abonnement), dus geen AI-kosten in Netlify.
+// Toegang met header x-taak-sleutel (afgeleid van AUTH_SECRET; zichtbaar voor beheerders in HQ).
+import crypto from "node:crypto";
+import { q, one, str, env, fail, getSettings, audit } from "./core.mjs";
+import { putFile, getFile, deleteFile } from "./files.mjs";
+import { SYSTEM as CONTENT_SYSTEM, clean, zoekStock, haal, imageSize } from "./concepts.mjs";
+import { SYSTEM as ONTWERP_SYSTEM, sanitize, feitencheck, kleurcheck } from "./ontwerp.mjs";
+import { BEWEGING } from "./beweging.mjs";
+import { sprite, ICOON_NAMEN } from "./iconen.mjs";
+
+export const taakSleutel = () => crypto.createHash("sha256").update(`${env("AUTH_SECRET", "x")}:concept-taak`).digest("hex").slice(0, 40);
+export function checkTaak(req) {
+  const a = Buffer.from(String(req.headers.get("x-taak-sleutel") || "")), b = Buffer.from(taakSleutel());
+  if (!(a.length === b.length && crypto.timingSafeEqual(a, b))) fail(403, "Geen toegang.");
+}
+
+// Alles wat de taak moet weten, uit de code (één bron).
+export function instructies() {
+  return {
+    contentRegels: CONTENT_SYSTEM,
+    ontwerpRegels: ONTWERP_SYSTEM,
+    beweging: BEWEGING,
+    sprite: sprite(),
+    iconen: ICOON_NAMEN,
+  };
+}
+
+// Pak tot max concepten op die op een ontwerp wachten.
+export async function claim(max = 5) {
+  const n = Math.min(10, Math.max(1, Number(max) || 5));
+  const rows = await q(`UPDATE concepts SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
+                        WHERE id IN (SELECT id FROM concepts WHERE status = 'ontwerp' ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED) RETURNING *`, [n]);
+  const out = [];
+  for (const c of rows) {
+    const l = await one("SELECT company, category, city, website, phone, email FROM leads WHERE id = $1", [c.lead_id]);
+    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", bron: c.bron || {}, analyse: c.analysis || {},
+      afbeeldingen: (c.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: !!i.logo, alt: i.alt || "", sfeerbeeld: !!i.stock })) });
+  }
+  return { concepten: out };
+}
+
+async function eigen(id, statussen = ["ontwerpen"]) {
+  const c = await one("SELECT * FROM concepts WHERE id = $1", [id]);
+  if (!c) fail(404, "Concept niet gevonden.");
+  if (!statussen.includes(c.status)) fail(409, `Concept staat op '${c.status}', niet op ${statussen.join("/")}.`);
+  return c;
+}
+
+export async function afbeelding(id, naam) {
+  const c = await one("SELECT images FROM concepts WHERE id = $1", [id]);
+  const i = (c?.images || []).find((x) => x.name === naam);
+  const key = i ? i.key : /^kandidaat-\d+\.(jpg|png|webp)$/.test(naam) ? `concepts/${id}/${naam}` : "";
+  const buf = key && await getFile(key);
+  if (!buf) return new Response("Niet gevonden", { status: 404 });
+  return new Response(buf, { headers: { "content-type": imageSize(buf)?.type || "application/octet-stream", "cache-control": "no-store" } });
+}
+
+// Sfeerfoto's zoeken (Pexels/Pixabay, sleutels staan in Netlify). Kandidaten worden als kandidaat-N opgeslagen zodat de taak ze kan bekijken.
+export async function stockZoeken(id, termen) {
+  await eigen(id);
+  const lijst = (Array.isArray(termen) ? termen : []).map((t) => str(t, 60)).filter(Boolean).slice(0, 5);
+  if (!lijst.length) fail(400, "Geef zoektermen.");
+  if (!env("PEXELS_API_KEY") && !env("PIXABAY_API_KEY")) fail(400, "Geen sleutel voor sfeerfoto's (PEXELS_API_KEY of PIXABAY_API_KEY).");
+  const gezien = new Set(), kand = [];
+  for (const t of lijst) for (const p of await zoekStock(t, 6)) if (p.src && !gezien.has(p.url || p.src)) { gezien.add(p.url || p.src); kand.push({ ...p, term: t }); }
+  const out = [];
+  for (const p of kand.slice(0, 18)) {
+    const r = p.klein && await haal(p.klein, { binary: true, max: 800000, timeout: 5000 });
+    const t = r?.buf && imageSize(r.buf);
+    if (!t) continue;
+    const n = out.length + 1, ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[t.type] || "jpg";
+    await putFile(`concepts/${id}/kandidaat-${n}.${ext}`, r.buf, { type: t.type, name: `kandidaat-${n}.${ext}` });
+    out.push({ n, naam: `kandidaat-${n}.${ext}`, term: p.term, alt: str(p.alt, 120), src: p.src, url: p.url, door: str(p.door, 80) });
+  }
+  await q("UPDATE concepts SET bron = COALESCE(bron, '{}'::jsonb) || jsonb_build_object('kandidaten', $2::jsonb), updated_at = NOW() WHERE id = $1", [id, JSON.stringify(out)]);
+  return { kandidaten: out.map(({ src, ...k }) => k) };
+}
+
+// De taak kiest kandidaten (beste eerst); wij halen de grote versie op en voegen ze toe als foto's.
+export async function stockKiezen(id, nummers) {
+  const c = await eigen(id);
+  const kand = c.bron?.kandidaten || [];
+  const images = c.images || [];
+  let start = images.filter((i) => !i.logo).length;
+  const toegevoegd = [];
+  for (const n of (Array.isArray(nummers) ? nummers : []).map(Number).slice(0, 8)) {
+    const k = kand.find((x) => x.n === n);
+    if (!k) continue;
+    const r = await haal(k.src, { binary: true, max: 3500000, timeout: 7000 });
+    const size = r?.buf && imageSize(r.buf);
+    if (!size) continue;
+    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[size.type];
+    const name = `foto-${++start}.${ext}`, key = `concepts/${id}/${name}`;
+    await putFile(key, r.buf, { type: size.type, name });
+    const img = { name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: k.alt, logo: false, stock: true, bron: k.url, fotograaf: k.door };
+    images.push(img); toegevoegd.push({ naam: name, w: size.w, h: size.h, alt: k.alt });
+  }
+  await q("UPDATE concepts SET images = $2, updated_at = NOW() WHERE id = $1", [id, JSON.stringify(images)]);
+  // kandidaten opruimen
+  for (const k of kand) await deleteFile(`concepts/${id}/${k.naam}`).catch(() => {});
+  return { toegevoegd };
+}
+
+// Resultaat opslaan: content.json (zelfde eerlijkheidscontrole als altijd) + ontwerp-HTML (zelfde veiligheidsfilter).
+export async function opslaan(id, { content, html }) {
+  const c = await eigen(id);
+  const lead = await one("SELECT * FROM leads WHERE id = $1", [c.lead_id]);
+  const images = c.images || [];
+  const tekst = c.bron?.tekst || "";
+  const schoon = clean(content || {}, { text: tekst, images, lead });
+  if (!schoon) fail(400, "content.json is onvolledig (hero.titel en minstens één dienst zijn verplicht).");
+  if (content?.kleuren?.kleurBron === "logo" || content?.kleuren?.bron === "logo") schoon.kleuren.bron = "logo";
+  if (images.some((i) => i.stock)) schoon.sfeerbeelden = true;
+  const namen = new Set(images.map((i) => i.name));
+  const h = sanitize(String(html || ""), { imgBase: "afbeeldingen/", namen });
+  if (!h || h.length < 4000) fail(400, "Het ontwerp is geen geldig of volledig HTML-document (of bevatte <script>/javascript:).");
+  const fouten = feitencheck(h, schoon);
+  if (fouten.length) fail(400, `Feitencontrole: ${fouten.slice(0, 6).join(", ")}. Haal dit weg of neem het exact over uit content.json.`);
+  const s = await getSettings();
+  const dagen = Number(s.b2b.concepten?.geldigDagen || 60);
+  await q(`UPDATE concepts SET status = 'klaar', content = $2, html = $3, ontwerp_fout = '', reden = '', ready_at = NOW(), expires_at = NOW() + ($4 || ' days')::interval, updated_at = NOW() WHERE id = $1`,
+    [id, JSON.stringify(schoon), h, String(dagen)]);
+  await audit(null, "concept_taak_klaar", "concept", id, { bytes: h.length });
+  return { ok: true, waarschuwingen: kleurcheck(h, [schoon.kleuren?.primair, schoon.kleuren?.accent].filter(Boolean)) };
+}
+
+// Niet geschikt (webshop, te weinig info) of mislukt.
+export async function afmelden(id, { reden, overslaan }) {
+  await eigen(id, ["ontwerpen", "ontwerp"]);
+  await q("UPDATE concepts SET status = $2, reden = $3, updated_at = NOW() WHERE id = $1", [id, overslaan ? "overgeslagen" : "fout", str(reden, 300) || (overslaan ? "Niet geschikt voor een concept." : "De ontwerper kon het niet afmaken.")]);
+  return { ok: true };
+}
+
+export async function status() {
+  const rows = await q("SELECT status, COUNT(*)::int AS n FROM concepts GROUP BY status");
+  const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE status = 'klaar' AND ready_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag };
+}
