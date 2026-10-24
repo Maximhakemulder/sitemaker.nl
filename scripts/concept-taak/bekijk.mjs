@@ -57,7 +57,7 @@ for (const [w, hgt] of [[390, 844], [1280, 800]]) {
       if (u.host === "fonts.local") { const [, nm, wt] = u.pathname.split("/"); return r.fulfill({ contentType: "font/woff2", body: fs.readFileSync(path.join(FONTS, "node_modules/@fontsource", nm, "files", `${nm}-latin-${wt}-normal.woff2`)) }); }
       if (u.host === "concept.local") {
         const f = path.join(D, decodeURIComponent(u.pathname));
-        if (fs.existsSync(f)) return r.fulfill({ body: fs.readFileSync(f) });
+        if (fs.existsSync(f)) return r.fulfill({ body: fs.readFileSync(f), contentType: { svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" }[f.split(".").pop().toLowerCase()] || "application/octet-stream" });
         return r.fulfill({ status: 404, body: "" });
       }
       return r.fulfill({ status: 404, body: "" });
