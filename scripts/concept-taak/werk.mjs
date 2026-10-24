@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+// Hulpmiddel voor de geplande Claude-taak die concepten ontwerpt. Zie docs/concept-taak.md.
+// Omgeving: SITEMAKER_URL (bijv. https://sitemaker-46to.netlify.app) en SITEMAKER_TAAK_SLEUTEL.
+// Werkmap: $CONCEPT_WERK of /tmp/concepten
+import fs from "node:fs";
+import path from "node:path";
+
+const BASE = (process.env.SITEMAKER_URL || "https://sitemaker-46to.netlify.app").replace(/\/+$/, "");
+const KEY = process.env.SITEMAKER_TAAK_SLEUTEL || "";
+const WERK = process.env.CONCEPT_WERK || "/tmp/concepten";
+if (!KEY) { console.error("Zet SITEMAKER_TAAK_SLEUTEL."); process.exit(2); }
+
+async function api(method, p, body, { raw = false } = {}) {
+  const r = await fetch(`${BASE}/api/taak/${p}`, { method, headers: { "x-taak-sleutel": KEY, "x-sm": "1", ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  if (raw) { if (!r.ok) throw new Error(`${p}: ${r.status}`); return Buffer.from(await r.arrayBuffer()); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.error || `${p}: status ${r.status}`); e.status = r.status; throw e; }
+  return d;
+}
+const dir = (id, ...p) => path.join(WERK, String(id), ...p);
+const schrijf = (f, data) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, data); };
+
+const [cmd, ...args] = process.argv.slice(2);
+try {
+  if (cmd === "instructies") {
+    const d = await api("GET", "instructies");
+    schrijf(path.join(WERK, "_kit", "content-regels.md"), d.contentRegels);
+    schrijf(path.join(WERK, "_kit", "ontwerp-regels.md"), d.ontwerpRegels);
+    schrijf(path.join(WERK, "_kit", "beweging.js"), d.beweging);
+    schrijf(path.join(WERK, "_kit", "sprite.svg"), d.sprite);
+    console.log(`Kit in ${path.join(WERK, "_kit")}: content-regels.md, ontwerp-regels.md, beweging.js, sprite.svg`);
+  } else if (cmd === "status") {
+    console.log(JSON.stringify(await api("GET", "status"), null, 1));
+  } else if (cmd === "claim") {
+    const d = await api("POST", "claim", { max: Number(args[0] || 5) });
+    for (const c of d.concepten) {
+      schrijf(dir(c.id, "bron.json"), JSON.stringify(c, null, 1));
+      for (const a of c.afbeeldingen) schrijf(dir(c.id, "afbeeldingen", a.naam), await api("GET", `concepten/${c.id}/afbeeldingen/${encodeURIComponent(a.naam)}`, null, { raw: true }));
+      console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen${c.instructie ? ` · wens: ${c.instructie}` : ""}`);
+    }
+    if (!d.concepten.length) console.log("Geen concepten die op een ontwerp wachten.");
+  } else if (cmd === "stock") {
+    const [id, ...termen] = args;
+    const d = await api("POST", `concepten/${id}/stock`, { termen });
+    for (const k of d.kandidaten) schrijf(dir(id, "kandidaten", k.naam), await api("GET", `concepten/${id}/afbeeldingen/${k.naam}`, null, { raw: true }));
+    schrijf(dir(id, "kandidaten", "lijst.json"), JSON.stringify(d.kandidaten, null, 1));
+    console.log(d.kandidaten.map((k) => `${k.n}. ${k.naam} [${k.term}] ${k.alt}`).join("\n") || "Geen kandidaten gevonden.");
+  } else if (cmd === "kies") {
+    const [id, ...n] = args;
+    const d = await api("POST", `concepten/${id}/kies`, { nummers: n.map(Number) });
+    const bron = JSON.parse(fs.readFileSync(dir(id, "bron.json"), "utf8"));
+    for (const t of d.toegevoegd) { schrijf(dir(id, "afbeeldingen", t.naam), await api("GET", `concepten/${id}/afbeeldingen/${t.naam}`, null, { raw: true })); bron.afbeeldingen.push({ naam: t.naam, w: t.w, h: t.h, logo: false, alt: t.alt, sfeerbeeld: true }); }
+    schrijf(dir(id, "bron.json"), JSON.stringify(bron, null, 1));
+    fs.rmSync(dir(id, "kandidaten"), { recursive: true, force: true });
+    console.log(d.toegevoegd.map((t) => `+ ${t.naam} (${t.w}x${t.h}) ${t.alt}`).join("\n") || "Niets toegevoegd.");
+  } else if (cmd === "opslaan") {
+    const [id] = args;
+    const content = JSON.parse(fs.readFileSync(dir(id, "content.json"), "utf8"));
+    const html = fs.readFileSync(dir(id, "index.html"), "utf8");
+    const d = await api("PUT", `concepten/${id}`, { content, html });
+    console.log(`Opgeslagen. ${d.waarschuwingen?.length ? "Let op: " + d.waarschuwingen.join("; ") : ""}`);
+  } else if (cmd === "afmelden") {
+    const [id, reden, vlag] = args;
+    await api("POST", `concepten/${id}/afmelden`, { reden, overslaan: vlag === "--overslaan" });
+    console.log("Afgemeld.");
+  } else {
+    console.log("Gebruik: werk.mjs instructies | status | claim [n] | stock <id> <term>... | kies <id> <n>... | opslaan <id> | afmelden <id> \"reden\" [--overslaan]");
+  }
+} catch (e) { console.error("FOUT:", e.message); process.exit(1); }

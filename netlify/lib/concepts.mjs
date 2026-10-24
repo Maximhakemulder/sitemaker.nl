@@ -216,7 +216,7 @@ function svgSize(buf) {
 // Alleen met PEXELS_API_KEY. In het concept en in HQ staat welke foto's sfeerbeelden zijn.
 // Of Pixabay (PIXABAY_API_KEY): ook gratis en commercieel te gebruiken; we downloaden de foto's zelf (geen hotlinken).
 export const stockReady = () => !!(env("PEXELS_API_KEY") || env("PIXABAY_API_KEY"));
-async function zoekStock(zoek, aantal) {
+export async function zoekStock(zoek, aantal) {
   try {
     if (env("PEXELS_API_KEY")) {
       const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(zoek)}&per_page=${aantal}&orientation=landscape`, { headers: { authorization: env("PEXELS_API_KEY") }, signal: AbortSignal.timeout(6000) });
@@ -271,7 +271,7 @@ async function stockFotos(conceptId, termen, nodig, start, info = {}) {
 }
 
 // ---------------------------------------------------------------- Claude
-const SYSTEM = `Je bent webredacteur bij Sitemaker. Je maakt een eerste opzet ("concept") van een nieuwe website voor een Nederlands bedrijf, op basis van de tekst van hun huidige website.
+export const SYSTEM = `Je bent webredacteur bij Sitemaker. Je maakt een eerste opzet ("concept") van een nieuwe website voor een Nederlands bedrijf, op basis van de tekst van hun huidige website.
 Regels:
 - Gebruik ALLEEN feiten die in de aangeleverde tekst staan: diensten, werkwijze, plaats, telefoon, e-mail, adres, openingstijden, prijzen. Verzin niets: geen jaartallen, aantallen, reviews, keurmerken, prijzen of beloftes die er niet staan.
 - Schrijf de teksten wél beter: helder, warm, concreet, actief, in de stijl van het bedrijf (je- of u-vorm zoals hun site). Korte zinnen. Geen clichés als "uw partner in" of "kwaliteit staat voorop".
@@ -361,13 +361,21 @@ export async function processConcept(conceptId) {
   };
   try {
     if (!lead?.website) return await klaar("overgeslagen", { reden: "Geen website om naar te kijken." });
-    if (!aiReady()) return await klaar("fout", { reden: "Claude is nog niet gekoppeld (ANTHROPIC_API_KEY of AI Gateway)." });
+    const taak = await perTaak();
+    if (!taak && !aiReady()) return await klaar("fout", { reden: "Claude is nog niet gekoppeld (ANTHROPIC_API_KEY of AI Gateway)." });
     const site = await scan(lead.website);
     if (site.error) return await klaar("overgeslagen", { reden: site.error });
     if (site.text.length < 300) return await klaar("overgeslagen", { reden: "Te weinig tekst op hun site om een goed concept te maken.", analysis: site.analysis });
     // oude afbeeldingen van een eerdere poging opruimen
     for (const i of c.images || []) await deleteFile(i.key).catch(() => {});
     const images = await saveImages(c.id, site.cands);
+    // Geplande Claude-taak: alleen scannen en opslaan; teksten, foto's en ontwerp doet de taak (geen AI-kosten hier).
+    if (taak) {
+      const lb = images.logoBuf, logoKleuren = lb?.type === "image/svg+xml" ? svgKleuren(lb.buf) : [];
+      await q("UPDATE concepts SET status = 'ontwerp', images = $2, analysis = $3, bron = $4, reden = '', updated_at = NOW() WHERE id = $1",
+        [c.id, JSON.stringify(images), JSON.stringify(site.analysis), JSON.stringify({ url: site.home.url, tekst: site.text, kleurenCss: site.kleuren, kleurenLogo: logoKleuren })]);
+      return { status: "ontwerp" };
+    }
     // Logo meesturen zodat Claude de echte huisstijlkleuren ziet (SVG: kleuren uitlezen).
     const lb = images.logoBuf, logoKleuren = lb?.type === "image/svg+xml" ? svgKleuren(lb.buf) : [];
     const beeld = lb && /^image\/(png|jpeg|webp)$/.test(lb.type) && lb.buf.length < 3000000 ? [{ type: lb.type, data: lb.buf.toString("base64") }] : [];
@@ -443,7 +451,8 @@ export async function queueConcept(leadId, { instructie = "", direct = false } =
 export async function runConcepts({ max = 2 } = {}) {
   const s = await getSettings();
   const cfg = s.b2b.concepten || {};
-  if (!aiReady()) return { skipped: "ai" };
+  const taak = cfg.maker !== "netlify";
+  if (!taak && !aiReady()) return { skipped: "ai" };
   const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   const room = Math.max(0, Number(cfg.perDag ?? 20) - vandaag);
   if (cfg.auto !== false && room) {
@@ -451,6 +460,8 @@ export async function runConcepts({ max = 2 } = {}) {
              WHERE l.website <> '' AND l.status IN ('nieuw','goedgekeurd') AND NOT EXISTS (SELECT 1 FROM concepts c WHERE c.lead_id = l.id)
              ORDER BY l.created_at LIMIT $1 ON CONFLICT DO NOTHING`, [room]);
   }
+  // taak pakte een concept op maar maakte het niet af (na drie uur): terug naar de wachtrij van de taak
+  await q("UPDATE concepts SET status = 'ontwerp', updated_at = NOW() WHERE status = 'ontwerpen' AND taak_at < NOW() - INTERVAL '3 hours'");
   // vastgelopen (> 20 min bezig) opnieuw
   await q("UPDATE concepts SET status = 'wachtrij', updated_at = NOW() WHERE status = 'bezig' AND started_at < NOW() - INTERVAL '20 minutes' AND pogingen < 3");
   const todo = await q("SELECT id FROM concepts WHERE status = 'wachtrij' ORDER BY created_at LIMIT $1", [Math.min(max, room)]);
@@ -578,12 +589,12 @@ export async function conceptForCustomer(customer) {
 
 // Galerij in HQ.
 export async function listConcepts({ filter = "" } = {}) {
-  const where = { beoordelen: "c.status = 'klaar' AND l.status = 'nieuw'", klaar: "c.status = 'klaar'", bekeken: "c.views > 0", bezig: "c.status IN ('wachtrij','bezig')", overgeslagen: "c.status IN ('overgeslagen','fout')" }[filter] || "TRUE";
+  const where = { beoordelen: "c.status = 'klaar' AND l.status = 'nieuw'", klaar: "c.status = 'klaar'", bekeken: "c.views > 0", bezig: "c.status IN ('wachtrij','bezig','ontwerp','ontwerpen')", overgeslagen: "c.status IN ('overgeslagen','fout')" }[filter] || "TRUE";
   const rows = await q(`SELECT c.*, l.company, l.city, l.category, l.status AS lead_status, l.website, l.phone, l.email FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE ${where}
                         ORDER BY (c.views > 0) DESC, c.last_view_at DESC NULLS LAST, COALESCE(c.ready_at, c.created_at) DESC LIMIT 300`);
   const counts = (await q("SELECT status, COUNT(*)::int AS n, SUM(CASE WHEN views > 0 THEN 1 ELSE 0 END)::int AS b FROM concepts GROUP BY status"));
   const tel = { alle: 0, klaar: 0, bekeken: 0, bezig: 0, overgeslagen: 0, beoordelen: (await one("SELECT COUNT(*)::int AS n FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status = 'nieuw'")).n };
-  for (const r of counts) { tel.alle += r.n; tel.bekeken += r.b; if (r.status === "klaar") tel.klaar += r.n; else if (["wachtrij", "bezig"].includes(r.status)) tel.bezig += r.n; else tel.overgeslagen += r.n; }
+  for (const r of counts) { tel.alle += r.n; tel.bekeken += r.b; if (r.status === "klaar") tel.klaar += r.n; else if (["wachtrij", "bezig", "ontwerp", "ontwerpen"].includes(r.status)) tel.bezig += r.n; else tel.overgeslagen += r.n; }
   return {
     counts: tel,
     concepts: rows.map((c) => {
@@ -605,3 +616,7 @@ export async function setConceptHtml(conceptId, html, user) {
   await audit(user, "concept_ontwerp", "concept", conceptId, { bytes: schoon.length });
   return { ok: true, bytes: schoon.length };
 }
+
+// Wie maakt de concepten: "taak" (geplande Claude-taak, standaard) of "netlify" (AI via Netlify, kost credits).
+export const perTaak = async () => ((await getSettings()).b2b.concepten?.maker || "taak") !== "netlify";
+export { get as haal };

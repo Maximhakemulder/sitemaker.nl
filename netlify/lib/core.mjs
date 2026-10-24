@@ -96,7 +96,7 @@ export const DEFAULT_SETTINGS = {
     scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "fysiotherapeut"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
     // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
-    concepten: { auto: true, perDag: 20, geldigDagen: 60, wachten: true },
+    concepten: { auto: true, perDag: 15, geldigDagen: 60, wachten: true, maker: "taak" },
     templates: {
       eerste: {
         subject: "Een website die aanvragen oplevert voor {bedrijf}",
