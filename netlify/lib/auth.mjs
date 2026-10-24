@@ -119,8 +119,24 @@ function tokenFrom(req, name = COOKIE) {
 }
 async function userForToken(token) {
   if (!token) return null;
-  return (await one(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-                     WHERE s.token_hash = $1 AND s.expires_at > NOW() AND u.active = TRUE`, [sha256(token)])) || null;
+  const u = await one(`SELECT u.*, s.customer_id AS sessie_site, s.token_hash AS sessie FROM sessions s JOIN users u ON u.id = s.user_id
+                     WHERE s.token_hash = $1 AND s.expires_at > NOW() AND u.active = TRUE`, [sha256(token)]);
+  if (!u) return null;
+  if (u.role === "klant") {
+    // Meerdere websites: de sessie onthoudt welke website open staat; alleen websites van deze gebruiker.
+    const sites = (await q("SELECT customer_id FROM user_sites WHERE user_id = $1 ORDER BY customer_id", [u.id])).map((r) => r.customer_id);
+    if (!sites.includes(u.customer_id)) sites.unshift(u.customer_id);
+    u.sites = sites;
+    if (u.sessie_site && sites.includes(u.sessie_site)) u.customer_id = u.sessie_site;
+  }
+  return u;
+}
+// Klant wisselt van website in het portaal.
+export async function switchSite(user, customerId) {
+  if (!user.sites?.includes(customerId)) fail(404, "Website niet gevonden.");
+  await q("UPDATE sessions SET customer_id = $2 WHERE token_hash = $1", [user.sessie, customerId]);
+  user.customer_id = customerId;
+  return { ok: true };
 }
 
 // Open modus: zolang de mail niet is ingesteld en OPEN_MODE=1, is HQ zonder inloggen te gebruiken.
@@ -158,10 +174,10 @@ export async function openPortalAs(customerId) {
 }
 
 export async function viewAsCustomer(staff, customerId) {
-  const u = await one("SELECT * FROM users WHERE customer_id = $1 AND role = 'klant' AND active ORDER BY id LIMIT 1", [customerId]);
+  const u = await one(`SELECT u.* FROM users u WHERE u.role = 'klant' AND u.active AND (u.customer_id = $1 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $1)) ORDER BY u.customer_id = $1 DESC, u.id LIMIT 1`, [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
   const token = randomToken();
-  await q("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '8 hours')", [sha256(token), u.id]);
+  await q("INSERT INTO sessions (token_hash, user_id, expires_at, customer_id) VALUES ($1, $2, NOW() + INTERVAL '8 hours', $3)", [sha256(token), u.id, customerId]);
   await q("INSERT INTO audit_log (user_id, customer_id, action, detail) VALUES ($1, $2, 'portaal.bekeken_als_klant', $3::jsonb)", [staff.id, customerId, JSON.stringify({ email: u.email })]);
   return { cookie: alsCookie(token, 8 * 3600) };
 }

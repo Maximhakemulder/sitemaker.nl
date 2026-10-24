@@ -20,6 +20,7 @@
           <section class="paneel" id="hulp" aria-labelledby="t-hulp"></section>
         </div>
         <div>
+          <section class="paneel compact" id="websites" aria-labelledby="t-sites"></section>
           ${acc.review.kan || acc.review.gedaan ? html`<section class="paneel compact" id="review" aria-labelledby="t-review"></section>` : ""}
           <section class="paneel compact" id="abo" aria-labelledby="t-abo2"></section>
         </div>
@@ -28,6 +29,7 @@
     hulp(main.querySelector("#hulp"));
     if (main.querySelector("#review")) review(main.querySelector("#review"));
     abonnement(main.querySelector("#abo"), state);
+    websitesPaneel(main.querySelector("#websites"), state);
     if (location.hash.split("/")[1]) main.querySelector("#" + location.hash.split("/")[1])?.scrollIntoView();
   }
 
@@ -52,7 +54,7 @@
           <p class="klein dempen">We controleren het ook zelf elk halfuur en mailen je als het werkt.</p>`}`
       : html`<p>${d.keuze === "verhuizen" ? "We verhuizen je domein naar Sitemaker en zetten alles voor je goed." : "We registreren deze domeinnaam op jouw naam en zetten alles voor je goed."} Eventuele kosten voor registratie of verlenging spreken we vooraf met je af.</p>
         ${d.status === "actief" ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Je website draait op ${d.naam}.</p></div>` : html`<p class="klein dempen">We nemen contact met je op als we iets van je nodig hebben.</p>`}`}
-      <details class="anders"><summary>Iets anders kiezen</summary><div id="opnieuw"></div></details>`);
+      <details class="anders"><summary>Ander domein invullen</summary><div id="opnieuw"></div></details>`);
     vak.querySelectorAll("[data-kopieer]").forEach((b) => b.addEventListener("click", async () => { try { await navigator.clipboard.writeText(b.dataset.kopieer); toast("Gekopieerd"); } catch { toast("Kopiëren lukte niet; selecteer de tekst", "fout"); } }));
     vak.querySelector("#dns-check")?.addEventListener("click", async (e) => {
       SM.bezig(e.target, true, "Controleren…");
@@ -64,39 +66,47 @@
 
   function domeinKiezen(vak, suggestie, binnen = false) {
     render(vak, html`
-      ${binnen ? "" : html`<h2 id="t-domein">Domeinnaam</h2><p>Op welk adres moet je website komen? Je domeinnaam blijft altijd van jou.</p>`}
+      ${binnen ? "" : html`<h2 id="t-domein">Domeinnaam</h2><p>Op welk adres moet je website komen? Je domeinnaam blijft van jou en blijft bij je eigen provider; wij verbinden hem met je website. Je e-mail blijft gewoon werken.</p>`}
       <form novalidate class="domein-form"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-        <fieldset class="keuze-kaarten"><legend class="sr">Wat wil je met je domein?</legend>
-          <label class="keuze-kaart"><input type="radio" name="keuze" value="eigen" checked><span><b>Ik houd mijn domein zelf</b><small>Het blijft bij je eigen provider. Wij geven je twee instellingen door; je e-mail blijft gewoon werken.</small></span></label>
-          <label class="keuze-kaart"><input type="radio" name="keuze" value="verhuizen"><span><b>Sitemaker mag mijn domein beheren</b><small>We verhuizen het naar ons en regelen alle instellingen. Je hebt de verhuiscode van je huidige provider nodig.</small></span></label>
-          <label class="keuze-kaart"><input type="radio" name="keuze" value="nieuw"><span><b>Ik heb nog geen domein</b><small>We registreren een nieuwe domeinnaam op jouw naam.</small></span></label>
-        </fieldset>
-        <div class="fout" data-fout-voor="keuze"></div>
-        <div class="veld"><label for="d-naam">Domeinnaam</label><input id="d-naam" name="naam" value="${suggestie || ""}" placeholder="jouwbedrijf.nl" autocomplete="off" autocapitalize="off" spellcheck="false" required><div class="hulp" id="d-vrij" aria-live="polite"></div><div class="fout" data-fout-voor="naam"></div></div>
-        <div class="veld" data-voor="eigen verhuizen"><label for="d-prov">Bij welke provider staat je domein nu? <span class="opt">(optioneel)</span></label><input id="d-prov" name="provider" placeholder="Bijvoorbeeld TransIP, Hostnet, Strato"></div>
-        <div class="veld" data-voor="verhuizen" hidden><label for="d-code">Verhuiscode <span class="opt">(optioneel, mag ook later)</span></label><input id="d-code" name="verhuiscode" autocomplete="off"><div class="hulp">Ook wel token of autorisatiecode. Vraag hem op bij je huidige provider. Heb je e-mail op dit domein? Zet bij een vraag hieronder waar je mail nu loopt, dan zorgen we dat die blijft werken.</div></div>
+        <div class="veld"><label for="d-naam">Je domeinnaam</label><input id="d-naam" name="naam" value="${suggestie || ""}" placeholder="jouwbedrijf.nl" autocomplete="off" autocapitalize="off" spellcheck="false" required><div class="fout" data-fout-voor="naam"></div></div>
+        <div class="veld"><label for="d-prov">Bij welke provider staat hij? <span class="opt">(optioneel)</span></label><input id="d-prov" name="provider" placeholder="Bijvoorbeeld TransIP, Hostnet, Strato"><div class="hulp">Dan weten we waar je de instellingen kunt vinden.</div></div>
         <div class="knoppen"><button class="knop knop-actie" type="submit">Opslaan</button></div>
+        ${binnen ? "" : html`<details class="anders"><summary>Ik heb nog geen domeinnaam</summary><p class="klein">Koop eerst een domeinnaam bij een provider naar keuze, bijvoorbeeld TransIP, Hostnet of Strato. Zet hem op naam van je bedrijf, dan is hij altijd van jou. Vul hem daarna hier in; wij zorgen dat je website erop komt. Tot die tijd staat je website op een tijdelijk adres.</p></details>`}
       </form>`);
-    const form = vak.querySelector("form"), vrij = vak.querySelector("#d-vrij");
-    const wissel = () => { const k = form.elements.keuze.value; form.querySelectorAll("[data-voor]").forEach((el) => { el.hidden = !el.dataset.voor.split(" ").includes(k); }); vrij.textContent = ""; if (k === "nieuw") check(); };
-    form.querySelectorAll("[name=keuze]").forEach((r) => r.addEventListener("change", wissel));
-    let t = null;
-    const check = () => {
-      clearTimeout(t);
-      if (form.elements.keuze.value !== "nieuw" || !/\.[a-z]{2,}$/i.test(form.elements.naam.value.trim())) { vrij.textContent = ""; return; }
-      t = setTimeout(async () => {
-        vrij.textContent = "Kijken of hij vrij is…";
-        try { const r = await api("portal/domein/beschikbaar?naam=" + encodeURIComponent(form.elements.naam.value)); vrij.textContent = r.vrij === true ? `${r.naam} is nog vrij.` : r.vrij === false ? `${r.naam} is al geregistreerd. Is hij van jou? Kies dan een van de andere opties.` : "We konden niet controleren of hij vrij is; we kijken het voor je na."; }
-        catch (err) { vrij.textContent = err.message; }
-      }, 450);
-    };
-    form.elements.naam.addEventListener("input", check);
+    const form = vak.querySelector("form");
     form.addEventListener("submit", async (e) => {
       e.preventDefault(); SM.wisFouten(form);
       const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Opslaan…");
-      try { acc.domein = await api("portal/domein", { method: "POST", body: Object.fromEntries(new FormData(form)) }); toast("Opgeslagen"); domein(document.querySelector("#domein")); }
+      try { acc.domein = await api("portal/domein", { method: "POST", body: { keuze: "eigen", ...Object.fromEntries(new FormData(form)) } }); toast("Opgeslagen"); domein(document.querySelector("#domein")); }
       catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
     });
+  }
+
+  // ------------------------------------------------ meerdere websites
+  const SITESTATUS = { in_aanbouw: ["In aanbouw", "s-info"], live: ["Online", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] };
+  function websitesPaneel(vak, state) {
+    const lijst = state.websites || [], c = state.customer, o = state.offer;
+    render(vak, html`<h2 id="t-sites">${lijst.length > 1 ? "Je websites" : "Je website"}</h2>
+      <ul class="lijst sites-lijst">${lijst.map((w) => html`<li class="${w.id === c.id ? "actief" : ""}"><div><b>${w.naam}</b><br><span class="klein dempen">${w.url ? w.url.replace(/^https?:\/\//, "") : w.start ? "Nog te starten" : "Nog geen adres"}</span></div>
+        <div>${(() => { const [t, k] = SITESTATUS[w.siteStatus] || [w.siteStatus, "s-grijs"]; return html`<span class="status ${k}">${t}</span>`; })()}${w.id === c.id ? html`<span class="klein dempen">Open</span>` : html` <button class="knop knop-licht knop-klein" type="button" data-open="${w.id}">Openen</button>`}</div></li>`)}</ul>
+      <details class="anders" id="extra"><summary>Extra website aanvragen</summary>
+        <p class="klein">Een extra website werkt net zo: ${euro(o.buildCents)} eenmalig en ${euro(o.monthlyCents)} per maand, met hosting en ${o.changesPerMonth} wijzigingen per maand voor die website. Je beheert alles met deze inlog.</p>
+        <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+          <div class="veld"><label for="x-naam">Naam van de website</label><input id="x-naam" name="naam" maxlength="120" placeholder="Bijvoorbeeld de naam van je tweede zaak"><div class="fout" data-fout-voor="naam"></div></div>
+          <div class="veld"><label for="x-oms">Waar gaat de website over?</label><textarea id="x-oms" name="omschrijving" rows="3" maxlength="3000"></textarea><div class="fout" data-fout-voor="omschrijving"></div></div>
+          <div class="veld"><label for="x-site">Huidige website <span class="opt">(optioneel)</span></label><input id="x-site" name="huidigeSite" maxlength="300"></div>
+          <div class="knoppen"><button class="knop knop-actie" type="submit">Aanvragen</button></div>
+          <p class="klein dempen">Na het aanvragen ga je akkoord en betaal je de bouwprijs; daarna lever je de informatie aan en staat de website binnen ${o.deliveryText} online.</p>
+        </form></details>`);
+    vak.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => window.SM_PORTAAL_WISSEL(Number(b.dataset.open))));
+    const form = vak.querySelector("form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(form);
+      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Aanvragen…");
+      try { await api("portal/website/nieuw", { method: "POST", body: Object.fromEntries(new FormData(form)) }); location.hash = "#overzicht"; location.reload(); }
+      catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+    });
+    if (location.hash === "#account/extra") vak.querySelector("#extra").open = true;
   }
 
   // ------------------------------------------------ hulp / klantvragen
@@ -237,7 +247,7 @@
           <li>Na die datum gaat je website <b>offline</b> en kun je geen wijzigingen meer doorgeven.</li>
           <li>De bouwprijs krijg je niet terug.</li>
           <li>Binnen 30 dagen na de einddatum kun je je eigen teksten en foto's opvragen.</li>
-          ${o.domein ? html`<li>${o.domein.keuze === "eigen" ? html`Je domein ${o.domein.naam} staat bij je eigen provider en blijft van jou. Zet de instellingen daar om naar je nieuwe website.` : html`Je domein ${o.domein.naam} blijft van jou: je krijgt de verhuiscode, zodat je het naar een provider naar keuze kunt verhuizen.`}</li>` : ""}
+          ${o.domein ? html`<li>Je domein ${o.domein.naam} staat bij je eigen provider en blijft van jou. Zet de instellingen daar om naar je nieuwe website, of zeg het op bij je provider.</li>` : ""}
           <li>Bedacht? Tot de einddatum kun je de opzegging hier intrekken.</li>
         </ul>
         <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>

@@ -47,12 +47,12 @@ window.SM_ORG = [
   },
   {
     key: "domeinen", floor: 3, name: "Domeinen", color: "#D94F8A", status: "live", manager: "domeinen", page: "domeinen",
-    desc: "Zorgt dat elke klantsite op zijn eigen domeinnaam draait: eigen beheer, verhuizen of nieuw registreren.",
+    desc: "Verbindt het domein van de klant met zijn site. De klant koopt en beheert zijn domein zelf; wij registreren of beheren geen domeinen.",
     people: [
       { key: "domeinen", person: "Dirk", role: "Domeinbeheerder", look: { hair: 0x5a3b25, acc: "glasses" }, color: 7,
-        does: ["Helpt klanten kiezen: domein zelf houden, verhuizen of nieuw", "Controleert elke 30 minuten of de DNS goed staat", "Koppelt het domein aan de site en regelt https", "Waarschuwt voor domeinen die verlopen"] },
+        does: ["Geeft klanten de DNS-instellingen voor hun eigen domein", "Controleert elke 30 minuten of de DNS goed staat", "Koppelt het domein aan de site en regelt https", "Waarschuwt als een domein niet meer naar de site wijst"] },
     ],
-    tasks: ["DNS-instellingen automatisch controleren tot ze kloppen", "Domein aan het Netlify-project van de klant koppelen", "Verhuizingen en registraties klaarzetten voor Maxim", "Waarschuwen 30 dagen voor een domein verloopt"],
+    tasks: ["DNS-instellingen automatisch controleren tot ze kloppen", "Domein aan het Netlify-project van de klant koppelen", "Melden als een domein niet meer naar de site wijst"],
   },
   {
     key: "klantenservice", floor: 2, name: "Klantenservice", color: "#22C3B5", status: "live", manager: "service",

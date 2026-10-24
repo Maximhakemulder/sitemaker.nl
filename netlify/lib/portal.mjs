@@ -31,7 +31,7 @@ export function canSubmit(c) {
 
 export function publicCustomer(c) {
   return {
-    id: c.id, company: c.company, contactName: c.contact_name, email: c.email, siteUrl: c.site_url,
+    id: c.id, company: c.company, siteNaam: c.site_naam, contactName: c.contact_name, email: c.email, siteUrl: c.site_url,
     siteStatus: c.site_status, deliveredAt: c.delivered_at, billingStatus: c.billing_status,
     monthlyCents: c.monthly_cents, buildCents: c.build_cents, subscriptionStart: c.subscription_start,
     online: c.check_at ? { ok: c.check_ok, at: c.check_at } : null,
@@ -68,6 +68,7 @@ export async function portalState(user) {
     invoices: invoices.map(publicInvoice),
     payOnline: mollieReady(),
     start: await startState(c),
+    websites: await (await import("./websites.mjs")).listWebsites(user),
     domeinGekozen: !!dom || (!!c.site_url && !/\.netlify\.app/.test(c.site_url)),
     opzegging: c.opzeg_status === "aangevraagd" ? c.opzeg_einde : null,
     pendingFirstPayment: openPay && !c.onboarding ? { url: openPay.checkout_url, amountCents: openPay.amount_cents } : null,

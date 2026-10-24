@@ -185,6 +185,7 @@ export async function runScout({ force = false } = {}) {
     const i = (st.cursor?.[cat] || 0) % places.length;
     const d = await osc("/maps/search-v3", { query: `${cat}, ${places[i]}, Nederland`, organizationsPerQueryLimit: per, language: "nl", region: "NL", async: true });
     st.pending.push({ id: d.id, cat, place: places[i], at: new Date().toISOString() });
+    st.history = [{ cat, place: places[i], at: new Date().toISOString(), status: "bezig" }, ...(st.history || [])].slice(0, 60);
     st.cursor = { ...(st.cursor || {}), [cat]: i + 1 };
   }
   st.lastDay = day;
@@ -195,10 +196,13 @@ export async function runScout({ force = false } = {}) {
 async function collect(st) {
   if (!st.pending?.length) return { idle: true };
   const still = []; let added = 0;
+  const hist = (p, upd) => { const h = (st.history || []).find((x) => x.at === p.at && x.cat === p.cat && x.place === p.place); if (h) Object.assign(h, upd); };
   for (const p of st.pending) {
     let d; try { d = await osc(`/requests/${p.id}`); } catch { still.push(p); continue; }
-    if (String(d.status).toLowerCase() !== "success") { if (Date.now() - Date.parse(p.at) < 6 * 3600000) still.push(p); continue; }
-    for (const r of (Array.isArray(d.data) ? d.data : []).flat()) {
+    if (String(d.status).toLowerCase() !== "success") { if (Date.now() - Date.parse(p.at) < 6 * 3600000) still.push(p); else hist(p, { status: "mislukt" }); continue; }
+    const rows = (Array.isArray(d.data) ? d.data : []).flat();
+    let nieuw = 0;
+    for (const r of rows) {
       const site = r.site || r.website || "";
       const dom = domainOf(site);
       if (/permanently|closed/i.test(String(r.business_status || ""))) continue;
@@ -207,8 +211,9 @@ async function collect(st) {
       const res = await one(`INSERT INTO leads (company, website, domain, city, category, phone, source, status)
                              VALUES ($1,$2,$3,$4,$5,$6,'scout','kandidaat') ON CONFLICT DO NOTHING RETURNING id`,
         [str(r.name, 200), dom ? normUrl(site) : "", dom || "", str(r.city, 100), p.cat, str(r.phone, 40)]).catch(() => null);
-      if (res) added++;
+      if (res) { added++; nieuw++; }
     }
+    hist(p, { status: "klaar", gevonden: rows.length, nieuw, klaarOp: new Date().toISOString() });
   }
   st.pending = still;
   await q(`INSERT INTO settings (key, value) VALUES ('scout_state', $1::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [JSON.stringify(st)]);

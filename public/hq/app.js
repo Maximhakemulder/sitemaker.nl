@@ -19,7 +19,7 @@
     concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Wordt gemaakt", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
     opzeg: { aangevraagd: ["Opgezegd", "s-fout"], afgerond: ["Beëindigd", "s-grijs"], ingetrokken: ["Ingetrokken", "s-ok"] },
     reden: { te_duur: "Te duur", geen_resultaat: "Levert te weinig op", zelf_doen: "Zelf of ander bureau", stoppen: "Stopt met bedrijf", ontevreden: "Niet tevreden over de service", anders: "Andere reden" },
-    domein: { wacht_op_klant: ["Wacht op de klant", "s-let"], aangevraagd: ["DNS instellen", "s-let"], verhuizen: ["Verhuizen", "s-fout"], registreren: ["Registreren", "s-fout"], dns_klaar: ["DNS klopt", "s-info"], actief: ["Actief", "s-ok"], probleem: ["Probleem", "s-fout"], opgezegd: ["Opgezegd", "s-grijs"] },
+    domein: { wacht_op_klant: ["Wacht op de klant", "s-let"], aangevraagd: ["DNS instellen", "s-let"], verhuizen: ["Verhuizen", "s-fout"], registreren: ["Registreren", "s-fout"], dns_klaar: ["DNS klopt, https volgt", "s-info"], actief: ["Actief", "s-ok"], probleem: ["Probleem", "s-fout"], opgezegd: ["Opgezegd", "s-grijs"] },
     domeinKeuze: { eigen: "Houdt het zelf", verhuizen: "Verhuizen naar Sitemaker", nieuw: "Nieuw registreren" },
     ticket: { open: ["Open", "s-fout"], beantwoord: ["Beantwoord", "s-ok"], gesloten: ["Gesloten", "s-grijs"] },
     voorkeur: { "": "Geen voorkeur", ochtend: "Ochtend", middag: "Middag", avond: "Begin van de avond", bellen: "Wil gebeld worden" },
@@ -51,7 +51,7 @@
     ["kosten", "Kosten en winst", '<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/>'],
     ["domeinen", "Domeinen", '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
-    ["b2b", "B2B-mail", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
+    ["b2b", "B2B", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
     ["concepten", "Concepten", '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 8h18M8 21h8M12 17v4"/>'],
     ["reviews", "Reviews", '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'],
     ["instellingen", "Instellingen", '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>', "Beheer"],
@@ -91,7 +91,7 @@
     render(main, html`<p class="dempen">Laden…</p>`);
     const fn = { bedrijf, afdeling, overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten }[pagina] || bedrijf;
     if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
-    try { await fn(main, id); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
+    try { await fn(main, id); zetBalk(main, pagina); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
   }
   const herlaad = () => route();
@@ -146,6 +146,36 @@
   function logboek(items) {
     if (!items.length) return html`<p class="dempen">Nog niets gebeurd. Zodra het team aan het werk is, zie je het hier.</p>`;
     return html`<ul class="logboek">${items.map((f) => html`<li>${portret(naamNaarKey(f.wie), "portret klein")}<div><b>${f.wie}</b> ${f.text}<span class="klein dempen">${geleden(f.at)}</span></div></li>`)}</ul>`;
+  }
+
+  // Het team van de afdeling bovenaan elke werkpagina: wie er werkt, wat ze nu doen, en hun verdieping in 3D.
+  const PAGINA_AFD = { b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance" };
+  let teamCache = null;
+  const balkDicht = () => { try { return localStorage.getItem("sm_balk") === "dicht"; } catch { return false; } };
+  async function zetBalk(main, pagina) {
+    const key = PAGINA_AFD[pagina], dep = key && ORG().find((x) => x.key === key);
+    if (!dep || main.querySelector(".team-balk")) return;
+    const plek = document.createElement("section"); plek.className = "paneel team-balk"; plek.dataset.kleur = key;
+    const kop = main.querySelector(".hq-kop"); kop ? kop.after(plek) : main.prepend(plek);
+    try { if (!teamCache || Date.now() - teamCache.at > 60000) teamCache = { at: Date.now(), d: await api("hq/team") }; } catch { plek.remove(); return; }
+    const d = teamCache.d, st = d.depts[key] || { people: {} };
+    window.SM_TEAM = { busy: d.busy };
+    const dicht = balkDicht();
+    render(plek, html`
+      <div class="balk-kop"><a href="#afdeling/${key}"><b>Afdeling ${dep.name}</b></a><span class="klein dempen">${dep.people.filter((p) => d.busy[p.key]).length ? `${dep.people.filter((p) => d.busy[p.key]).length} nu bezig` : "aan het werk"}</span>
+        <button class="knop knop-tekst knop-klein" type="button" data-balk aria-expanded="${!dicht}">${dicht ? "Team tonen" : "Team verbergen"}</button></div>
+      <div class="balk-body" ${dicht ? raw("hidden") : ""}>
+        <div class="office o3d floorbox balk-vloer" id="balk-vloer"></div>
+        <ul class="balk-team">${dep.people.map((p) => { const s = st.people?.[p.key] || {}; return html`<li>${portret(p.key, "portret")}<div><b>${p.person}</b> <span class="klein dempen">${p.role}</span>${d.busy[p.key] ? html` <span class="status s-ok">Nu bezig</span>` : ""}<p class="klein">${s.text || p.does[0]}</p></div></li>`; })}</ul>
+      </div>`);
+    vulPortretten(plek);
+    const vloer = () => { if (window.SM_Building && !plek.querySelector(".balk-body").hidden && window.matchMedia("(min-width: 821px)").matches) window.SM_Building.showFloor(plek.querySelector("#balk-vloer"), key); };
+    vloer();
+    plek.querySelector("[data-balk]").onclick = (e) => {
+      const body = plek.querySelector(".balk-body"); body.hidden = !body.hidden;
+      try { localStorage.setItem("sm_balk", body.hidden ? "dicht" : "open"); } catch {}
+      e.target.textContent = body.hidden ? "Team tonen" : "Team verbergen"; e.target.setAttribute("aria-expanded", String(!body.hidden)); vloer();
+    };
   }
 
   async function afdeling(main, key) {
@@ -248,7 +278,7 @@
         ${customers.length ? html`<div class="veld zoek"><label class="sr" for="zoek">Zoeken</label><input id="zoek" placeholder="Zoek op naam, e-mail of site"></div>
         <div class="tabel-wrap"><table class="tabel"><thead><tr><th>Bedrijf</th><th>Site</th><th>Abonnement</th><th>Wijzigingen</th><th>Open</th></tr></thead>
         <tbody>${customers.map((c) => html`<tr class="klikbaar" data-id="${c.id}" data-zoek="${(c.company + " " + c.email + " " + c.siteUrl).toLowerCase()}">
-          <td><b>${c.company}</b><br><span class="klein dempen">${c.email}</span></td>
+          <td><b>${c.company}</b>${c.siteNaam ? html` · ${c.siteNaam}` : ""}${c.websites > 1 ? html` <span class="status s-info">${c.websites} websites</span>` : ""}<br><span class="klein dempen">${c.email}</span></td>
           <td>${chip(L.site, c.siteStatus)}${c.siteUrl ? html`<br><span class="klein mini-site"><span class="punt ${c.check ? (c.check.ok ? "ok" : "fout") : ""}"></span>${c.siteUrl.replace(/^https?:\/\//, "")}</span>` : ""}</td>
           <td>${chip(L.abo, c.billingStatus)}</td>
           <td class="nummers">${c.usedThisMonth} / 4</td>
@@ -318,7 +348,7 @@
     const c = d.customer, u = d.usage;
     const mollieSub = d.subscription;
     render(main, html`
-      <div class="klant-kop"><div><a class="terug" href="#klanten">Alle klanten</a><h1>${c.company}</h1>
+      <div class="klant-kop"><div><a class="terug" href="#klanten">Alle klanten</a><h1>${c.company}${c.siteNaam ? html` <span class="dempen">· ${c.siteNaam}</span>` : ""}</h1>
         <p class="dempen">${c.contactName ? c.contactName + " · " : ""}${c.email} ${chip(L.site, c.siteStatus)} ${chip(L.abo, c.billingStatus)}</p></div>
         <div class="knoppen"><button class="knop knop-licht" id="bewerk">Gegevens bewerken</button><button class="knop knop-licht" id="als-klant">Bekijk als klant</button><button class="knop knop-licht" id="welkom">Welkomstmail sturen</button>${c.siteUrl ? html`<a class="knop knop-licht" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Site openen</a>` : ""}</div></div>
       <div class="klant-raster">
@@ -348,6 +378,10 @@
           ${d.opzegging && d.opzegging.status !== "ingetrokken" ? html`<section class="paneel opzeg-paneel"><div class="paneel-kop"><h2>Opzegging</h2>${chip(L.opzeg, d.opzegging.status)}</div>
             <dl class="gegevens"><dt>Opgezegd op</dt><dd>${tijd(d.opzegging.at)}</dd><dt>Einddatum</dt><dd>${datumLang(d.opzegging.einde)}</dd><dt>Reden</dt><dd>${L.reden[d.opzegging.reden] || d.opzegging.reden}</dd>${d.opzegging.toelichting ? html`<dt>Toelichting</dt><dd>${d.opzegging.toelichting}</dd>` : ""}</dl>
             ${d.opzegging.status === "aangevraagd" ? html`<p class="klein dempen">Op de einddatum stopt het Mollie-abonnement vanzelf en krijg je een mail met wat er nog moet (site offline, verhuiscode).</p><div class="knoppen"><button class="knop knop-licht knop-klein" id="opzeg-in">Klant blijft: intrekken</button></div>` : ""}</section>` : ""}
+          <section class="paneel"><div class="paneel-kop"><h2>${d.websites.length ? `Websites van deze klant (${d.websites.length})` : "Websites"}</h2><button class="knop knop-licht knop-klein" id="extra-site">Extra website</button></div>
+            ${d.websites.length ? html`<ul class="lijst">${d.websites.map((w) => html`<li class="factuur-rij"><div>${w.id === c.id ? html`<b>${w.naam}</b> <span class="klein dempen">(deze)</span>` : html`<a href="#klant/${w.id}"><b>${w.naam}</b></a>`}<br><span class="klein dempen">${w.url || "nog geen adres"}</span></div><div>${chip(L.site, w.siteStatus)} ${chip(L.abo, w.billingStatus)}</div></li>`)}</ul>
+              <p class="klein dempen">Elke website heeft een eigen abonnement, eigen 4 wijzigingen per maand, facturen en domein. De klant wisselt in het portaal met één inlog.</p>`
+              : html`<p class="dempen klein">Deze klant heeft één website. Wil hij er meer? Dat kan hij zelf aanvragen in zijn portaal (Account), of je maakt hem hier aan.</p>`}</section>
           <section class="paneel"><div class="paneel-kop"><h2>Domein</h2>${d.domein ? chip(L.domein, d.domein.status) : ""}</div>
             ${d.domein ? html`<dl class="gegevens"><dt>Naam</dt><dd><b>${d.domein.naam}</b></dd><dt>Keuze</dt><dd>${L.domeinKeuze[d.domein.keuze]}</dd>${d.domein.provider ? html`<dt>Provider</dt><dd>${d.domein.provider}</dd>` : ""}${d.domein.dnsAt ? html`<dt>DNS</dt><dd>${d.domein.uitleg}<br><span class="klein dempen">${geleden(d.domein.dnsAt)}</span></dd>` : ""}</dl><a class="meer" href="#domeinen">Naar Domeinen</a>`
               : html`<p class="dempen">De klant heeft nog niet gekozen. Dat doet hij in het portaal bij Account.</p>`}</section>
@@ -419,6 +453,19 @@
       try { await api(`hq/customers/${id}/cancel`, { method: "POST" }); toast("Abonnement opgezegd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     });
     main.querySelector("#factuur-nieuw").onclick = () => factuurDialoog(c.id);
+    main.querySelector("#extra-site").onclick = () => {
+      const dlg = SM.dialoog("Extra website voor " + c.company, html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <p class="dempen">Maakt een nieuwe website aan met dezelfde bedrijfsgegevens en dezelfde portaalinlog. De klant gaat in het portaal akkoord en betaalt de bouwprijs, en levert daarna de informatie aan.</p>
+        <div class="veld"><label for="xs-naam">Naam van de website</label><input id="xs-naam" name="naam"><div class="fout" data-fout-voor="naam"></div></div>
+        <div class="veld"><label for="xs-oms">Waar gaat hij over? <span class="opt">(optioneel)</span></label><textarea id="xs-oms" name="omschrijving" rows="3"></textarea><div class="fout" data-fout-voor="omschrijving"></div></div>
+        <button class="knop knop-actie" type="submit">Aanmaken</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const b = Object.fromEntries(new FormData(form)); if (!b.omschrijving) delete b.omschrijving;
+        try { const r = await api(`hq/customers/${id}/extra-website`, { method: "POST", body: b }); dlg.close(); toast("Website aangemaakt"); location.hash = "#klant/" + r.id; } catch (err) { SM.toonFouten(form, err); }
+      });
+    };
     main.querySelector("#opzeg-in")?.addEventListener("click", async (e) => {
       if (!(await SM.bevestig("Opzegging intrekken?", `${c.company} blijft klant. Het abonnement loopt gewoon door.`, "Intrekken"))) return;
       try { await api(`hq/customers/${id}/opzegging/intrekken`, { method: "POST" }); toast("Opzegging ingetrokken"); herlaad(); } catch (err) { toast(err.message, "fout"); }
@@ -912,15 +959,113 @@
 
   // ================================================ B2B
   let leadFilter = "nieuw";
-  async function b2b(main) {
+  // ================================================ B2B: overzicht (waar we zoeken, wat het oplevert) + leads
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
+  const b2bTabs = (actief, d) => html`<nav class="sub-tabs" aria-label="B2B"><a href="#b2b" ${actief === "overzicht" ? raw('aria-current="page"') : ""}>Overzicht</a><a href="#b2b/leads" ${actief === "leads" ? raw('aria-current="page"') : ""}>Leads${d ? html` <span class="n">${d}</span>` : ""}</a><a href="#concepten">Concepten</a></nav>`;
+  async function b2b(main, sub) {
+    if (sub === "leads") return b2bLeads(main);
+    const d = await api("hq/b2b");
+    const t = d.totaal, v = d.vandaag, z = d.verzenden, sc = d.scout;
+    const dag = (s) => new Date(s + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "short", day: "numeric" });
+    const maxDag = Math.max(1, ...d.dagen.map((x) => Math.max(x.gevonden, x.verstuurd)));
+    const vensterTekst = !z.mail ? "Mail is nog niet ingesteld; goedgekeurde mails wachten in de wachtrij."
+      : z.open ? `Verzenden staat open tot ${z.uren[1]}:00. Elke 5 minuten gaan er een paar de deur uit.`
+      : z.weekend ? `Weekend: maandag vanaf ${z.uren[0]}:00 gaat het verzenden weer verder.`
+      : `Buiten verzendtijd (${z.uren[0]}:00–${z.uren[1]}:00).`;
+    const scoutTekst = !sc.klaar ? "Outscraper is niet gekoppeld (OUTSCRAPER_API_KEY)." : !sc.actief ? "De scout staat uit. Zet hem aan om elke werkdag automatisch te zoeken." : `Zoekt elke werkdag vanaf 7:00 automatisch, ongeveer ${sc.perDag} bedrijven per dag.`;
+    render(main, html`
+      <div class="hq-kop"><div><h1>B2B</h1><p>Joep zoekt bedrijven, Fleur zoekt hun mailadres, Sam maakt een concept-website en Ties verstuurt wat jij goedkeurt.</p></div>
+        <div class="knoppen">${sc.klaar ? html`<button class="knop knop-licht" id="scout">Scout nu zoeken</button>` : ""}<a class="knop knop-actie" href="#b2b/leads">Naar de leads</a></div></div>
+      ${b2bTabs("overzicht", t.klaar)}
+      <div class="kpis kpis-6">
+        <a class="kpi" href="#b2b/leads"><div class="waarde">${t.leads}</div><div class="naam">bedrijven gevonden<br><span class="klein">${t.met_mail} met mailadres</span></div></a>
+        <a class="kpi" href="#b2b/leads"><div class="waarde">${t.klaar}</div><div class="naam">klaar om te mailen<br><span class="klein">${t.te_onderzoeken} nog te onderzoeken</span></div></a>
+        <div class="kpi"><div class="waarde">${t.verstuurd}</div><div class="naam">gemaild<br><span class="klein">${t.afgemeld} afgemeld · ${t.bounces} bounces</span></div></div>
+        <div class="kpi ${t.reacties ? "goed" : ""}"><div class="waarde">${t.reacties}</div><div class="naam">reacties<br><span class="klein">${pct(t.reacties, t.verstuurd)} van gemaild</span></div></div>
+        <div class="kpi"><div class="waarde">${t.afspraken}</div><div class="naam">afspraken<br><span class="klein">${t.klanten} klant geworden</span></div></div>
+      </div>
+      <div class="twee">
+        <section class="paneel"><div class="paneel-kop"><h2>Vandaag</h2><span class="status ${z.open ? "s-ok" : "s-grijs"}">${z.open ? "Verzenden open" : "Verzenden dicht"}</span></div>
+          <div class="voortgang" role="img" aria-label="${z.vandaag} van ${z.max} mails verstuurd"><span data-w="${Math.min(100, Math.round((z.vandaag / Math.max(1, z.max)) * 100))}"></span></div>
+          <p class="teller-tekst">${z.vandaag} van ${z.max} mails verstuurd<small>${z.opvolgingen ? `waarvan ${z.opvolgingen} opvolgmails · ` : ""}nog ${z.rest} ruimte vandaag</small></p>
+          <p class="klein dempen">${vensterTekst}${z.nogTeVersturenVandaag ? ` Er gaan er vandaag nog ongeveer ${z.nogTeVersturenVandaag} uit.` : ""}</p>
+          <dl class="gegevens vandaag">
+            <dt>In de wachtrij</dt><dd>${z.wachtrij.eerste} eerste mails · ${z.wachtrij.opvolging} opvolgmails</dd>
+            <dt>Nieuw gevonden</dt><dd>${v.gevonden}</dd>
+            <dt>Onderzocht</dt><dd>${v.onderzocht}</dd>
+            <dt>Concepten gemaakt</dt><dd>${v.concepten}</dd>
+            <dt>Concept voor het eerst bekeken</dt><dd>${v.bekeken}</dd>
+            <dt>Reacties</dt><dd>${v.reacties ? html`<a href="#b2b/leads" data-naar="reactie"><b>${v.reacties}</b></a>` : 0}</dd>
+            <dt>Inbox gelezen</dt><dd>${d.inbox?.at ? geleden(d.inbox.at) : "nog niet"}${d.inbox?.error ? html` <span class="klein dempen">(${d.inbox.error})</span>` : ""}</dd>
+          </dl>
+          ${isAdmin() ? html`<div class="knoppen"><button class="knop knop-licht knop-klein" id="limiet">Daglimiet en verzendtijden</button></div>` : ""}</section>
+        <section class="paneel"><div class="paneel-kop"><h2>Waar we zoeken</h2><span class="status ${sc.klaar && sc.actief ? "s-ok" : "s-let"}">${sc.klaar && sc.actief ? "Scout aan" : "Scout uit"}</span></div>
+          <p class="klein dempen">${scoutTekst}${sc.laatsteDag ? ` Laatst gezocht: ${datumLang(sc.laatsteDag)}.` : ""}${sc.bezig ? ` ${sc.bezig} zoekopdracht${sc.bezig > 1 ? "en" : ""} lopen nog.` : ""}</p>
+          <h3 class="sub-kop">Branches</h3><div class="chips">${sc.categorieen.length ? sc.categorieen.map((c) => html`<span class="chip">${c}</span>`) : html`<span class="dempen klein">Nog geen branches</span>`}</div>
+          <h3 class="sub-kop">Plaatsen</h3><div class="chips">${sc.plaatsen.length ? sc.plaatsen.map((c) => html`<span class="chip licht">${c}</span>`) : html`<span class="dempen klein">Nog geen plaatsen</span>`}</div>
+          ${sc.plan.length && sc.plaatsen.length ? html`<h3 class="sub-kop">Volgende zoekopdracht per branche</h3><ul class="lijst plan">${sc.plan.map((p) => html`<li><span><b>${p.categorie}</b> in ${p.volgende}</span><span class="klein dempen">${p.rondes ? `ronde ${p.rondes + 1} · ` : ""}${p.gedaan} van ${sc.plaatsen.length} plaatsen gedaan</span></li>`)}</ul>` : ""}
+          ${isAdmin() ? html`<div class="knoppen"><button class="knop knop-licht knop-klein" id="zoek-aanpassen">Branches en plaatsen aanpassen</button></div>` : ""}</section>
+      </div>
+      <section class="paneel"><div class="paneel-kop"><h2>Laatste 14 dagen</h2><span class="legenda"><span class="sw gevonden"></span>Gevonden <span class="sw omzet"></span>Gemaild <span class="sw reactie"></span>Reacties</span></div>
+        <div class="staven veertien" role="img" aria-label="Gevonden, gemaild en reacties per dag">${d.dagen.map((x) => html`<div class="staaf-groep" title="${dag(x.dag)}: ${x.gevonden} gevonden, ${x.verstuurd} gemaild, ${x.reacties} reacties"><div class="staaf-paar"><span class="staaf gevonden" data-h="${Math.round((x.gevonden / maxDag) * 100)}"></span><span class="staaf omzet" data-h="${Math.round((x.verstuurd / maxDag) * 100)}"></span><span class="staaf reactie" data-h="${Math.round((x.reacties / maxDag) * 100)}"></span></div><span class="klein dempen">${dag(x.dag)}</span></div>`)}</div></section>
+      <section class="paneel"><div class="paneel-kop"><h2>Per branche</h2><span class="klein dempen">Wat werkt het best</span></div>
+        ${d.perCategorie.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Branche</th><th class="rechts">Gevonden</th><th class="rechts">Met mail</th><th class="rechts">Gemaild</th><th class="rechts">Concept bekeken</th><th class="rechts">Reacties</th><th class="rechts">Afspraken</th><th class="rechts">Reactie %</th></tr></thead><tbody>
+          ${d.perCategorie.map((r) => html`<tr><td><b>${r.naam}</b></td><td class="rechts nummers">${r.gevonden}</td><td class="rechts nummers">${r.met_mail}</td><td class="rechts nummers">${r.verstuurd}</td><td class="rechts nummers">${r.bekeken}</td><td class="rechts nummers">${r.reacties}</td><td class="rechts nummers">${r.afspraken}</td><td class="rechts nummers">${pct(r.reacties, r.verstuurd)}</td></tr>`)}</tbody></table></div>`
+          : html`<p class="dempen">Nog geen bedrijven. Zet de scout aan of importeer een CSV bij Leads.</p>`}</section>
+      <div class="twee">
+        <section class="paneel"><h2>Per plaats</h2>
+          ${d.perPlaats.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Plaats</th><th class="rechts">Gevonden</th><th class="rechts">Met mail</th><th class="rechts">Gemaild</th><th class="rechts">Reacties</th></tr></thead><tbody>
+            ${d.perPlaats.map((r) => html`<tr><td>${r.naam}</td><td class="rechts nummers">${r.gevonden}</td><td class="rechts nummers">${r.met_mail}</td><td class="rechts nummers">${r.verstuurd}</td><td class="rechts nummers">${r.reacties}</td></tr>`)}</tbody></table></div>` : html`<p class="dempen">Nog niets gevonden.</p>`}</section>
+        <section class="paneel"><h2>Laatste zoekopdrachten</h2>
+          ${sc.geschiedenis.length ? html`<ul class="lijst zoekopdrachten">${sc.geschiedenis.map((h) => html`<li><div><b>${h.cat}</b> in ${h.place}<br><span class="klein dempen">${tijd(h.at)}</span></div>
+            <div class="rechts">${h.status === "klaar" ? html`<span class="nummers">${h.gevonden} gevonden</span><br><span class="klein dempen">${h.nieuw} nieuw</span>` : h.status === "mislukt" ? html`<span class="status s-fout">Mislukt</span>` : html`<span class="status s-info">Bezig</span>`}</div></li>`)}</ul>`
+            : html`<p class="dempen">${sc.klaar ? "Nog geen zoekopdrachten. Klik op Scout nu zoeken of zet de scout aan." : "Koppel Outscraper om automatisch bedrijven te zoeken."}</p>`}
+          <p class="klein dempen">Bronnen: ${Object.entries(d.bron).map(([k, n]) => `${{ scout: "scout", import: "CSV-import", handmatig: "handmatig", website: "website" }[k] || k} ${n}`).join(" · ") || "–"}</p></section>
+      </div>`);
+    main.querySelectorAll("[data-w]").forEach((el) => el.style.setProperty("--w", el.dataset.w + "%"));
+    main.querySelectorAll(".staaf[data-h]").forEach((el) => el.style.setProperty("--h", el.dataset.h + "%"));
+    main.querySelector("[data-naar]")?.addEventListener("click", () => { leadFilter = "reactie"; });
+    main.querySelector("#scout")?.addEventListener("click", async (e) => { SM.bezig(e.target, true, "Zoeken…"); try { await api("hq/scout", { method: "POST" }); toast("Zoekopdrachten gestart; resultaten komen binnen het uur binnen."); setTimeout(herlaad, 800); } catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); } });
+    main.querySelector("#zoek-aanpassen")?.addEventListener("click", () => {
+      const dlg = SM.dialoog("Waar zoeken we", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="veld"><label class="vinkje"><input type="checkbox" name="active" ${sc.actief ? raw("checked") : ""}> Scout aan: elke werkdag automatisch zoeken</label></div>
+        <div class="veld"><label for="z-cat">Branches (één per regel)</label><textarea id="z-cat" name="categories" rows="6">${sc.categorieen.join("\n")}</textarea><div class="hulp">Zoals mensen ze in Google Maps zoeken, bijvoorbeeld kapper of loodgieter.</div></div>
+        <div class="veld"><label for="z-pl">Plaatsen (één per regel)</label><textarea id="z-pl" name="places" rows="6">${sc.plaatsen.join("\n")}</textarea></div>
+        <div class="veld"><label for="z-pd">Ongeveer hoeveel bedrijven per dag</label><input id="z-pd" name="perDay" type="number" min="5" max="100" value="${sc.perDag}"></div>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        try { await api("hq/settings", { method: "PUT", body: { b2b: { scout: { active: form.elements.active.checked, categories: form.elements.categories.value, places: form.elements.places.value, perDay: form.elements.perDay.value } } } }); dlg.close(); toast("Opgeslagen"); herlaad(); }
+        catch (err) { SM.toonFouten(form, err); }
+      });
+    });
+    main.querySelector("#limiet")?.addEventListener("click", () => {
+      const dlg = SM.dialoog("Daglimiet en verzendtijden", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <div class="veld"><label for="l-max">Maximaal aantal mails per dag</label><input id="l-max" name="dailyMax" type="number" min="0" max="200" value="${z.max}"><div class="hulp">Begin rustig (20–40 per dag) zodat je mails niet in de spam belanden; bouw daarna op.</div></div>
+        <div class="rij2"><div class="veld"><label for="l-van">Versturen vanaf (uur)</label><input id="l-van" name="van" type="number" min="0" max="23" value="${z.uren[0]}"></div>
+          <div class="veld"><label for="l-tot">Tot (uur)</label><input id="l-tot" name="tot" type="number" min="1" max="23" value="${z.uren[1]}"></div></div>
+        <p class="klein dempen">Alleen op werkdagen.</p>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        try { await api("hq/settings", { method: "PUT", body: { b2b: { dailyMax: form.elements.dailyMax.value, sendHours: [form.elements.van.value, form.elements.tot.value] } } }); dlg.close(); toast("Opgeslagen"); herlaad(); }
+        catch (err) { SM.toonFouten(form, err); }
+      });
+    });
+  }
+
+  async function b2bLeads(main) {
     const d = await api("hq/leads?status=" + (leadFilter === "alle" ? "" : leadFilter));
     const c = d.counts;
     const n = (k) => c[k] || 0;
     const filters = [["bekeken", "Concept bekeken"], ["nieuw", "Klaar om te mailen"], ["goedgekeurd", "Wachtrij"], ["verstuurd", "Verstuurd"], ["opgevolgd", "Opgevolgd"], ["reactie", "Reacties"], ["afspraak", "Afspraak"], ["kandidaat", "Te onderzoeken"], ["overgeslagen", "Overgeslagen"], ["afgemeld", "Afgemeld"], ["fout", "Fout"], ["alle", "Alle"]];
     const opvolgKlaar = d.followupDue.length;
     render(main, html`
-      <div class="hq-kop"><div><h1>B2B-mail</h1><p>Bedrijven benaderen per mail. Niets gaat de deur uit zonder jouw goedkeuring; afmelden kan altijd met één klik. Vandaag verstuurd: ${d.sentToday} van max. ${d.dailyMax}.</p></div>
+      <div class="hq-kop"><div><h1>B2B</h1><p>Bedrijven benaderen per mail. Niets gaat de deur uit zonder jouw goedkeuring; afmelden kan altijd met één klik. Vandaag verstuurd: ${d.sentToday} van max. ${d.dailyMax}.</p></div>
         <div class="knoppen"><button class="knop knop-actie" id="lead-nieuw">Lead toevoegen</button><button class="knop knop-licht" id="lead-import">CSV importeren</button>${d.ready.scout ? html`<button class="knop knop-licht" id="scout">Scout nu zoeken</button>` : ""}</div></div>
+      ${b2bTabs("leads", n("nieuw"))}
       ${!d.ready.mail ? html`<div class="melding melding-let">${raw(icon.let)}<p>Mail is nog niet ingesteld (MAIL_USER/MAIL_PASSWORD). Goedgekeurde mails blijven in de wachtrij tot dat geregeld is.</p></div>` : ""}
       ${!d.ready.company ? html`<div class="melding melding-let">${raw(icon.let)}<p>Vul bij <a href="#instellingen">Instellingen</a> je bedrijfsnaam en KvK-nummer in; die staan verplicht onder elke zakelijke mail.</p></div>` : ""}
       ${opvolgKlaar ? html`<div class="melding melding-info">${raw(icon.let)}<div><p><b>${opvolgKlaar} leads</b> zijn langer dan je opvolgtermijn geleden gemaild zonder reactie.</p><button class="knop knop-klein" id="opvolgen">Opvolging goedkeuren</button></div></div>` : ""}
@@ -941,7 +1086,7 @@
         : html`<div class="leeg"><h3>Geen leads in deze lijst</h3><p>Voeg leads toe, importeer een CSV${d.ready.scout ? " of laat de scout zoeken" : ""}.</p></div>`}</section>
       <p class="klein dempen">Mailteksten, verzendtijden en de scout stel je in bij <a href="#instellingen">Instellingen</a>. ${d.ready.ai ? "Openingszinnen worden met AI geschreven op basis van de eigen website van het bedrijf." : ""}</p>`);
 
-    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { leadFilter = b.dataset.f; b2b(main); }));
+    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", async () => { leadFilter = b.dataset.f; await b2bLeads(main); zetBalk(main, "b2b"); }));
     main.querySelector("#lead-nieuw").onclick = () => leadToevoegen();
     main.querySelector("#lead-import").onclick = () => leadImport();
     main.querySelector("#scout")?.addEventListener("click", async (e) => { SM.bezig(e.target, true, "Zoeken…"); try { await api("hq/scout", { method: "POST" }); toast("Zoekopdrachten gestart; resultaten komen binnen het uur binnen."); } catch (err) { toast(err.message, "fout"); } SM.bezig(e.target, false); });
@@ -1186,13 +1331,13 @@ ${p.body}</div>
     const { domeinen: lijst } = await api("hq/domeinen");
     const werk = lijst.filter((d) => ["verhuizen", "registreren", "probleem"].includes(d.status));
     render(main, html`
-      <div class="hq-kop"><div><h1>Domeinen</h1><p>Per klant: domein zelf houden, naar Sitemaker verhuizen of nieuw registreren. De DNS wordt elk halfuur gecontroleerd tot hij klopt, daarna dagelijks.</p></div></div>
-      ${werk.length ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>${werk.length === 1 ? "1 domein wacht" : `${werk.length} domeinen wachten`} op jou.</b> Verhuizen en registreren doe je bij je eigen registrar; zet daarna hier de status op "DNS instellen" of "Actief".</p></div>` : ""}
+      <div class="hq-kop"><div><h1>Domeinen</h1><p>Klanten kopen en beheren hun domein zelf; wij verbinden het met hun site. De DNS wordt elk halfuur gecontroleerd tot hij klopt, daarna dagelijks.</p></div></div>
+      ${werk.length ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>${werk.length === 1 ? "1 domein wijst" : `${werk.length} domeinen wijzen`} niet (meer) naar de site.</b> Vraag de klant de instellingen bij zijn provider na te lopen.</p></div>` : ""}
       <section class="paneel">${lijst.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Domein</th><th>Klant</th><th>Keuze</th><th>Status</th><th>DNS</th><th>Verloopt</th><th class="acties"></th></tr></thead><tbody>
         ${lijst.map((d) => html`<tr><td><b>${d.naam}</b>${d.notitie ? html`<br><span class="klein dempen">${d.notitie}</span>` : ""}</td><td><a href="#klant/${d.customerId}">${d.company}</a></td>
           <td>${L.domeinKeuze[d.keuze]}${d.provider ? html`<br><span class="klein dempen">${d.provider}</span>` : ""}${d.verhuiscode ? html`<br><span class="klein">Verhuiscode: <code>${d.verhuiscode}</code></span>` : ""}</td>
           <td>${chip(L.domein, d.status)}${d.netlify ? html`<br><span class="klein dempen">Gekoppeld aan ${d.siteNaam || "de site"}</span>` : ""}</td>
-          <td>${d.dnsAt ? html`<span class="mini-site"><span class="punt ${d.dnsOk ? "ok" : "fout"}"></span>${d.dnsOk ? "Klopt" : "Klopt nog niet"}</span><span class="klein dempen">${geleden(d.dnsAt)}</span>` : html`<span class="dempen">–</span>`}</td>
+          <td>${d.dnsAt ? html`<span class="mini-site"><span class="punt ${d.dnsOk ? "ok" : "fout"}"></span>${d.dnsOk ? "Klopt" : "Klopt nog niet"}</span>${d.dnsOk ? html`<span class="mini-site"><span class="punt ${d.https ? "ok" : "fout"}"></span>${d.https ? "https werkt" : "https nog niet"}</span>` : ""}<span class="klein dempen">${geleden(d.dnsAt)}</span>` : html`<span class="dempen">–</span>`}</td>
           <td>${d.verlooptOp ? datum(d.verlooptOp) : html`<span class="dempen">–</span>`}</td>
           <td class="acties"><button class="knop knop-licht knop-klein" data-check="${d.id}">Nu controleren</button><button class="knop knop-tekst knop-klein" data-bewerk="${d.id}">Bewerken</button></td></tr>`)}</tbody></table></div>`
         : html`<div class="leeg"><h3>Nog geen domeinen</h3><p>Klanten kiezen hun domein in het portaal bij Account. Dan verschijnt het hier.</p></div>`}</section>`);
@@ -1205,7 +1350,7 @@ ${p.body}</div>
       const dlg = SM.dialoog(d.naam, html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <div class="rij2"><div class="veld"><label for="dm-st">Status</label><select id="dm-st" name="status">${opties(L.domein, d.status)}</select></div>
           <div class="veld"><label for="dm-prov">Provider / registrar</label><input id="dm-prov" name="provider" value="${d.provider || ""}"></div></div>
-        <div class="rij2"><div class="veld"><label for="dm-ver">Verloopt op <span class="opt">(optioneel)</span></label><input id="dm-ver" name="verlooptOp" type="date" value="${d.verlooptOp || ""}"><div class="hulp">30 dagen vooraf krijg je een seintje.</div></div>
+        <div class="rij2"><div class="veld"><label for="dm-ver">Verloopt op <span class="opt">(optioneel)</span></label><input id="dm-ver" name="verlooptOp" type="date" value="${d.verlooptOp || ""}"><div class="hulp">Als je hem weet: 30 dagen vooraf krijg je een seintje om de klant te herinneren.</div></div>
           <div class="veld"><label for="dm-code">Verhuiscode</label><input id="dm-code" name="verhuiscode" value="${d.verhuiscode || ""}" autocomplete="off"><div class="hulp">Wordt gewist zodra het domein klopt.</div></div></div>
         <div class="veld"><label for="dm-not">Notitie</label><textarea id="dm-not" name="notitie" rows="2">${d.notitie || ""}</textarea></div>
         <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
