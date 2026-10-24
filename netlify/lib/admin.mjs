@@ -37,6 +37,7 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM change_requests WHERE ai_status = 'handmatig' AND status IN ('ontvangen','in_behandeling')) AS handmatig,
       (SELECT COUNT(*)::int FROM appointments WHERE status = 'nieuw') AS nieuwe_aanvragen,
       (SELECT COUNT(*)::int FROM concepts WHERE status = 'klaar') AS concepten_klaar,
+      (SELECT COUNT(*)::int FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status = 'nieuw') AS concepten_beoordelen,
       (SELECT COUNT(*)::int FROM concepts WHERE first_view_at > NOW() - INTERVAL '7 days') AS concepten_bekeken,
       (SELECT COUNT(*)::int FROM customers WHERE onboarding AND started_at IS NOT NULL AND site_status = 'in_aanbouw') AS te_bouwen,
       (SELECT COUNT(*)::int FROM invoices WHERE status = 'open') AS open_facturen,
