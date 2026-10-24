@@ -551,7 +551,7 @@ console.log("Concept-websites voor leads");
   };
   const vorigeAi = globalThis.__aiFake;
   globalThis.__aiFake = (x) => {
-    if (!/Huisstijlkleuren/.test(x.prompt)) return vorigeAi(x);
+    if (!/Kleuren uit de CSS/.test(x.prompt)) return vorigeAi(x);
     if (/webwinkel/i.test(x.prompt)) return JSON.stringify({ kan: false, reden: "Dit is een webshop." });
     const fotos = [...x.prompt.matchAll(/afbeeldingen\/(foto-\d+\.png)/g)].map((m) => "afbeeldingen/" + m[1]);
     return "```json\n" + JSON.stringify({ kan: true, content: {

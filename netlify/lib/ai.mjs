@@ -3,13 +3,13 @@ import { env } from "./core.mjs";
 
 export const aiReady = () => !!env("ANTHROPIC_API_KEY") || !!env("AI_FAKE");
 
-export async function claude({ system, prompt, maxTokens = 8000, timeoutMs = 120000, model }) {
-  if (env("AI_FAKE")) return globalThis.__aiFake ? globalThis.__aiFake({ system, prompt }) : "{}";
+export async function claude({ system, prompt, maxTokens = 8000, timeoutMs = 120000, model, images }) {
+  if (env("AI_FAKE")) return globalThis.__aiFake ? globalThis.__aiFake({ system, prompt, images }) : "{}";
   const base = (env("ANTHROPIC_BASE_URL") || "https://api.anthropic.com").replace(/\/+$/, "");
   const r = await fetch(base + "/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: model || env("AI_MODEL", "claude-sonnet-5-5"), max_tokens: maxTokens, system, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: model || env("AI_MODEL", "claude-sonnet-5-5"), max_tokens: maxTokens, system, messages: [{ role: "user", content: images?.length ? [...images.map((i) => ({ type: "image", source: { type: "base64", media_type: i.type, data: i.data } })), { type: "text", text: prompt }] : prompt }] }),
     signal: AbortSignal.timeout(timeoutMs),
   });
   const d = await r.json().catch(() => ({}));
