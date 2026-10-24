@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { zoekGaten, zoekLegeSchermen } from "./gaten.mjs";
 
 const WERK = process.env.CONCEPT_WERK || "/tmp/concepten";
 const id = process.argv[2];
@@ -18,6 +19,7 @@ try { pw = await import("playwright"); } catch { const req = createRequire(impor
 const { chromium } = pw.default || pw;
 
 const html = fs.readFileSync(path.join(D, "index.html"), "utf8")
+  .replace(/<\/head>/i, () => `<style>${fs.existsSync(path.join(KIT, "vangnet.css")) ? fs.readFileSync(path.join(KIT, "vangnet.css"), "utf8") : ""}</style></head>`)
   .replace(/<body([^>]*)>/i, (m) => m + fs.readFileSync(path.join(KIT, "sprite.svg"), "utf8"))
   .replace(/<\/body>/i, `<script>${fs.readFileSync(path.join(KIT, "beweging.js"), "utf8")}</script></body>`);
 
@@ -35,7 +37,7 @@ const b = await chromium.launch();
 const rapport = [];
 fs.rmSync(path.join(D, "shots"), { recursive: true, force: true });
 fs.mkdirSync(path.join(D, "shots"), { recursive: true });
-for (const [w, hgt] of [[390, 844], [1280, 800]]) {
+for (const [w, hgt] of [[390, 844], [1280, 800], [1920, 1080], [2560, 1440]]) {
   for (const beweging of [false, true]) {
     const ctx = await b.newContext({ viewport: { width: w, height: hgt }, reducedMotion: beweging ? "no-preference" : "reduce" });
     const p = await ctx.newPage();
@@ -70,13 +72,18 @@ for (const [w, hgt] of [[390, 844], [1280, 800]]) {
         kapotteBeelden: [...document.images].filter((i) => !i.naturalWidth).map((i) => i.getAttribute("src")),
         teHoog: [...document.images].filter((i) => i.getBoundingClientRect().height > innerHeight * 1.1 && !i.closest("[data-horizontaal]")).map((i) => i.getAttribute("src")),
       }));
-      rapport.push(`${w}px: paginabreedte ${info.breedte}${info.breedte > w ? " ⚠ HORIZONTAAL SCROLLEN" : " ok"}, hoogte ${info.hoogte}px${info.kapotteBeelden.length ? `, ⚠ kapotte beelden: ${info.kapotteBeelden.join(", ")}` : ""}${info.teHoog.length ? `, ⚠ beelden hoger dan het scherm: ${info.teHoog.join(", ")}` : ""}${fouten.length ? `, fouten: ${fouten.join("; ")}` : ""}`);
+      const gaten = await zoekGaten(p);
+      rapport.push(`${w}px: paginabreedte ${info.breedte}${info.breedte > w ? " ⚠ HORIZONTAAL SCROLLEN" : " ok"}, hoogte ${info.hoogte}px${info.kapotteBeelden.length ? `, ⚠ kapotte beelden: ${info.kapotteBeelden.join(", ")}` : ""}${info.teHoog.length ? `, ⚠ beelden hoger dan het scherm: ${info.teHoog.join(", ")}` : ""}${fouten.length ? `, fouten: ${fouten.join("; ")}` : ""}${gaten.length ? `, ⚠ LEGE VLAKKEN (y/hoogte px): ${gaten.map(([y, l]) => `${y}/${l}`).join(", ")}` : ", geen lege vlakken"}`);
+      if (w > 1280) { await p.screenshot({ path: path.join(D, "shots", `${w}-overzicht.png`), fullPage: true, scale: "css" }); await ctx.close(); continue; }
       // volledige pagina in stukken (leesbaar voor beoordeling)
       const stuk = w < 600 ? 1400 : 1500;
       for (let y = 0, n = 1; y < info.hoogte && n <= 8; y += stuk, n++) {
         await p.screenshot({ path: path.join(D, "shots", `${w}-${n}.png`), clip: { x: 0, y, width: w, height: Math.min(stuk, info.hoogte - y) }, fullPage: true });
       }
     } else {
+      const ls = await zoekLegeSchermen(p);
+      rapport.push(`${w}px met beweging, scrollend: ${ls.length ? "⚠ LEGE SCHERMEN (scrollpositie/% leeg): " + ls.map(([y, l]) => `${y}/${l}%`).join(", ") : "geen lege schermen"}`);
+      if (w > 1280) { await ctx.close(); continue; }
       // met beweging: eerste scherm na het laden, en halverwege de pagina na scrollen
       await p.screenshot({ path: path.join(D, "shots", `${w}-beweging-start.png`) });
       const H = await p.evaluate(() => document.documentElement.scrollHeight);

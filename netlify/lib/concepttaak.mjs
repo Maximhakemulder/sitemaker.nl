@@ -4,8 +4,8 @@
 import crypto from "node:crypto";
 import { q, one, str, env, fail, getSettings, audit } from "./core.mjs";
 import { putFile, getFile, deleteFile } from "./files.mjs";
-import { SYSTEM as CONTENT_SYSTEM, clean, zoekStock, haal, imageSize } from "./concepts.mjs";
-import { SYSTEM as ONTWERP_SYSTEM, sanitize, feitencheck, kleurcheck } from "./ontwerp.mjs";
+import { SYSTEM as CONTENT_SYSTEM, clean, zoekStock, haal, imageSize, conceptUrl } from "./concepts.mjs";
+import { SYSTEM as ONTWERP_SYSTEM, sanitize, feitencheck, kleurcheck, VANGNET_CSS } from "./ontwerp.mjs";
 import { BEWEGING } from "./beweging.mjs";
 import { sprite, ICOON_NAMEN } from "./iconen.mjs";
 
@@ -21,6 +21,7 @@ export function instructies() {
     contentRegels: CONTENT_SYSTEM,
     ontwerpRegels: ONTWERP_SYSTEM,
     beweging: BEWEGING,
+    vangnet: VANGNET_CSS,
     sprite: sprite(),
     iconen: ICOON_NAMEN,
   };
@@ -122,7 +123,7 @@ export async function opslaan(id, { content, html }) {
   await q(`UPDATE concepts SET status = 'klaar', content = $2, html = $3, ontwerp_fout = '', reden = '', ready_at = NOW(), expires_at = NOW() + ($4 || ' days')::interval, updated_at = NOW() WHERE id = $1`,
     [id, JSON.stringify(schoon), h, String(dagen)]);
   await audit(null, "concept_taak_klaar", "concept", id, { bytes: h.length });
-  return { ok: true, waarschuwingen: kleurcheck(h, [schoon.kleuren?.primair, schoon.kleuren?.accent].filter(Boolean)) };
+  return { ok: true, url: `${conceptUrl(c.token)}?hq=1`, waarschuwingen: kleurcheck(h, [schoon.kleuren?.primair, schoon.kleuren?.accent].filter(Boolean)) };
 }
 
 // Niet geschikt (webshop, te weinig info) of mislukt.

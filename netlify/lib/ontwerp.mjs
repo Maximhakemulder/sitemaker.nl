@@ -46,6 +46,7 @@ Elke site heeft:
    - data-magneet op de hoofdknop (beweegt licht mee met de muis).
    - data-leesbalk op een dunne vaste balk (transform-origin:left) die laat zien hoe ver je gelezen hebt.
    - De variabele --scroll (0 tot 1) op <html>, bruikbaar in calc() voor bijv. een kleurverloop of draaiende vorm.
+Geen lege schermen: koppel hoogtes nooit los aan de schermhoogte. Stappen in een scroll-verhaal: min-height:min(46vh,440px) (ons vangnet dwingt dat af), niet-actieve stappen blijven leesbaar (opacity ≥ 0,5), de vaste kolom maximaal één scherm hoog en verticaal gecentreerd. Een horizontaal spoor alleen als de rij duidelijk breder is dan een breed scherm (minstens 6 grote kaarten of foto's); ons script zet het anders uit en dan moet de rij er als normale rij goed uitzien. Secties nooit min-height:100vh behalve de hero. Denk aan grote schermen (1920 en 2560 breed): niets mag daar als een leeg vlak ogen.
 Beweging ondersteunt de inhoud en blijft rustig en vloeiend (ease-out, 0,6-1 s). Niets knippert, niets blijft eindeloos stuiteren.
 
 ## Iconen
@@ -201,11 +202,14 @@ export async function ontwerp(content, images, extra = {}) {
 }
 
 // Bij het tonen: afbeeldingspaden omzetten, onze balk en script toevoegen.
+// Vangnet tegen te hoge beeldvlakken, horizontaal scrollen en lege schermen (ook in scripts/concept-taak/bekijk.mjs).
+export const VANGNET_CSS = `html,body{max-width:100%;overflow-x:clip}img{max-width:100%}main>:first-child img,body>header+section img,main>:first-child *:has(>img){max-height:min(88vh,820px)}section img{max-height:min(90vh,900px)}[data-verhaal] [data-stap]{min-height:min(46vh,440px)!important}[data-horizontaal-uit]{height:auto!important}[data-horizontaal-uit]>*{position:relative!important;height:auto!important;min-height:0!important;top:auto!important;overflow:visible!important}[data-horizontaal-uit] [data-spoor]{flex-wrap:wrap;width:auto!important;max-width:100%;transform:none!important}@media(max-width:899px){[data-horizontaal-uit] [data-spoor]{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory}}`;
+
 export function toonOntwerp(html, { imgBase, bodyStart = "", bodyEnd = "", headExtra = "" }) {
   let h = html.replace(/(["'(])afbeeldingen\//g, `$1${imgBase}`);
   h = h.replace(/<head\b[^>]*>/i, (m) => `${m}<meta name="robots" content="noindex,nofollow">${headExtra}`);
   // Vangnet tegen uit de hand gelopen beeldvlakken (te hoog/smal) en horizontaal scrollen.
-  h = h.replace(/<\/head>/i, `<style>html,body{max-width:100%;overflow-x:hidden}img{max-width:100%}main>:first-child img,body>header+section img,main>:first-child *:has(>img){max-height:min(88vh,820px)}section img{max-height:min(90vh,900px)}</style></head>`);
+  h = h.replace(/<\/head>/i, `<style>${VANGNET_CSS}</style></head>`);
   h = h.replace(/<body\b[^>]*>/i, (m) => `${m}${sprite()}${bodyStart}`);
   h = h.replace(/<\/body>/i, `${bodyEnd}</body>`);
   return h;
