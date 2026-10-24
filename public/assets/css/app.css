@@ -365,3 +365,24 @@ dialog h3 { margin: 20px 0 8px; }
 .start-klant details { margin-top: 14px; }
 .start-klant summary { cursor: pointer; }
 .prijs-blok .regel:first-child { border-top: 0; }
+
+/* Agenda */
+.afspraak-tijd { display: inline-block; min-width: 52px; font-variant-numeric: tabular-nums; }
+.wijziging-meta a svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+.slot-legenda { display: flex; gap: 8px; margin: -4px 0 14px; }
+.slot-legenda .slot { pointer-events: none; min-height: 28px; padding: 4px 10px; }
+.slot-dagen { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.slot-dag { border: 1px solid var(--lijn); border-radius: var(--r-klein); padding: 12px; }
+.slot-dag.leeg { background: var(--achter); }
+.slot-dagkop { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.slot-dagkop .knop-tekst { min-height: 30px; font-size: 13px; }
+.slots { display: flex; flex-wrap: wrap; gap: 6px; }
+.slot { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 58px; min-height: 36px; padding: 4px 8px; border-radius: 8px; font: 700 14px/1.1 var(--font); border: 1.5px solid transparent; cursor: pointer; text-decoration: none; font-variant-numeric: tabular-nums; }
+.slot.vrij { background: var(--ok-zacht); color: var(--ok); border-color: rgba(10, 125, 70, .25); }
+.slot.dicht { background: var(--wit); color: var(--grijs-licht); border: 1.5px dashed #C6CDDE; text-decoration: line-through; }
+.slot.geboekt { background: var(--paars); color: var(--wit); cursor: pointer; }
+.slot.geboekt small { font-weight: 500; font-size: 11px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .85; }
+.slot.voorbij { background: var(--achter); color: var(--grijs-licht); cursor: default; }
+.slot:not(:disabled):not(.geboekt):hover { border-color: var(--paars); }
+.dagen-tijden { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 14px; }
+#ag-form h2 { margin: 18px 0 4px; font-size: 20px; }

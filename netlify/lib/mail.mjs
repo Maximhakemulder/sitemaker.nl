@@ -31,7 +31,7 @@ export function mailError(e) {
 }
 
 // Verstuurt één mail en logt het resultaat. Gooit niet: geeft { ok, error } terug.
-export async function sendMail({ to, subject, text, html, kind, ref = "", replyTo, headers, fromName, inReplyTo, references, messageId }) {
+export async function sendMail({ to, subject, text, html, kind, ref = "", replyTo, headers, fromName, inReplyTo, references, messageId, attachments }) {
   if (!mailReady()) {
     await logMail(to, subject, kind, false, "Mail is nog niet ingesteld (MAIL_USER/MAIL_PASSWORD).", ref);
     return { ok: false, error: "Mail is nog niet ingesteld in Netlify." };
@@ -42,7 +42,7 @@ export async function sendMail({ to, subject, text, html, kind, ref = "", replyT
   try {
     await transport(m).sendMail({
       from: { name: fromName || "Sitemaker", address: m.from || "noreply@sitemaker.nl" },
-      to, subject, text, html, replyTo, headers, inReplyTo, references, messageId: id,
+      to, subject, text, html, replyTo, headers, inReplyTo, references, messageId: id, attachments,
     });
     await logMail(to, subject, kind, true, "", ref);
     return { ok: true, messageId: id };

@@ -1,4 +1,5 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
+import * as agenda from "../lib/agenda.mjs";
 import { json, HttpError, fail, escH } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
 import { requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
@@ -42,6 +43,29 @@ export default async (req, context) => {
       try { await handleWebhook(String(id || "")); } catch (e) { console.log("[webhook]", e.message); return new Response("retry", { status: 500 }); }
       return new Response("ok");
     }
+    // ------------------------------------------------ online kennismaking boeken (openbaar)
+    if (path === "agenda/annuleren") {
+      const appt = await agenda.apptByToken(url.searchParams.get("t"));
+      if (!appt) return htmlPage("Link werkt niet", "Deze link is niet (meer) geldig. Mail ons gerust als je je afspraak wilt verzetten.");
+      const wanneer = appt.starts_at ? agenda.momentLabel(new Date(appt.starts_at).getTime(), (await agenda.agendaConfig()).duur) : "";
+      if (appt.status === "geannuleerd") return htmlPage("Afspraak geannuleerd", `Je kennismaking van ${wanneer} is geannuleerd. Je kunt altijd een nieuw moment kiezen op onze website.`);
+      if (m === "POST") {
+        try { await agenda.cancel(appt, "klant"); } catch (e) { return htmlPage("Annuleren lukte niet", e.message); }
+        return htmlPage("Afspraak geannuleerd", `Je kennismaking van ${wanneer} is geannuleerd. Wil je een ander moment? Kies er een op onze website.`);
+      }
+      return htmlPage("Afspraak annuleren?", `Je kennismaking staat op ${wanneer}. Wil je deze afspraak annuleren?`, `<form method="post"><button type="submit">Ja, annuleer mijn afspraak</button></form>`);
+    }
+    if (path === "agenda/ics" && m === "GET") {
+      const ics = await agenda.apptIcs(url.searchParams.get("t"));
+      if (!ics) return new Response("Niet gevonden", { status: 404 });
+      return new Response(ics, { headers: { "content-type": "text/calendar; charset=utf-8", "content-disposition": 'attachment; filename="kennismaking-sitemaker.ics"', "cache-control": "no-store" } });
+    }
+    if (path === "agenda/feed.ics" && m === "GET") {
+      const ics = await agenda.feed(url.searchParams.get("k"));
+      if (!ics) return new Response("Niet gevonden", { status: 404 });
+      return new Response(ics, { headers: { "content-type": "text/calendar; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
+    }
+    if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
     if (path === "b2b/afmelden") {
       const id = Number(url.searchParams.get("l")), t = url.searchParams.get("t");
       if (!id || !checkUnsub(id, t)) return htmlPage("Link werkt niet", "Deze afmeldlink is niet (meer) geldig. Stuur ons een mail met 'afmelden', dan regelen we het.");
@@ -54,6 +78,7 @@ export default async (req, context) => {
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");
 
     // ------------------------------------------------ website
+    if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
 
     // ------------------------------------------------ inloggen
@@ -158,6 +183,12 @@ export default async (req, context) => {
         case "GET invoices/:id/pdf": return await invoicePdf(user, id, { staff: true, inline: url.searchParams.get("inline") === "1" });
         case "GET payments": return json(await hq.listPayments());
         case "GET sites": return json({ sites: await hq.listSites() });
+        case "GET agenda": return json({ ...(await agenda.grid({ days: 21 })), exceptions: await agenda.listExceptions(), feedUrl: agenda.feedUrl() });
+        case "PUT agenda/instellingen": return json(await agenda.saveAgendaConfig(await body(req), user));
+        case "POST agenda/slot": return json(await agenda.setSlot(await body(req), user));
+        case "POST agenda/uitzondering": return json(await agenda.addException(await body(req), user));
+        case "DELETE agenda/uitzondering/:id": return json(await agenda.deleteException(Number(seg[3]), user));
+        case "POST appointments/:id/annuleren": { const a = await one("SELECT * FROM appointments WHERE id = $1", [id]); if (!a) fail(404, "Afspraak niet gevonden."); return json(await agenda.cancel(a, "sitemaker", user)); }
         case "GET appointments": return json({ appointments: await hq.listAppointments() });
         case "PUT appointments/:id": return json(await hq.updateAppointment(id, await body(req), user));
         case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "" }));

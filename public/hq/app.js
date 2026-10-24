@@ -10,7 +10,7 @@
     factuur: { open: ["Openstaand", "s-let"], betaald: ["Betaald", "s-ok"], vervallen: ["Vervallen", "s-fout"], gecrediteerd: ["Gecrediteerd", "s-grijs"] },
     site: { in_aanbouw: ["In aanbouw", "s-info"], live: ["Live", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] },
     abo: { geen: ["Niet gestart", "s-grijs"], wacht_op_betaling: ["Wacht op 1e betaling", "s-let"], actief: ["Automatisch (Mollie)", "s-ok"], betaling_mislukt: ["Betaling mislukt", "s-fout"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"], handmatig: ["Handmatig gefactureerd", "s-info"] },
-    aanvraag: { nieuw: ["Nieuw", "s-fout"], gepland: ["Gepland", "s-info"], klant: ["Klant geworden", "s-ok"], geen_interesse: ["Geen interesse", "s-grijs"] },
+    aanvraag: { nieuw: ["Nieuw", "s-fout"], gepland: ["Gesproken", "s-info"], klant: ["Klant geworden", "s-ok"], geen_interesse: ["Geen interesse", "s-grijs"], niet_bereikbaar: ["Niet bereikbaar", "s-let"], geannuleerd: ["Geannuleerd", "s-grijs"] },
     lead: { kandidaat: ["Te onderzoeken", "s-grijs"], nieuw: ["Klaar om te mailen", "s-info"], goedgekeurd: ["In de wachtrij", "s-let"], verstuurd: ["Verstuurd", "s-info"], opvolging_goedgekeurd: ["Opvolging in wachtrij", "s-let"], opgevolgd: ["Opgevolgd", "s-info"], reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Afgemeld", "s-grijs"], overgeslagen: ["Overgeslagen", "s-grijs"], fout: ["Fout", "s-fout"] },
     betaling: { open: ["Open", "s-let"], pending: ["Bezig", "s-let"], authorized: ["Geautoriseerd", "s-info"], paid: ["Betaald", "s-ok"], failed: ["Mislukt", "s-fout"], canceled: ["Geannuleerd", "s-grijs"], expired: ["Verlopen", "s-grijs"] },
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
@@ -37,7 +37,7 @@
     ["overzicht", "Overzicht", '<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>'],
     ["klanten", "Klanten", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
     ["wijzigingen", "Wijzigingen", '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'],
-    ["aanvragen", "Aanvragen", '<path d="M4 4h16v12H5.2L4 17.2Z"/>'],
+    ["aanvragen", "Agenda", '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'],
     ["facturen", "Facturen", '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>'],
     ["betalingen", "Betalingen", '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
@@ -100,7 +100,7 @@
         ${kpi(euro(c.mrr_basis), "aan abonnementen per maand", "#betalingen")}
         ${c.voorstellen ? kpi(c.voorstellen, "voorstellen van Claude klaar om goed te keuren", "#wijzigingen/voorstel", true) : ""}
         ${kpi(c.open_wijzigingen, c.te_laat ? `open wijzigingen, ${c.te_laat} over de 48 uur` : "open wijzigingen", "#wijzigingen", c.te_laat > 0)}
-        ${kpi(c.nieuwe_aanvragen, "nieuwe aanvragen via de website", "#aanvragen", c.nieuwe_aanvragen > 0)}
+        ${kpi(c.nieuwe_aanvragen, "nieuwe afspraken en terugbelverzoeken", "#aanvragen", c.nieuwe_aanvragen > 0)}
         ${kpi(euro(c.ontvangen_maand), "ontvangen deze maand", "#facturen")}
         ${kpi(`${c.open_facturen} · ${euro(c.open_bedrag)}`, "openstaande facturen", "#facturen")}
         ${kpi(c.betaling_mislukt, "mislukte betalingen", "#betalingen", c.betaling_mislukt > 0)}
@@ -110,8 +110,8 @@
         <section class="paneel"><div class="paneel-kop"><h2>Wijzigingen te doen</h2><a href="#wijzigingen">Alle wijzigingen</a></div>
           ${d.todo.length ? html`<ul class="lijst">${d.todo.map(todoRij)}</ul>` : html`<p class="dempen">Niets open. Alle wijzigingen zijn verwerkt.</p>`}</section>
         <div>
-          <section class="paneel"><div class="paneel-kop"><h2>Nieuwe aanvragen</h2><a href="#aanvragen">Alle aanvragen</a></div>
-            ${d.appointments.length ? html`<ul class="lijst">${d.appointments.map((a) => html`<li><a href="#aanvragen"><b>${a.company}</b></a> · ${a.name}<br><span class="klein dempen">${geleden(a.createdAt)} · ${L.voorkeur[a.preference] || ""}</span></li>`)}</ul>` : html`<p class="dempen">Geen nieuwe aanvragen.</p>`}</section>
+          <section class="paneel"><div class="paneel-kop"><h2>Komende afspraken</h2><a href="#aanvragen">Agenda</a></div>
+            ${d.appointments.length ? html`<ul class="lijst">${d.appointments.map((a) => html`<li><a href="#aanvragen"><b>${a.company}</b></a> · ${a.name}<br><span class="klein dempen">${a.startsAt ? afspraakTijd(a.startsAt) : `Terugbelverzoek · ${geleden(a.createdAt)}`}</span></li>`)}</ul>` : html`<p class="dempen">Geen afspraken de komende week.</p>`}</section>
           <section class="paneel"><h2>B2B deze maand</h2><p class="dempen">${c.leads_verstuurd_30d} mails verstuurd in 30 dagen · ${c.leads_klaar} leads klaar om te mailen · ${c.leads_reactie} reacties te beantwoorden</p><a class="knop knop-licht knop-klein" href="#b2b">Naar B2B</a></section>
           ${nogTeDoen.length ? html`<section class="paneel"><h2>Nog in te stellen</h2><ul class="checklijst">${nogTeDoen.map((s) => html`<li><span class="ic nee">!</span><div>${s.label}<small>${s.hint}</small></div></li>`)}</ul></section>` : ""}
         </div>
@@ -505,26 +505,165 @@
     }));
   }
 
-  // ================================================ AANVRAGEN
+  // ================================================ AGENDA (kennismakingen)
+  const dagKop = (iso) => {
+    const d = new Date(iso), nu = new Date(), morgen = new Date(Date.now() + 86400000);
+    const zelfde = (a, b) => a.toDateString() === b.toDateString();
+    const t = d.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
+    return zelfde(d, nu) ? `Vandaag, ${t}` : zelfde(d, morgen) ? `Morgen, ${t}` : t.charAt(0).toUpperCase() + t.slice(1);
+  };
+  const hm = (iso) => new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  const afspraakTijd = (iso) => `${dagKop(iso)} · ${hm(iso)}`;
+  let agendaTab = "afspraken";
   async function aanvragen(main) {
-    const { appointments } = await api("hq/appointments");
     render(main, html`
-      <div class="hq-kop"><div><h1>Aanvragen via de website</h1><p>Alles wat via het formulier "Plan een kennismaking" binnenkomt. De aanvrager heeft een bevestiging per mail gekregen.</p></div></div>
-      <section class="paneel">${appointments.length ? html`<ul class="lijst">${appointments.map((a) => html`<li data-aanvraag="${a.id}">
-        <div class="wijziging-kop"><div><b>${a.company}</b> · ${a.name}</div>${chip(L.aanvraag, a.status)}</div>
-        <div class="wijziging-meta"><a href="mailto:${a.email}">${a.email}</a>${a.phone ? html`<a href="tel:${a.phone}">${a.phone}</a>` : ""}<span>${L.voorkeur[a.preference] || ""}</span><span>${tijd(a.createdAt)}</span></div>
-        ${a.message ? html`<p class="wijziging-tekst">${a.message}</p>` : ""}
-        <form novalidate><div class="rij2"><div class="veld"><label for="as-${a.id}">Status</label><select id="as-${a.id}" name="status">${opties(L.aanvraag, a.status)}</select></div>
-          <div class="veld"><label for="an-${a.id}">Notitie</label><input id="an-${a.id}" name="staffNote" value="${a.staffNote || ""}"></div></div>
-          <div class="knoppen"><button class="knop knop-klein" type="submit">Opslaan</button>${a.customerId ? html`<a class="knop knop-licht knop-klein" href="#klant/${a.customerId}">Naar klant</a>` : html`<button class="knop knop-actie knop-klein" type="button" data-klant>Maak klant aan</button>`}</div></form></li>`)}</ul>`
-        : html`<div class="leeg"><h3>Nog geen aanvragen</h3><p>Aanvragen via het formulier op de website verschijnen hier direct, en je krijgt een melding per mail.</p></div>`}</section>`);
-    main.querySelectorAll("[data-aanvraag]").forEach((li) => {
+      <div class="hq-kop"><div><h1>Agenda</h1><p>Kennismakingen die via de website geboekt zijn, en wanneer je te boeken bent.</p></div>
+        <div class="knoppen"><button class="knop knop-licht" id="abonneer">${raw(icon.open)}In je eigen agenda</button></div></div>
+      <div class="filters" role="group" aria-label="Weergave">${[["afspraken", "Afspraken"], ["beschikbaarheid", "Beschikbaarheid"], ["instellingen", "Vaste tijden"]].map(([k, t]) => html`<button aria-pressed="${k === agendaTab}" data-tab="${k}">${t}</button>`)}</div>
+      <div id="agenda-inhoud"><p class="dempen">Laden…</p></div>`);
+    main.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => { agendaTab = b.dataset.tab; aanvragen(main); }));
+    main.querySelector("#abonneer").onclick = async () => {
+      const d = await api("hq/agenda");
+      const dlg = SM.dialoog("Afspraken in je eigen agenda", html`<p>Voeg deze link toe als agenda-abonnement. Nieuwe en geannuleerde afspraken verschijnen dan vanzelf, met naam, bedrijf en telefoonnummer.</p>
+        <div class="veld"><label for="feed">Agenda-link</label><input id="feed" readonly value="${d.feedUrl}"></div>
+        <div class="knoppen"><button class="knop" data-kopieer="${d.feedUrl}">Link kopiëren</button></div>
+        <ul class="klein dempen"><li><b>Google Agenda</b> (op de computer): Andere agenda's › + › Via URL › plak de link.</li><li><b>iPhone</b>: Instellingen › Agenda › Accounts › Voeg account toe › Andere › Voeg agenda-abonnement toe.</li><li><b>Outlook</b>: Agenda toevoegen › Abonneren via internet.</li></ul>
+        <p class="klein dempen">Houd deze link voor jezelf: iedereen met de link ziet je afspraken. Google ververst een abonnement een paar keer per dag; in HQ zie je nieuwe afspraken altijd meteen.</p>`);
+      koppelKopieer(dlg);
+    };
+    const vak = main.querySelector("#agenda-inhoud");
+    if (agendaTab === "afspraken") return agendaAfspraken(vak);
+    const d = await api("hq/agenda");
+    if (agendaTab === "beschikbaarheid") return agendaBeschikbaarheid(vak, d);
+    return agendaInstellingen(vak, d.agenda);
+  }
+
+  async function agendaAfspraken(vak) {
+    const { appointments } = await api("hq/appointments");
+    const nu = Date.now();
+    const komend = appointments.filter((a) => a.startsAt && a.status !== "geannuleerd" && Date.parse(a.startsAt) > nu - 30 * 60000);
+    const terugbel = appointments.filter((a) => !a.startsAt && a.status === "nieuw");
+    const eerder = appointments.filter((a) => !komend.includes(a) && !terugbel.includes(a));
+    const perDag = {};
+    komend.forEach((a) => { (perDag[dagKop(a.startsAt)] ||= []).push(a); });
+    render(vak, html`
+      ${terugbel.length ? html`<section class="paneel"><h2>Terugbelverzoeken</h2><p class="klein dempen">Via het formulier, zonder vast moment.</p><ul class="lijst">${terugbel.map((a) => afspraakItem(a))}</ul></section>` : ""}
+      <section class="paneel"><h2>Komende afspraken</h2>
+        ${komend.length ? Object.entries(perDag).map(([dag, lijst]) => html`<h3 class="sub-kop">${dag}</h3><ul class="lijst">${lijst.map((a) => afspraakItem(a))}</ul>`)
+          : html`<div class="leeg"><h3>Nog geen afspraken</h3><p>Zodra iemand via de website een kennismaking boekt, staat hij hier. Je krijgt ook een mail.</p></div>`}</section>
+      ${eerder.length ? html`<section class="paneel"><details><summary><b>Eerdere afspraken en aanvragen (${eerder.length})</b></summary><ul class="lijst">${eerder.slice(0, 100).map((a) => afspraakItem(a))}</ul></details></section>` : ""}`);
+    vak.querySelectorAll("[data-aanvraag]").forEach((li) => {
       const a = appointments.find((x) => String(x.id) === li.dataset.aanvraag);
-      li.querySelector("form").addEventListener("submit", async (e) => {
+      li.querySelector("form")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         try { await api("hq/appointments/" + a.id, { method: "PUT", body: Object.fromEntries(new FormData(e.target)) }); toast("Opgeslagen"); herlaad(); } catch (err) { toast(err.message, "fout"); }
       });
       li.querySelector("[data-klant]")?.addEventListener("click", () => klantDialoog({ company: a.company, contactName: a.name, email: a.email, phone: a.phone, notes: a.message, appointmentId: a.id }));
+      li.querySelector("[data-annuleer]")?.addEventListener("click", async () => {
+        if (!(await SM.bevestig("Afspraak annuleren?", `${a.name} krijgt een mail dat de kennismaking van ${afspraakTijd(a.startsAt)} niet doorgaat, met een link om een nieuw moment te kiezen.`, "Annuleren en mailen"))) return;
+        try { await api(`hq/appointments/${a.id}/annuleren`, { method: "POST", body: {} }); toast("Geannuleerd. Het moment is weer vrij."); herlaad(); } catch (err) { toast(err.message, "fout"); }
+      });
+    });
+  }
+  function afspraakItem(a) {
+    const geweest = a.startsAt && Date.parse(a.startsAt) < Date.now();
+    return html`<li data-aanvraag="${a.id}">
+      <div class="wijziging-kop"><div>${a.startsAt ? html`<b class="afspraak-tijd">${hm(a.startsAt)}</b> ` : ""}<b>${a.company}</b> · ${a.name}</div>${chip(L.aanvraag, a.status)}</div>
+      <div class="wijziging-meta">${a.phone ? html`<a href="tel:${a.phone.replace(/\s/g, "")}">${raw(icon.tel || "")}${a.phone}</a>` : ""}<a href="mailto:${a.email}">${a.email}</a>${!a.startsAt ? html`<span>${L.voorkeur[a.preference] || ""}</span>` : ""}<span>${a.startsAt && a.status === "geannuleerd" ? `Was ${afspraakTijd(a.startsAt)} · geannuleerd door ${a.canceledBy === "klant" ? "de klant" : "Sitemaker"}` : a.startsAt && geweest ? afspraakTijd(a.startsAt) : `Geboekt ${geleden(a.createdAt)}`}</span></div>
+      ${a.message ? html`<p class="wijziging-tekst">${a.message}</p>` : ""}
+      ${a.status !== "geannuleerd" ? html`<form novalidate><div class="rij2"><div class="veld"><label for="as-${a.id}">Hoe ging het?</label><select id="as-${a.id}" name="status">${Object.entries(L.aanvraag).filter(([k]) => k !== "geannuleerd").map(([k, [t]]) => html`<option value="${k}" ${k === a.status ? raw("selected") : ""}>${t}</option>`)}</select></div>
+          <div class="veld"><label for="an-${a.id}">Notitie</label><input id="an-${a.id}" name="staffNote" value="${a.staffNote || ""}"></div></div>
+        <div class="knoppen"><button class="knop knop-klein" type="submit">Opslaan</button>${a.customerId ? html`<a class="knop knop-licht knop-klein" href="#klant/${a.customerId}">Naar klant</a>` : html`<button class="knop knop-actie knop-klein" type="button" data-klant>Maak klant aan</button>`}
+          ${a.startsAt && !geweest ? html`<button class="knop knop-tekst knop-klein" type="button" data-annuleer>Afspraak annuleren</button>` : ""}</div></form>` : ""}</li>`;
+  }
+
+  function agendaBeschikbaarheid(vak, d) {
+    render(vak, html`
+      ${!d.agenda.actief ? html`<div class="melding melding-let">${raw(icon.let)}<p>Online boeken staat uit. Bezoekers zien op de website alleen het terugbelformulier. Zet het aan bij Vaste tijden.</p></div>` : ""}
+      <section class="paneel"><div class="paneel-kop"><h2>Komende 3 weken</h2><span class="klein dempen">Klik op een tijd om hem dicht of open te zetten. Dagen zonder vaste tijden staan hier niet; die zet je open met Extra tijd.</span></div>
+        <div class="slot-legenda klein"><span class="slot vrij">Vrij</span><span class="slot dicht">Dicht</span><span class="slot geboekt">Geboekt</span></div>
+        <div class="slot-dagen">${d.days.filter((dag) => dag.slots.length).map((dag) => html`<div class="slot-dag ${dag.slots.some((x) => x.status === "vrij") ? "" : "leeg"}">
+          <div class="slot-dagkop"><b>${dag.label.charAt(0).toUpperCase() + dag.label.slice(1)}</b>${dag.slots.some((x) => x.status === "vrij") ? html`<button class="knop knop-tekst knop-klein" data-dagdicht="${dag.date}">Hele dag dicht</button>` : dag.slots.some((x) => x.status === "dicht") ? html`<button class="knop knop-tekst knop-klein" data-dagopen="${dag.date}">Dag weer openzetten</button>` : ""}</div>
+          ${dag.slots.length ? html`<div class="slots">${dag.slots.map((x) => x.status === "geboekt"
+            ? html`<a class="slot geboekt" href="#aanvragen" title="${x.afspraak.company}">${x.tijd}<small>${x.afspraak.company}</small></a>`
+            : html`<button class="slot ${x.status}" ${x.status === "voorbij" ? raw("disabled") : ""} data-slot="${x.start}" data-dicht="${x.status === "vrij" ? "1" : "0"}" aria-label="${x.tijd} ${x.status === "vrij" ? "dichtzetten" : "openzetten"}">${x.tijd}</button>`)}</div>`
+            : html`<p class="klein dempen">Geen vaste tijden op deze dag.</p>`}</div>`)}</div></section>
+      <div class="twee">
+        <section class="paneel"><h2>Vrij nemen</h2><p class="klein dempen">Vakantie of een vrije dag: niemand kan dan boeken. Bestaande afspraken blijven staan.</p>
+          <form novalidate id="vrij"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+            <div class="rij2"><div class="veld"><label for="v-van">Van</label><input id="v-van" name="van" type="date" required><div class="fout" data-fout-voor="van"></div></div><div class="veld"><label for="v-tot">Tot en met</label><input id="v-tot" name="tot" type="date"><div class="fout" data-fout-voor="tot"></div></div></div>
+            <div class="veld"><label for="v-note">Notitie <span class="opt">(optioneel)</span></label><input id="v-note" name="note" placeholder="Vakantie"></div>
+            <button class="knop knop-klein" type="submit">Dichtzetten</button></form></section>
+        <section class="paneel"><h2>Extra tijd openzetten</h2><p class="klein dempen">Bijvoorbeeld één avond of een zaterdagochtend buiten je vaste tijden.</p>
+          <form novalidate id="extra"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+            <div class="veld"><label for="x-dag">Dag</label><input id="x-dag" name="van" type="date" required><div class="fout" data-fout-voor="van"></div></div>
+            <div class="rij2"><div class="veld"><label for="x-van">Van</label><input id="x-van" name="vanTijd" type="time" step="900" required><div class="fout" data-fout-voor="vanTijd"></div></div><div class="veld"><label for="x-tot">Tot</label><input id="x-tot" name="totTijd" type="time" step="900" required></div></div>
+            <button class="knop knop-klein" type="submit">Openzetten</button></form></section>
+      </div>
+      ${d.exceptions.length ? html`<section class="paneel"><h2>Gepland vrij en extra tijden</h2><ul class="lijst">${d.exceptions.map((x) => html`<li class="factuur-rij"><div><span class="status ${x.kind === "dicht" ? "s-grijs" : "s-ok"}">${x.kind === "dicht" ? "Dicht" : "Extra open"}</span> ${x.label}${x.note ? html`<br><span class="klein dempen">${x.note}</span>` : ""}</div><button class="knop knop-tekst knop-klein" data-uitzondering="${x.id}">Verwijderen</button></li>`)}</ul></section>` : ""}`);
+    vak.querySelectorAll("[data-slot]").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      try { await api("hq/agenda/slot", { method: "POST", body: { start: b.dataset.slot, dicht: b.dataset.dicht === "1" } }); const nd = await api("hq/agenda"); agendaBeschikbaarheid(vak, { ...nd }); }
+      catch (err) { toast(err.message, "fout"); b.disabled = false; }
+    }));
+    const dagActie = async (body, melding) => { try { const r = await api("hq/agenda/uitzondering", { method: "POST", body }); toast(r.bestaandeAfspraken ? `${melding} Let op: er ${r.bestaandeAfspraken === 1 ? "staat nog 1 afspraak" : `staan nog ${r.bestaandeAfspraken} afspraken`}.` : melding); agendaBeschikbaarheid(vak, await api("hq/agenda")); } catch (err) { toast(err.message, "fout"); } };
+    vak.querySelectorAll("[data-dagdicht]").forEach((b) => b.addEventListener("click", () => dagActie({ kind: "dicht", van: b.dataset.dagdicht, tot: b.dataset.dagdicht }, "Dag dichtgezet.")));
+    vak.querySelectorAll("[data-dagopen]").forEach((b) => b.addEventListener("click", async () => {
+      const dag = d.days.find((x) => x.date === b.dataset.dagopen);
+      for (const x of dag.slots.filter((y) => y.status === "dicht")) await api("hq/agenda/slot", { method: "POST", body: { start: x.start, dicht: false } }).catch(() => {});
+      agendaBeschikbaarheid(vak, await api("hq/agenda"));
+    }));
+    vak.querySelectorAll("[data-uitzondering]").forEach((b) => b.addEventListener("click", async () => {
+      try { await api("hq/agenda/uitzondering/" + b.dataset.uitzondering, { method: "DELETE" }); agendaBeschikbaarheid(vak, await api("hq/agenda")); } catch (err) { toast(err.message, "fout"); }
+    }));
+    for (const [id, kind] of [["#vrij", "dicht"], ["#extra", "open"]]) {
+      const form = vak.querySelector(id);
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const b = { kind, ...Object.fromEntries(new FormData(form)) };
+        if (kind === "dicht" && !b.tot) b.tot = b.van;
+        try { const r = await api("hq/agenda/uitzondering", { method: "POST", body: b }); toast(kind === "dicht" ? (r.bestaandeAfspraken ? `Dichtgezet. Let op: er staan nog ${r.bestaandeAfspraken} afspraak/afspraken in die periode.` : "Dichtgezet.") : "Extra tijd opengezet."); agendaBeschikbaarheid(vak, await api("hq/agenda")); }
+        catch (err) { SM.toonFouten(form, err); }
+      });
+    }
+  }
+
+  function agendaInstellingen(vak, a) {
+    const DAGEN = [[1, "Maandag"], [2, "Dinsdag"], [3, "Woensdag"], [4, "Donderdag"], [5, "Vrijdag"], [6, "Zaterdag"], [0, "Zondag"]];
+    const tekst = (r) => (r || []).map(([f, t]) => `${f}-${t}`).join(", ");
+    render(vak, html`<section class="paneel"><form novalidate id="ag-form"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+      <div class="veld"><label class="vinkje"><input type="checkbox" name="actief" ${a.actief ? raw("checked") : ""}> <span>Online boeken staat aan<small class="hulp">Uit: bezoekers zien alleen het terugbelformulier.</small></span></label></div>
+      <h2>Vaste tijden</h2><p class="klein dempen">Per dag de blokken waarin je te boeken bent, bijvoorbeeld <code>09:00-12:00, 13:00-17:00</code>. Leeg = die dag niet.</p>
+      <div class="dagen-tijden">${DAGEN.map(([n, t]) => html`<div class="veld"><label for="w-${n}">${t}</label><input id="w-${n}" name="w${n}" value="${tekst(a.week[n])}" placeholder="Niet beschikbaar"><div class="fout" data-fout-voor="w${n}"></div></div>`)}</div>
+      <h2>Gesprek</h2>
+      <div class="rij3">
+        <div class="veld"><label for="ag-duur">Duur (minuten)</label><input id="ag-duur" name="duur" type="number" min="5" max="120" value="${a.duur}"></div>
+        <div class="veld"><label for="ag-int">Elke … minuten een moment</label><input id="ag-int" name="interval" type="number" min="5" max="240" value="${a.interval}"><div class="hulp">Duur + pauze. 30 bij 15 minuten bellen = een kwartier ruimte.</div></div>
+        <div class="veld"><label for="ag-max">Max. gesprekken per dag</label><input id="ag-max" name="maxPerDag" type="number" min="0" max="50" value="${a.maxPerDag}"><div class="hulp">0 = geen maximum</div></div>
+      </div>
+      <div class="rij3">
+        <div class="veld"><label for="ag-min">Minimaal … uur van tevoren</label><input id="ag-min" name="minUren" type="number" min="0" max="168" value="${a.minUren}"></div>
+        <div class="veld"><label for="ag-vooruit">Tot … dagen vooruit</label><input id="ag-vooruit" name="dagenVooruit" type="number" min="1" max="90" value="${a.dagenVooruit}"></div>
+        <div class="veld"><label for="ag-soort">Soort gesprek</label><select id="ag-soort" name="soort"><option value="telefoon" ${a.soort === "telefoon" ? raw("selected") : ""}>Telefoon (jij belt)</option><option value="video" ${a.soort === "video" ? raw("selected") : ""}>Videogesprek</option></select></div>
+      </div>
+      <div class="veld"><label for="ag-video">Link van je videogesprek <span class="opt">(alleen bij videogesprek)</span></label><input id="ag-video" name="videoLink" value="${a.videoLink || ""}" placeholder="https://meet.google.com/…"><div class="fout" data-fout-voor="videoLink"></div></div>
+      <button class="knop knop-actie" type="submit">Opslaan</button></form></section>`);
+    const form = vak.querySelector("#ag-form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(form);
+      const f = form.elements, week = {}, errors = {};
+      for (const [n] of DAGEN) {
+        const v = f["w" + n].value.trim();
+        const ranges = v ? v.split(/[,;]+/).map((x) => x.trim()).filter(Boolean).map((x) => x.replace(/\./g, ":").split(/\s*[-–]\s*/).map((t) => (t.length === 4 ? "0" + t : t))) : [];
+        if (ranges.some((r) => r.length !== 2 || !/^\d\d:\d\d$/.test(r[0]) || !/^\d\d:\d\d$/.test(r[1]) || r[0] >= r[1])) errors["w" + n] = "Schrijf het zo: 09:00-12:00, 13:00-17:00";
+        week[n] = ranges;
+      }
+      if (Object.keys(errors).length) return SM.toonFouten(form, { message: "Controleer de tijden.", data: { errors } });
+      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Opslaan…");
+      try {
+        await api("hq/agenda/instellingen", { method: "PUT", body: { actief: f.actief.checked, week, duur: f.duur.value, interval: f.interval.value, maxPerDag: f.maxPerDag.value, minUren: f.minUren.value, dagenVooruit: f.dagenVooruit.value, soort: f.soort.value, videoLink: f.videoLink.value } });
+        toast("Opgeslagen. De website toont direct de nieuwe tijden."); SM.bezig(knop, false);
+      } catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
     });
   }
 

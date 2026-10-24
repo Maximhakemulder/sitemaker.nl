@@ -38,3 +38,9 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 ## Subdomeinen
 - Eén Netlify-project. `mijn.sitemaker.nl` = klantenportaal, `hq.sitemaker.nl` = HQ, via host-regels bovenaan `netlify.toml` (200-rewrite van `/` naar `/portaal/` resp. `/hq/`; oude paden op sitemaker.nl 301 naar het subdomein). Alle assets/API werken op elk host.
 - Links in mails en Mollie-redirects via `portalUrl()` / `hqUrl()` in core (env `PORTAL_URL`, `HQ_URL`; zonder env: `<site>/portaal/` en `<site>/hq/`). Sessies zijn per subdomein (host-only cookies).
+
+## Agenda (kennismaking boeken, zoals Calendly)
+- `netlify/lib/agenda.mjs`. Vaste weektijden + duur/interval/minUren/dagenVooruit/maxPerDag/soort in `settings.agenda` (HQ › Agenda › Vaste tijden). Uitzonderingen in `agenda_exceptions` ('dicht', 'open' wint van dicht). Alles in Europe/Amsterdam (`amsToUtc`), DB in UTC.
+- Website: `#boeken` in `public/index.html` + `site.js` (GET `/api/agenda/slots`, POST `/api/agenda/boek`). Valt terug op het terugbelformulier als boeken uit staat of er geen momenten zijn. Dubbel boeken voorkomt de unieke index op `appointments.starts_at`.
+- Mail met .ics-bijlage + annuleerlink (`/api/agenda/annuleren?t=`), herinnering ~3 uur vooraf via `tick`. HQ annuleren mailt de klant. Agenda-abonnement voor Maxim: `/api/agenda/feed.ics?k=<HMAC van AUTH_SECRET>`.
+- HQ › Agenda (route `#aanvragen`): Afspraken | Beschikbaarheid (slots klikken open/dicht, vrij nemen, extra tijd) | Vaste tijden.
