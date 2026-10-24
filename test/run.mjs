@@ -607,7 +607,7 @@ console.log("Concept-websites voor leads");
     const lijst = (await call("GET", "hq/leads?status=bekeken", { cookie: admin })).data;
     assert.equal(lijst.counts.bekeken, 1); assert.equal(lijst.leads[0].concept.views, 2);
     assert.equal((await call("PUT", `hq/leads/${lead}/concept`, { cookie: admin, body: { thema: "zacht" } })).status, 200);
-    assert.ok(String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("#22C3B5"));
+    assert.match(String((await call("GET", "voorbeeld/" + token + "?hq=1")).data), /bricolage-grotesque|sora|fraunces/, "ander thema = andere lettertypen");
   });
   await test("afspraak vanuit het concept koppelt de lead; website aanmaken start vanuit het concept", async () => {
     await dbq("UPDATE appointments SET ip_hash = 'oud'");

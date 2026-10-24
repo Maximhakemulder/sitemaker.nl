@@ -76,6 +76,7 @@ export function setupStatus(s) {
     { key: "netlify", ok: netlifyLinkReady(), label: "Netlify-projecten per klant", hint: "Zet NETLIFY_API_TOKEN, NETLIFY_ACCOUNT_SLUG en NETLIFY_GITHUB_INSTALLATION_ID." },
     { key: "claude", ok: claudeReady(), label: "Claude verwerkt wijzigingen", hint: "Zet de Netlify AI Gateway aan (of ANTHROPIC_API_KEY)." },
     { key: "scout", ok: scoutReady(), label: "Outscraper (B2B-scout)", hint: "Optioneel: OUTSCRAPER_API_KEY." },
+    { key: "stock", ok: !!env("PEXELS_API_KEY"), label: "Pexels (sfeerfoto's voor concepten)", hint: "Optioneel: PEXELS_API_KEY (gratis via pexels.com/api). Vult concepten aan als hun site te weinig foto's heeft." },
     { key: "ai", ok: aiReady(), label: "AI-openingszinnen (B2B)", hint: "Optioneel: zet de Netlify AI Gateway aan." },
   ];
 }
