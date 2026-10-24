@@ -6,6 +6,43 @@ import { scoutReady } from "./b2b.mjs";
 const T0 = "(date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')";
 const VERSTUURD = "('verstuurd','opvolging_goedgekeurd','opgevolgd','reactie','afspraak','klant','afgemeld')";
 
+// Mailprestaties voor mails die sinds `vanaf` zijn verstuurd (per mail: eerste of opvolging).
+// Afgeleverd = verstuurd zonder bounce. Geopend is een indicatie (sommige mailapps laden plaatjes vooraf of blokkeren ze).
+// Geklikt = op een link geklikt of het concept bekeken. Percentages t.o.v. afgeleverd.
+async function mailStats(vanaf) {
+  const r = await one(`WITH m AS (
+      SELECT DISTINCT ON (ref, kind) substring(ref from 6)::int AS lead_id, replace(kind, 'b2b-', '') AS mail, ok, created_at
+      FROM mail_log WHERE kind LIKE 'b2b-%' AND ref LIKE 'lead:%' AND ($1::timestamptz IS NULL OR created_at >= $1) ORDER BY ref, kind, created_at DESC)
+    SELECT
+      COUNT(*) FILTER (WHERE m.ok)::int AS verstuurd,
+      COUNT(*) FILTER (WHERE NOT m.ok)::int AS mislukt,
+      COUNT(*) FILTER (WHERE m.ok AND l.bounced_at >= m.created_at)::int AS bounces,
+      COUNT(*) FILTER (WHERE m.ok AND EXISTS (SELECT 1 FROM mail_events e WHERE e.lead_id = m.lead_id AND e.mail = m.mail AND e.soort = 'open'))::int AS geopend,
+      COUNT(*) FILTER (WHERE m.ok AND (EXISTS (SELECT 1 FROM mail_events e WHERE e.lead_id = m.lead_id AND e.mail = m.mail AND e.soort = 'klik')
+        OR (m.mail = 'eerste' AND c.first_view_at >= m.created_at)))::int AS geklikt,
+      COUNT(*) FILTER (WHERE m.ok AND l.reply_at >= m.created_at)::int AS reacties,
+      COUNT(*) FILTER (WHERE m.ok AND l.unsub_at >= m.created_at)::int AS afmeldingen,
+      COUNT(*) FILTER (WHERE m.ok AND l.klacht_at >= m.created_at)::int AS klachten,
+      COUNT(*) FILTER (WHERE m.ok AND m.mail = 'eerste')::int AS eerste,
+      COUNT(*) FILTER (WHERE m.ok AND m.mail = 'opvolging')::int AS opvolging
+    FROM m JOIN leads l ON l.id = m.lead_id LEFT JOIN concepts c ON c.lead_id = m.lead_id`, [vanaf]);
+  const afgeleverd = Math.max(0, r.verstuurd - r.bounces);
+  const p = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : null);
+  return { ...r, afgeleverd, pct: { afgeleverd: p(afgeleverd, r.verstuurd), bounce: p(r.bounces, r.verstuurd), geopend: p(r.geopend, afgeleverd), geklikt: p(r.geklikt, afgeleverd), reacties: p(r.reacties, afgeleverd), afmeldingen: p(r.afmeldingen, afgeleverd), klachten: p(r.klachten, afgeleverd) } };
+}
+export async function mailPrestaties() {
+  const T = (d) => new Date(Date.now() - d * 86400000).toISOString();
+  const vandaag = (await one(`SELECT ${T0} AS t`)).t;
+  const [a, b, c, d] = await Promise.all([mailStats(vandaag), mailStats(T(7)), mailStats(T(30)), mailStats(null)]);
+  // Signalen: bij een te hoge bounce of klachten eerst rustiger aan.
+  const s = d.verstuurd >= 20 ? c : d;
+  const waarschuwingen = [];
+  if (s.verstuurd >= 20 && s.pct.bounce > 3) waarschuwingen.push(`Bounce ${s.pct.bounce}% (boven 3%): controleer de mailadressen en verlaag de daglimiet.`);
+  if (s.verstuurd >= 20 && s.pct.klachten > 0.3) waarschuwingen.push(`Klachten ${s.pct.klachten}%: pas de tekst aan en verlaag de daglimiet.`);
+  if (s.verstuurd >= 20 && s.pct.afmeldingen > 2) waarschuwingen.push(`Afmeldingen ${s.pct.afmeldingen}%: de mail past mogelijk niet bij deze branches.`);
+  return { vandaag: a, d7: b, d30: c, alles: d, waarschuwingen };
+}
+
 export async function b2bDashboard() {
   const s = await getSettings();
   const sc = s.b2b.scout || {};
@@ -47,7 +84,8 @@ export async function b2bDashboard() {
        SELECT dag.dag,
         (SELECT COUNT(*)::int FROM leads WHERE to_char(created_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM-DD') = dag.dag) AS gevonden,
         (SELECT COUNT(*)::int FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND to_char(created_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM-DD') = dag.dag) AS verstuurd,
-        (SELECT COUNT(*)::int FROM leads WHERE to_char(reply_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM-DD') = dag.dag) AS reacties
+        (SELECT COUNT(*)::int FROM leads WHERE to_char(reply_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM-DD') = dag.dag) AS reacties,
+        (SELECT COUNT(DISTINCT lead_id)::int FROM mail_events WHERE soort = 'open' AND to_char(created_at AT TIME ZONE 'Europe/Amsterdam','YYYY-MM-DD') = dag.dag) AS geopend
        FROM dag ORDER BY dag.dag`),
     one("SELECT COUNT(*) FILTER (WHERE status = 'goedgekeurd')::int AS eerste, COUNT(*) FILTER (WHERE status = 'opvolging_goedgekeurd')::int AS opvolging FROM leads"),
     q("SELECT source, COUNT(*)::int AS n FROM leads GROUP BY source"),
@@ -70,6 +108,6 @@ export async function b2bDashboard() {
     verzenden: { mail: mailReady(), max, vandaag: vandaag.verstuurd, opvolgingen: vandaag.opvolgingen, rest, wachtrij, uren: [van, tot2], open: venster && mailReady(), weekend,
       nogTeVersturenVandaag: venster ? Math.min(rest, wachtrij.eerste + wachtrij.opvolging) : 0 },
     vandaag, totaal: tot, bron: Object.fromEntries(bron.map((b) => [b.source, b.n])),
-    perCategorie: perCat, perPlaats, dagen, inbox,
+    perCategorie: perCat, perPlaats, dagen, inbox, mail: await mailPrestaties(), meten: { opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false },
   };
 }

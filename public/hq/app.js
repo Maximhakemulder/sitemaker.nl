@@ -962,6 +962,36 @@
   // ================================================ B2B: overzicht (waar we zoeken, wat het oplevert) + leads
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
   const b2bTabs = (actief, d) => html`<nav class="sub-tabs" aria-label="B2B"><a href="#b2b" ${actief === "overzicht" ? raw('aria-current="page"') : ""}>Overzicht</a><a href="#b2b/leads" ${actief === "leads" ? raw('aria-current="page"') : ""}>Leads${d ? html` <span class="n">${d}</span>` : ""}</a><a href="#concepten">Concepten</a></nav>`;
+  let mailPeriode = "d7";
+  function mailPrestaties(vak, d) {
+    const P = { vandaag: "Vandaag", d7: "7 dagen", d30: "30 dagen", alles: "Alles" };
+    const s = d.mail[mailPeriode], pc = (v) => (v == null ? "–" : String(v).replace(".", ",") + "%");
+    const tegel = (waarde, naam, sub, cls = "") => html`<div class="kpi ${cls}"><div class="waarde">${waarde}</div><div class="naam">${naam}${sub ? html`<br><span class="klein">${sub}</span>` : ""}</div></div>`;
+    render(vak, html`<div class="paneel-kop"><h2>Mailprestaties</h2>
+        <div class="segment" role="group" aria-label="Periode">${Object.entries(P).map(([k, t]) => html`<button class="knop knop-klein ${k === mailPeriode ? "" : "knop-licht"}" data-p="${k}" aria-pressed="${k === mailPeriode}">${t}</button>`)}</div></div>
+      ${d.mail.waarschuwingen.map((w) => html`<div class="melding melding-fout">${raw(icon.let)}<p>${w}</p></div>`)}
+      <div class="kpis kpis-8">
+        ${tegel(s.verstuurd, "verstuurd", `${s.eerste} eerste · ${s.opvolging} opvolg${s.mislukt ? ` · ${s.mislukt} mislukt` : ""}`)}
+        ${tegel(pc(s.pct.afgeleverd), "afgeleverd", `${s.afgeleverd} mails`)}
+        ${tegel(pc(s.pct.bounce), "bounce", `${s.bounces} kwamen niet aan`, s.verstuurd >= 20 && s.pct.bounce > 3 ? "alarm" : "")}
+        ${tegel(d.meten.opens ? pc(s.pct.geopend) : "uit", "geopend", d.meten.opens ? `${s.geopend} mails · indicatie` : "meten staat uit")}
+        ${tegel(pc(s.pct.geklikt), "geklikt", `${s.geklikt} op link of concept`)}
+        ${tegel(pc(s.pct.reacties), "reacties", `${s.reacties} mails`, s.reacties ? "goed" : "")}
+        ${tegel(pc(s.pct.afmeldingen), "afgemeld", `${s.afmeldingen} mails`, s.verstuurd >= 20 && s.pct.afmeldingen > 2 ? "alarm" : "")}
+        ${tegel(pc(s.pct.klachten), "klachten", `${s.klachten} als spam/klacht`, s.klachten ? "alarm" : "")}
+      </div>
+      <p class="klein dempen">Percentages ten opzichte van afgeleverde mails. Geopend is een indicatie: sommige mailprogramma's laden plaatjes vooraf (telt te hoog) of blokkeren ze (telt te laag). Klikken en reacties zeggen meer. Opens en klikken binnen een minuut na verzenden of van virusscanners tellen niet mee. Richtwaarden: bounce onder 3%, klachten bijna 0.${isAdmin() ? html` <button class="knop knop-tekst knop-klein" type="button" id="meten">Meten aan/uit</button>` : ""}</p>`);
+    vak.querySelectorAll("[data-p]").forEach((b) => b.addEventListener("click", () => { mailPeriode = b.dataset.p; mailPrestaties(vak, d); }));
+    vak.querySelector("#meten")?.addEventListener("click", () => {
+      const dlg = SM.dialoog("Meten in B2B-mails", html`<form novalidate>
+        <div class="veld"><label class="vinkje"><input type="checkbox" name="opens" ${d.meten.opens ? raw("checked") : ""}> Opens meten (onzichtbaar plaatje)</label></div>
+        <div class="veld"><label class="vinkje"><input type="checkbox" name="kliks" ${d.meten.kliks ? raw("checked") : ""}> Klikken meten (links lopen via sitemaker)</label></div>
+        <p class="klein dempen">Dit staat ook in de privacyverklaring. Uitzetten kan de afleverbaarheid iets verbeteren; je ziet dan alleen reacties en concept-bezoeken.</p>
+        <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => { e.preventDefault(); try { await api("hq/settings", { method: "PUT", body: { b2b: { meten: { opens: form.elements.opens.checked, kliks: form.elements.kliks.checked } } } }); dlg.close(); toast("Opgeslagen"); herlaad(); } catch (err) { toast(err.message, "fout"); } });
+    });
+  }
   async function b2b(main, sub) {
     if (sub === "leads") return b2bLeads(main);
     const d = await api("hq/b2b");
@@ -984,6 +1014,7 @@
         <div class="kpi ${t.reacties ? "goed" : ""}"><div class="waarde">${t.reacties}</div><div class="naam">reacties<br><span class="klein">${pct(t.reacties, t.verstuurd)} van gemaild</span></div></div>
         <div class="kpi"><div class="waarde">${t.afspraken}</div><div class="naam">afspraken<br><span class="klein">${t.klanten} klant geworden</span></div></div>
       </div>
+      <section class="paneel" id="mailprest"></section>
       <div class="twee">
         <section class="paneel"><div class="paneel-kop"><h2>Vandaag</h2><span class="status ${z.open ? "s-ok" : "s-grijs"}">${z.open ? "Verzenden open" : "Verzenden dicht"}</span></div>
           <div class="voortgang" role="img" aria-label="${z.vandaag} van ${z.max} mails verstuurd"><span data-w="${Math.min(100, Math.round((z.vandaag / Math.max(1, z.max)) * 100))}"></span></div>
@@ -1022,6 +1053,7 @@
             : html`<p class="dempen">${sc.klaar ? "Nog geen zoekopdrachten. Klik op Scout nu zoeken of zet de scout aan." : "Koppel Outscraper om automatisch bedrijven te zoeken."}</p>`}
           <p class="klein dempen">Bronnen: ${Object.entries(d.bron).map(([k, n]) => `${{ scout: "scout", import: "CSV-import", handmatig: "handmatig", website: "website" }[k] || k} ${n}`).join(" · ") || "–"}</p></section>
       </div>`);
+    mailPrestaties(main.querySelector("#mailprest"), d);
     main.querySelectorAll("[data-w]").forEach((el) => el.style.setProperty("--w", el.dataset.w + "%"));
     main.querySelectorAll(".staaf[data-h]").forEach((el) => el.style.setProperty("--h", el.dataset.h + "%"));
     main.querySelector("[data-naar]")?.addEventListener("click", () => { leadFilter = "reactie"; });

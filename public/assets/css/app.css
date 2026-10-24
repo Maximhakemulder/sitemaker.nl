@@ -583,3 +583,6 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .sites-lijst li.actief b { color: var(--paars); }
 @media (max-width: 520px) { .site-kies { max-width: 170px; } }
 @media (max-width: 520px) { .p-kop .binnen { gap: 8px; } .p-kop a > img { width: 118px; height: auto; } .p-kop .wie { flex: 1; min-width: 0; justify-content: flex-end; gap: 8px; } .site-kies { max-width: none; flex: 1; min-width: 0; } }
+
+.kpis.kpis-8 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 520px) { .kpis.kpis-8 { grid-template-columns: 1fr 1fr; } }

@@ -7,14 +7,14 @@ import * as service from "../lib/service.mjs";
 import * as kosten from "../lib/kosten.mjs";
 import { b2bDashboard } from "../lib/b2bstats.mjs";
 import * as websites from "../lib/websites.mjs";
-import { json, HttpError, fail, escH } from "../lib/core.mjs";
+import { json, HttpError, fail, escH, publicBase } from "../lib/core.mjs";
 import { mailReady } from "../lib/mail.mjs";
 import { switchSite, requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
 import { saveDetails, startPayment as startPortalPayment, saveIntake, addIntakeFile, deleteIntakeFile, intakeFile } from "../lib/start.mjs";
 import { submitAppointment } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
-import { checkUnsub, unsubscribe } from "../lib/b2b.mjs";
+import { checkUnsub, unsubscribe, checkTrack, recordTrack } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
 import { one, q, getSettings } from "../lib/core.mjs";
 import * as hq from "../lib/admin.mjs";
@@ -84,6 +84,18 @@ export default async (req, context) => {
         pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 60, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
     }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
+    // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.
+    if (path === "t/o" && m === "GET") {
+      const p = Object.fromEntries(url.searchParams);
+      if (checkTrack(p)) await recordTrack({ ...p, u: undefined, ua: req.headers.get("user-agent") || "" }).catch(() => {});
+      return new Response(Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"), { headers: { "content-type": "image/gif", "cache-control": "no-store, max-age=0" } });
+    }
+    if (path === "t/k" && m === "GET") {
+      const p = Object.fromEntries(url.searchParams);
+      if (!checkTrack(p)) return new Response(null, { status: 302, headers: { location: publicBase(req) + "/" } });
+      await recordTrack({ ...p, ua: req.headers.get("user-agent") || "" }).catch(() => {});
+      return new Response(null, { status: 302, headers: { location: Buffer.from(p.u, "base64url").toString(), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+    }
     if (path === "b2b/afmelden") {
       const id = Number(url.searchParams.get("l")), t = url.searchParams.get("t");
       if (!id || !checkUnsub(id, t)) return htmlPage("Link werkt niet", "Deze afmeldlink is niet (meer) geldig. Stuur ons een mail met 'afmelden', dan regelen we het.");

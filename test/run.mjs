@@ -772,6 +772,31 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     const d = (await call("GET", "hq/b2b", { cookie: admin })).data;
     assert.equal(d.scout.geschiedenis[0].status, "klaar"); assert.equal(d.scout.geschiedenis[0].gevonden, 2); assert.equal(d.scout.bezig, 0);
   });
+  await test("mailstatistieken: open-pixel en klik-links tellen, scanners en vervalste links niet", async () => {
+    const [ml] = await q("SELECT * FROM mail_log WHERE kind = 'b2b-eerste' AND ok ORDER BY id LIMIT 1");
+    assert.ok(ml, "er is een B2B-mail verstuurd in de test");
+    const leadId = Number(ml.ref.slice(5));
+    const html = [...captured].find((m) => m.to === ml.to_email && m.subject === ml.subject)?.html || "";
+    const pix = html.match(/\/api\/t\/o\?([^"]+)/), klik = html.match(/\/api\/t\/k\?([^"]+)/);
+    assert.ok(pix && klik, "mail bevat pixel en ondertekende link");
+    assert.ok(!/t\/k[^"]*afmelden/.test(html) && /api\/b2b\/afmelden/.test(html), "afmeldlink blijft direct");
+    const qs = (m) => m[1].replace(/&amp;/g, "&");
+    const lid = Number(new URLSearchParams(qs(pix)).get("l"));
+    await call("GET", "t/o?" + qs(pix), { raw: true }); // direct na verzenden: telt niet
+    assert.equal((await q("SELECT COUNT(*)::int AS n FROM mail_events WHERE lead_id = $1", [lid]))[0].n, 0);
+    await q("UPDATE mail_log SET created_at = NOW() - INTERVAL '10 minutes' WHERE ref = $1", [`lead:${lid}`]);
+    const o = await call("GET", "t/o?" + qs(pix), { raw: true }); assert.equal(o.headers.get("content-type"), "image/gif");
+    await call("GET", "t/o?" + qs(pix), { raw: true, headers: { "user-agent": "Mimecast Scanner" } });
+    const k = await call("GET", "t/k?" + qs(klik), { raw: true }); assert.equal(k.status, 302); assert.match(k.headers.get("location"), /^https?:\/\//);
+    const vals = new URLSearchParams(qs(klik)); vals.set("u", Buffer.from("https://evil.test").toString("base64url"));
+    const nep = await call("GET", "t/k?" + vals.toString(), { raw: true }); assert.ok(!/evil/.test(nep.headers.get("location")), "geen open redirect");
+    const ev = await q("SELECT soort FROM mail_events WHERE lead_id = $1 ORDER BY id", [lid]);
+    assert.deepEqual(ev.map((e) => e.soort), ["open", "klik"]);
+    const d = (await call("GET", "hq/b2b", { cookie: admin })).data.mail.alles;
+    assert.ok(d.verstuurd >= 1 && d.geopend >= 1 && d.geklikt >= 1, JSON.stringify(d));
+    assert.equal(d.afgeleverd, d.verstuurd - d.bounces);
+    void leadId;
+  });
   await test("B2B-overzicht: zoekplan, vandaag, funnel en per branche", async () => {
     const r = await call("GET", "hq/b2b", { cookie: admin });
     assert.equal(r.status, 200, JSON.stringify(r.data));
