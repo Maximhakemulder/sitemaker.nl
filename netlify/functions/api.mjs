@@ -76,7 +76,7 @@ export default async (req, context) => {
     }
     // ------------------------------------------------ concept-websites (sitemaker.nl/voorbeeld/<token>)
     if (seg[0] === "voorbeeld" && m === "GET") {
-      if (seg[2] === "afbeeldingen" && seg[3]) return await concepts.conceptImage(seg[1], seg[3]);
+      if ((seg[2] === "afbeeldingen" || /^a[0-9a-z]{1,12}$/.test(seg[2] || "")) && seg[3] && seg.length === 4) return await concepts.conceptImage(seg[1], seg[3]);
       if (seg.length === 2) return await concepts.conceptPage(seg[1], { hq: url.searchParams.get("hq") === "1" });
     }
     if (path === "bedrijf" && m === "GET") {
