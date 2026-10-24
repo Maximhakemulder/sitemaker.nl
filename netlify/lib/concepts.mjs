@@ -9,7 +9,7 @@ import { putFile, getFile, deleteFile } from "./files.mjs";
 import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
-import { ontwerp, toonOntwerp } from "./ontwerp.mjs";
+import { ontwerp, toonOntwerp, sanitize } from "./ontwerp.mjs";
 
 export const ONTWERP = { fonts: ["klassiek", "luxe", "editorial", "warm", "modern", "ambacht", "stoer", "strak", "speels"], hero: ["split", "volbeeld", "kader", "typo", "collage"], diensten: ["kaarten", "rijen", "lijst", "foto"], vorm: ["rond", "zacht", "strak"], sfeer: ["licht", "donker", "merk"], kopstijl: ["lijn", "midden", "groot"] };
 export const THEMAS = { elegant: "Elegant (donker, goud)", stoer: "Stoer (geel, zwart)", natuur: "Natuur (crème, groen)", zacht: "Zacht (lila, modern)" };
@@ -480,7 +480,7 @@ ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voor
     // Eigen ontwerp: zonder scripts van de agent; alleen ons eigen script (met nonce) mag draaien.
     const nonce = crypto.randomBytes(16).toString("base64");
     const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script>`;
-    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
+    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`).replace("position:sticky;top:0;", "position:relative;"), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
     return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
       "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
   }
@@ -497,7 +497,37 @@ var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"]
 document.querySelectorAll(".sm-tijden > div").forEach(function(el){if(hit)return;var t=(el.querySelector("dt")||el).textContent.toLowerCase(),r=[],m=t.match(/(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)\\s*(?:t\\/m|tot en met|-|–)\\s*(zondag|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag)/);
 if(m){for(var a=D.indexOf(m[1]),i=a;;i=(i+1)%7){r.push(i);if(i===D.indexOf(m[2])||r.length>7)break}}else D.forEach(function(d,i){if(t.indexOf(d)>-1)r.push(i)});
 if(r.indexOf(vd)>-1){hit=true;el.style.fontWeight="700";var dt=el.querySelector("dt");if(dt)dt.insertAdjacentText("beforeend"," · vandaag")}});
-var R=document.querySelectorAll("[data-reveal]");if(R.length&&"IntersectionObserver"in window&&!matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.classList.add("js");var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-zichtbaar");io.unobserve(e.target)}})},{rootMargin:"0px 0px -8% 0px",threshold:0.08});R.forEach(function(el){io.observe(el)})}})();`;
+
+var d=document,h=d.documentElement,rm=matchMedia("(prefers-reduced-motion: reduce)").matches;
+// kop: klasse zodra er gescrold is
+var kop=d.querySelector("header");function k(){if(kop)kop.classList.toggle("is-gescrold",scrollY>8)}addEventListener("scroll",k,{passive:true});k();
+if(rm||!("IntersectionObserver"in window))return;
+h.classList.add("js");
+// 1. reveals
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-zichtbaar");io.unobserve(e.target)}})},{rootMargin:"0px 0px -8% 0px",threshold:.08});
+d.querySelectorAll("[data-reveal]").forEach(function(el){io.observe(el)});
+// 2. woorden die oplichten tijdens het scrollen
+var scrub=[].slice.call(d.querySelectorAll("[data-scrub]"));
+scrub.forEach(function(el){var t=el.textContent.trim().split(/\\s+/);el.setAttribute("aria-label",el.textContent.trim());el.innerHTML=t.map(function(w){return'<span class="w" aria-hidden="true">'+w.replace(/[&<>]/g,"")+"</span>"}).join(" ")});
+// 3. parallax
+var par=[].slice.call(d.querySelectorAll("[data-parallax]"));
+// 4. verhaal: stappen die actief worden
+var verhalen=[].slice.call(d.querySelectorAll("[data-verhaal]"));
+function stap(v,el){if(el.classList.contains("is-actief"))return;v.querySelectorAll("[data-stap]").forEach(function(s){s.classList.toggle("is-actief",s===el)});
+ var kl=getComputedStyle(el).getPropertyValue("--kleur").trim();if(kl)v.style.setProperty("--temp",kl);
+ var u=el.querySelector("use"),t=el.querySelector("h3,h2");
+ v.querySelectorAll('[data-toon="icoon"] use').forEach(function(x){if(u)x.setAttribute("href",u.getAttribute("href"))});
+ v.querySelectorAll('[data-toon="titel"]').forEach(function(x){if(t)x.textContent=t.textContent});
+ v.querySelectorAll("[data-voortgang]").forEach(function(x){x.style.strokeDashoffset=100-Number(el.dataset.stand||0)})}
+var bezig=false;
+function frame(){bezig=false;var vh=innerHeight;
+ par.forEach(function(el){var r=el.parentElement.getBoundingClientRect();if(r.bottom<-200||r.top>vh+200)return;var p=(r.top+r.height/2-vh/2);el.style.transform="translate3d(0,"+(p*Number(el.dataset.parallax||0)).toFixed(1)+"px,0)"});
+ scrub.forEach(function(el){var r=el.getBoundingClientRect(),w=el.querySelectorAll(".w"),p=Math.min(1,Math.max(0,(vh*.85-r.top)/(r.height+vh*.35))),n=Math.round(p*w.length);w.forEach(function(s,i){s.classList.toggle("aan",i<n)})});
+ verhalen.forEach(function(v){var best=null,bd=1e9;v.querySelectorAll("[data-stap]").forEach(function(s){var r=s.getBoundingClientRect(),dd=Math.abs(r.top+r.height/2-vh*.5);if(dd<bd){bd=dd;best=s}});if(best)stap(v,best)})}
+function req(){if(!bezig){bezig=true;requestAnimationFrame(frame)}}
+addEventListener("scroll",req,{passive:true});addEventListener("resize",req);frame();
+
+})();`;
 
 export async function conceptImage(token, name) {
   const c = await conceptByToken(token);
@@ -565,4 +595,16 @@ export async function listConcepts({ filter = "" } = {}) {
         titel: c.content?.hero?.titel || "", heroImg: hero && c.token ? `/api/voorbeeld/${c.token}/afbeeldingen/${hero}` : "", hqUrl: c.token ? `/voorbeeld/${c.token}?hq=1` : "" };
     }),
   };
+}
+
+// Beheer: een (handmatig verbeterd) ontwerp plaatsen bij een concept. Zelfde veiligheidsfilter als de ontwerp-agent.
+export async function setConceptHtml(conceptId, html, user) {
+  const c = await one("SELECT * FROM concepts WHERE id = $1", [conceptId]);
+  if (!c) fail(404, "Concept niet gevonden.");
+  const namen = new Set((c.images || []).map((i) => i.name));
+  const schoon = sanitize(String(html || ""), { imgBase: "afbeeldingen/", namen });
+  if (!schoon || schoon.length < 2000) fail(400, "Geen geldig HTML-document.");
+  await q("UPDATE concepts SET html = $2, ontwerp_fout = '', ready_at = NOW(), updated_at = NOW() WHERE id = $1", [conceptId, schoon]);
+  await audit(user, "concept_ontwerp", "concept", conceptId, { bytes: schoon.length });
+  return { ok: true, bytes: schoon.length };
 }

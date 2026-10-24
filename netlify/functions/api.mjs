@@ -243,6 +243,7 @@ export default async (req, context) => {
         case "POST team/vraag": return json(await team.askQuestion(user, await body(req)));
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
+        case "PUT concepten/:id/ontwerp": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await concepts.setConceptHtml(id, (await body(req)).html, user));
         case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
         case "PUT leads/:id/concept": return json(await hq.setConceptTheme(id, (await body(req)).thema, user));
         case "DELETE leads/:id/concept": return json(await hq.deleteConcept(id));
