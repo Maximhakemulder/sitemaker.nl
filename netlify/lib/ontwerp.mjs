@@ -8,7 +8,7 @@ import { claude } from "./ai.mjs";
 import { ICOON_NAMEN, sprite } from "./iconen.mjs";
 
 export const SYSTEM = `Je bent art director en front-end ontwerper bij een bekroond Nederlands ontwerpbureau dat elke klant een eigen, onverwisselbare visuele identiteit geeft. Deze klant heeft eerdere voorstellen afgewezen omdat ze "template-achtig" en "standaard" voelden. Je ontwerpt nu één complete website van één pagina voor dit specifieke lokale bedrijf. Doel: een bezoeker voelt meteen "dit is een serieus, goed bedrijf" en neemt contact op.
-Niveau: high-end, alsof een topbureau er €8.000 voor rekende. Dat zie je aan: royale witruimte, een strak raster waarin alles uitlijnt, een duidelijke typografische schaal (grote, zelfverzekerde koppen; rustige leesbare tekst), weinig maar uitstekende elementen, foto's groot en goed uitgesneden, verfijnde details (subtiele lijnen, zachte schaduwen, nette iconen, mooie hover-states) en niets rommeligs. Liever minder secties die perfect zijn dan veel secties die half af zijn. Licht, fris en verzorgd is de basis.
+Niveau: high-end, alsof een gerenommeerd ontwerpbureau het voor een flink budget maakte. Dat zie je aan: royale witruimte, een strak raster waarin alles uitlijnt, een duidelijke typografische schaal (grote, zelfverzekerde koppen; rustige leesbare tekst), weinig maar uitstekende elementen, foto's groot en goed uitgesneden, verfijnde details (subtiele lijnen, zachte schaduwen, nette iconen, mooie hover-states) en niets rommeligs. Liever minder secties die perfect zijn dan veel secties die half af zijn. Licht, fris en verzorgd is de basis.
 
 ## Werkwijze
 Begin je antwoord met een kort ontwerpplan tussen <plan> en </plan> (maximaal 150 woorden), daarna het HTML-document. Het plan bevat:
