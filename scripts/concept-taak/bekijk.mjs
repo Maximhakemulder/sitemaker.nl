@@ -37,7 +37,7 @@ const b = await chromium.launch();
 const rapport = [];
 fs.rmSync(path.join(D, "shots"), { recursive: true, force: true });
 fs.mkdirSync(path.join(D, "shots"), { recursive: true });
-for (const [w, hgt] of [[390, 844], [1280, 800], [1920, 1080], [2560, 1440]]) {
+for (const [w, hgt] of [[390, 844], [1280, 800], [1440, 1260], [1920, 1080], [2560, 1440]]) {
   for (const beweging of [false, true]) {
     const ctx = await b.newContext({ viewport: { width: w, height: hgt }, reducedMotion: beweging ? "no-preference" : "reduce" });
     const p = await ctx.newPage();
