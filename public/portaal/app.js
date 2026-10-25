@@ -230,7 +230,7 @@
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <fieldset><legend>1. Je bedrijf</legend>
           ${tekstvak("omschrijving", "Wat doet je bedrijf, en voor wie?", i.omschrijving, { rows: 5, plaats: "Bijvoorbeeld: wij zijn een hoveniersbedrijf in Utrecht en omgeving. We leggen tuinen aan en onderhouden ze voor particulieren." })}
-          ${tekstvak("diensten", "Je belangrijkste diensten", i.diensten, { rows: 6, hulp: "Eén per regel, met een korte uitleg. Zet er een prijs bij als die op je site mag.", plaats: "Tuinontwerp: we tekenen je tuin samen met jou\nAanleg: van grondwerk tot beplanting\nOnderhoud: vanaf € 45 per uur" })}
+          ${tekstvak("diensten", "Je belangrijkste diensten", i.diensten, { rows: 6, hulp: "Eén per regel, met een korte uitleg. Zet er een prijs bij als die op je site mag.", plaats: "Tuinontwerp: we tekenen je tuin samen met jou\nAanleg: van grondwerk tot beplanting\nOnderhoud: vaste afspraken per seizoen" })}
           ${keuze("prijzenTonen", "Mogen er prijzen op je website?", { ja: "Ja", deels: "Alleen vanaf-prijzen", nee: "Nee" }, i.prijzenTonen, { opt: true })}
           ${tekstvak("onderscheid", "Waarom kiezen klanten voor jou?", i.onderscheid, { opt: true, rows: 3, hulp: "Hoe concreter hoe beter: jaren ervaring, keurmerken of certificaten, garanties, snelheid. We zetten alleen op je site wat jij hier noemt.", plaats: "Al 15 jaar in de regio, VCA-gecertificeerd, 2 jaar garantie op aanleg" })}
           <div class="rij2">${veld("werkgebied", "Werkgebied of plaatsen", i.werkgebied, { opt: true })}${veld("doelgroep", "Voor wie werk je?", i.doelgroep, { opt: true, hulp: "Bijv. particulieren, VvE's, bedrijven" })}</div>
