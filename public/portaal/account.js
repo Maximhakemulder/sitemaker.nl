@@ -8,12 +8,12 @@
   const VRAAG = { open: ["We kijken ernaar", "s-info"], beantwoord: ["Beantwoord", "s-ok"], gesloten: ["Afgerond", "s-grijs"] };
 
   async function toon(main, state) {
-    render(main, html`<div class="hq-kop"><div><h1>Account</h1><p>Je domeinnaam, hulp van ons en je abonnement.</p></div></div><p class="dempen">Laden…</p>`);
+    render(main, html`<div class="hq-kop"><div><h1>Account</h1><p>Hulp van ons, je websites en je abonnement.</p></div></div><p class="dempen">Laden…</p>`);
     try { acc = await api("portal/account"); } catch (e) { render(main, html`<div class="melding melding-fout">${e.message}</div>`); return; }
     const sub = (location.hash.split("/")[1] || "");
     if (sub === "opzeggen") return opzeggen(main, state);
     render(main, html`
-      <div class="hq-kop"><div><h1>Account</h1><p>Je domeinnaam, hulp van ons en je abonnement.</p></div></div>
+      <div class="hq-kop"><div><h1>Account</h1><p>Hulp van ons, je websites en je abonnement.</p></div></div>
       <div class="p-raster">
         <div>
           <section class="paneel" id="domein" aria-labelledby="t-domein"></section>
@@ -35,8 +35,9 @@
 
   // ------------------------------------------------ domein
   function domein(vak) {
-    const { domein: d, suggestie } = acc.domein;
-    if (!d) return domeinKiezen(vak, suggestie);
+    const { domein: d } = acc.domein;
+    // De domeinnaam geeft de klant op bij de start (informatie aanleveren). Hier alleen nog de stappen zolang hij niet werkt.
+    if (!d || d.status === "actief") { vak.hidden = true; return; }
     const ins = d.instructies;
     render(vak, html`
       <div class="paneel-kop"><h2 id="t-domein">Domeinnaam</h2><span class="status ${STATUS_KLASSE[d.status] || "s-grijs"}">${d.statusLabel}</span></div>
@@ -54,33 +55,17 @@
           <p class="klein dempen">We controleren het ook zelf elk halfuur en mailen je als het werkt.</p>`}`
       : html`<p>${d.keuze === "verhuizen" ? "We verhuizen je domein naar Sitemaker en zetten alles voor je goed." : "We registreren deze domeinnaam op jouw naam en zetten alles voor je goed."} Eventuele kosten voor registratie of verlenging spreken we vooraf met je af.</p>
         ${d.status === "actief" ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Je website draait op ${d.naam}.</p></div>` : html`<p class="klein dempen">We nemen contact met je op als we iets van je nodig hebben.</p>`}`}
-      <details class="anders"><summary>Ander domein invullen</summary><div id="opnieuw"></div></details>`);
+      <p class="klein dempen">Klopt de domeinnaam niet? Stel hieronder een vraag, dan passen we het aan.</p>`);
     vak.querySelectorAll("[data-kopieer]").forEach((b) => b.addEventListener("click", async () => { try { await navigator.clipboard.writeText(b.dataset.kopieer); toast("Gekopieerd"); } catch { toast("Kopiëren lukte niet; selecteer de tekst", "fout"); } }));
     vak.querySelector("#dns-check")?.addEventListener("click", async (e) => {
       SM.bezig(e.target, true, "Controleren…");
       try { acc.domein = await api("portal/domein/check", { method: "POST" }); domein(vak); toast(acc.domein.domein.dnsOk ? "Het klopt!" : "Nog niet goed; zie de uitleg"); }
       catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); }
     });
-    vak.querySelector("details").addEventListener("toggle", (e) => { if (e.target.open) domeinKiezen(vak.querySelector("#opnieuw"), d.naam, true); }, { once: true });
+
   }
 
-  function domeinKiezen(vak, suggestie, binnen = false) {
-    render(vak, html`
-      ${binnen ? "" : html`<h2 id="t-domein">Domeinnaam</h2><p>Op welk adres moet je website komen? Je domeinnaam blijft van jou en blijft bij je eigen provider; wij verbinden hem met je website. Je e-mail blijft gewoon werken.</p>`}
-      <form novalidate class="domein-form"><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-        <div class="veld"><label for="d-naam">Je domeinnaam</label><input id="d-naam" name="naam" value="${suggestie || ""}" placeholder="jouwbedrijf.nl" autocomplete="off" autocapitalize="off" spellcheck="false" required><div class="fout" data-fout-voor="naam"></div></div>
-        <div class="veld"><label for="d-prov">Bij welke provider staat hij? <span class="opt">(optioneel)</span></label><input id="d-prov" name="provider" placeholder="Bijvoorbeeld TransIP, Hostnet, Strato"><div class="hulp">Dan weten we waar je de instellingen kunt vinden.</div></div>
-        <div class="knoppen"><button class="knop knop-actie" type="submit">Opslaan</button></div>
-        ${binnen ? "" : html`<details class="anders"><summary>Ik heb nog geen domeinnaam</summary><p class="klein">Koop eerst een domeinnaam bij een provider naar keuze, bijvoorbeeld TransIP, Hostnet of Strato. Zet hem op naam van je bedrijf, dan is hij altijd van jou. Vul hem daarna hier in; wij zorgen dat je website erop komt. Tot die tijd staat je website op een tijdelijk adres.</p></details>`}
-      </form>`);
-    const form = vak.querySelector("form");
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault(); SM.wisFouten(form);
-      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Opslaan…");
-      try { acc.domein = await api("portal/domein", { method: "POST", body: { keuze: "eigen", ...Object.fromEntries(new FormData(form)) } }); toast("Opgeslagen"); domein(document.querySelector("#domein")); }
-      catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
-    });
-  }
+
 
   // ------------------------------------------------ meerdere websites
   const SITESTATUS = { in_aanbouw: ["In aanbouw", "s-info"], live: ["Online", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] };

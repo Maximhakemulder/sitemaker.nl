@@ -7,6 +7,7 @@ import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady, startFirstPayment } from "./mollie.mjs";
 import { priceParts } from "./billing.mjs";
 import { THEMAS } from "./sites.mjs";
+import { normDomain, koppelDomein } from "./domains.mjs";
 
 export const MAX_INTAKE_FILES = 20;
 
@@ -136,6 +137,7 @@ const INTAKE_FIELDS = {
   omschrijving: 3000, diensten: 3000, prijzenTonen: 10, onderscheid: 2000, werkgebied: 300, doelgroep: 1000, openingstijden: 1000,
   hoofdactie: 20, boekingslink: 300, aanspreekvorm: 5,
   sitePhone: 40, whatsapp: 40, siteEmail: 200, siteAddress: 300, socials: 1000, domein: 200, huidigeSite: 300,
+  domeinProvider: 80,
   stijl: 20, kleuren: 300, drieWoorden: 200, voorbeelden: 1000, voorbeeldenWaarom: 1000, nietWillen: 1000,
   sfeerfotos: 5, reviewsLink: 300, reviewsToestemming: 5, team: 1500, vragen: 3000, opmerkingen: 3000,
 };
@@ -197,8 +199,11 @@ export async function saveIntake(user, b) {
     if (!intake.sitePhone && !intake.siteEmail) fouten.push(["sitePhone", "Vul minstens een telefoonnummer of e-mailadres in voor op je website."]);
     if (!intake.hoofdactie) fouten.push(["hoofdactie", "Kies wat een bezoeker vooral moet doen."]);
     if (intake.hoofdactie === "whatsapp" && !intake.whatsapp) fouten.push(["whatsapp", "Vul je WhatsApp-nummer in."]);
+    if (intake.domein && !normDomain(intake.domein)) fouten.push(["domein", "Vul een geldige domeinnaam in, bijvoorbeeld jouwbedrijf.nl, of laat het leeg."]);
     if (fouten.length) fail(400, fouten[0][1], { field: fouten[0][0], errors: Object.fromEntries(fouten) });
   }
+  // Domeinnaam opgegeven: meteen vastleggen, dan koppelen we hem zodra de site er is (en tonen we de DNS-stappen).
+  if (verstuur && intake.domein) await koppelDomein({ customerId: c.id, userId: user.id, naam: intake.domein, provider: intake.domeinProvider }).catch((e) => { if (e.status === 409) throw e; console.log("[start] domein", e.message); });
   await q("UPDATE customers SET intake = $2::jsonb, intake_at = $3, updated_at = NOW() WHERE id = $1", [c.id, JSON.stringify(intake), verstuur ? new Date().toISOString() : null]);
   if (!verstuur) return { ok: true, saved: true };
 

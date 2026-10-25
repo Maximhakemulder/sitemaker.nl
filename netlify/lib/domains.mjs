@@ -152,11 +152,18 @@ export async function portalDomain(customerId) {
 }
 
 export async function chooseDomain(user, b) {
+  return koppelDomein({ customerId: user.customer_id, userId: user.id, naam: b.naam, provider: b.provider, veld: "naam" });
+}
+
+// Domein vastleggen en (als de site al bestaat) koppelen. Gebruikt bij het aanleveren van informatie in de onboarding.
+export async function koppelDomein({ customerId, userId = null, naam: invoer, provider = "", veld = "domein" }) {
+  const user = { id: userId, customer_id: customerId };
+  const b = { provider };
   // Sitemaker registreert en beheert geen domeinen: de klant koopt het zelf, wij verbinden het.
   const keuze = "eigen";
-  const naam = normDomain(b.naam);
-  if (!naam) fail(400, "Vul een geldige domeinnaam in, bijvoorbeeld jouwbedrijf.nl.", { field: "naam" });
-  if (await one("SELECT 1 FROM domains WHERE naam = $1 AND status <> 'opgezegd' AND customer_id <> $2", [naam, user.customer_id])) fail(409, "Deze domeinnaam is al aan een andere klant gekoppeld. Neem contact met ons op.", { field: "naam" });
+  const naam = normDomain(invoer);
+  if (!naam) fail(400, "Vul een geldige domeinnaam in, bijvoorbeeld jouwbedrijf.nl.", { field: veld });
+  if (await one("SELECT 1 FROM domains WHERE naam = $1 AND status <> 'opgezegd' AND customer_id <> $2", [naam, user.customer_id])) fail(409, "Deze domeinnaam is al aan een andere klant gekoppeld. Neem contact met ons op.", { field: veld });
   const bestaand = await one("SELECT id FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' ORDER BY id DESC LIMIT 1", [user.customer_id]);
   const status = keuze === "eigen" ? "wacht_op_klant" : keuze === "verhuizen" ? "verhuizen" : "registreren";
   const vals = [naam, keuze, status, str(b.provider, 80), str(b.verhuiscode, 120)];
