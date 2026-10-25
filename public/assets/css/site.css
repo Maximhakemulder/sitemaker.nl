@@ -496,10 +496,13 @@ p { margin: 0 0 1em; }
   .mobiel-cta .knop { width: auto; margin-left: auto; min-height: 44px; padding: 0 14px; font-size: 15px; box-shadow: 0 3px 0 var(--knop-rand); }
 }
 /* Contactpagina */
-.contact { background: var(--t-ijs); padding: 64px 0 96px; }
-.contact .wrap { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: start; }
-.contact h1 { font-size: clamp(36px, 5vw, 56px); line-height: 1.04; letter-spacing: -0.025em; margin-bottom: 16px; }
-.contact-lead { font-size: clamp(17px, 1.6vw, 20px); color: var(--grijs); margin-bottom: 28px; }
+.contact-kop { background: var(--paars); color: var(--wit); padding: 72px 0 150px; }
+.contact-kop h1 { font-size: clamp(40px, 5.6vw, 72px); line-height: 1.02; letter-spacing: -0.025em; margin-bottom: 18px; }
+.contact-lead { font-size: clamp(17px, 1.6vw, 20px); color: #E3DDF5; max-width: 34em; margin: 0; }
+.contact { background: var(--t-ijs); padding: 0 0 96px; }
+.contact .wrap { display: grid; grid-template-columns: .85fr 1.15fr; gap: 48px; align-items: start; }
+.contact-uitleg { padding-top: 40px; }
+.contact .formulier { margin-top: -96px; position: relative; }
 .contact-wegen { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
 .contact-wegen li { display: flex; gap: 14px; align-items: flex-start; }
 .contact-wegen li[hidden] { display: none; }
@@ -509,7 +512,7 @@ p { margin: 0 0 1em; }
 .contact-wegen a { color: var(--paars); font-weight: 700; }
 .contact .formulier { box-shadow: 0 18px 50px rgba(28,7,71,.10); }
 .contact .formulier .knop { width: 100%; justify-content: center; }
-@media (max-width: 900px) { .contact .wrap { grid-template-columns: 1fr; gap: 32px; } .contact { padding: 40px 0 64px; } }
+@media (max-width: 900px) { .contact .wrap { grid-template-columns: 1fr; gap: 28px; } .contact { padding: 0 0 64px; } .contact-kop { padding: 44px 0 110px; } .contact .formulier { order: -1; margin-top: -72px; } .contact-uitleg { padding-top: 0; } }
 @media (max-width: 700px) {
   .hero-garanties { margin: 0 auto 22px; }
   .garantie { padding: 12px 14px; }

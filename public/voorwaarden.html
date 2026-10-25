@@ -9,10 +9,27 @@
 <link rel="icon" href="/favicon.png" type="image/png">
 <link rel="stylesheet" href="/assets/css/fonts.css">
 <link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/site.js" defer></script>
 <script src="/assets/js/juridisch.js" defer></script>
 </head>
 <body>
-<header class="kop"><div class="wrap"><a class="logo" href="/" aria-label="Sitemaker, naar de startpagina"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker" width="194" height="30"></a><a class="knop knop-actie" href="/#kennismaking">Plan een kennismaking</a></div></header>
+<header class="kop">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Sitemaker, naar de startpagina"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker" width="194" height="30"></a>
+    <button class="menuknop" type="button" aria-expanded="false" aria-controls="menu" aria-label="Menu openen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav id="menu" aria-label="Hoofdmenu">
+      <a href="/#wat-je-krijgt">Prijs</a>
+      <a href="/#hoe-het-werkt">Hoe het werkt</a>
+      <a href="/#portaal">Portaal</a>
+      <a href="/#vragen">Vragen</a>
+      <a href="/contact">Contact</a>
+      <a class="inloggen" href="/portaal/">Inloggen klanten</a>
+      <a class="knop knop-actie" href="/#kennismaking">Plan een kennismaking</a>
+    </nav>
+  </div>
+</header>
 <main class="pagina juridisch"><div class="wrap">
 <h1>Algemene voorwaarden</h1>
 <p class="versie">Versie 1.0 · geldig vanaf 24 oktober 2026</p>
@@ -131,6 +148,34 @@
 
 <p class="klein"><span data-bedrijf="volledig">Sitemaker</span></p>
 </div></main>
-<footer class="voet"><div class="wrap"><div class="regel"><span>© 2026 Sitemaker</span><span><a href="/contact">Contact</a> · <a href="/privacy.html">Privacyverklaring</a> · <a href="/voorwaarden.html">Algemene voorwaarden</a> · <a href="#" data-cookies>Cookies</a></span></div></div></footer>
+<footer class="voet">
+  <div class="wrap">
+    <div>
+      <img src="/assets/brand/logo-wit.png" alt="Sitemaker – Maak van je website je beste verkoper" width="180" height="34">
+      <p>Professionele websites voor bedrijven. €299,95 eenmalig + €69,95 per maand, online binnen 48 uur (2 werkdagen).</p>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <ul>
+        <li><a href="/contact">Stuur ons een bericht</a></li>
+        <li><a href="mailto:info@sitemaker.nl" data-bedrijf="email">info@sitemaker.nl</a></li>
+        <li><a href="/#kennismaking">Plan een kennismaking</a></li>
+        <li><a href="/portaal/">Klantenportaal</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Informatie</h4>
+      <ul>
+        <li><a href="/privacy.html">Privacyverklaring</a></li>
+        <li><a href="/voorwaarden.html">Algemene voorwaarden</a></li>
+        <li><a href="#" data-cookies>Cookie-instellingen</a></li>
+      </ul>
+    </div>
+    <div class="regel">
+      <span>© <span id="jaar">2026</span> Sitemaker</span>
+      <span>Maak van je website je beste verkoper</span>
+    </div>
+  </div>
+</footer>
 </body>
 </html>
