@@ -40,13 +40,34 @@ export async function submitAppointment(b, ip) {
 
   pending.push(sendMail({
     to: email, kind: "aanvraag-bevestiging", ref: `appointment:${a.id}`, subject: "We hebben je aanvraag ontvangen",
-    text: `Hoi ${name},\n\nBedankt voor je aanvraag voor een kennismaking met Sitemaker. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.\n\nTer herinnering: een website kost €299,95 eenmalig + €69,95 per maand. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online.\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Hoi ${name},\n\nBedankt voor je aanvraag voor een kennismaking met Sitemaker. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.\n\nTer herinnering: een website kost €299,95 eenmalig + €69,95 per maand. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Bedankt voor je aanvraag",
       intro: [`Hoi ${escH(name)},`, `Bedankt voor je aanvraag voor een kennismaking. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.`,
-        `Ter herinnering: <b>€299,95 eenmalig + €69,95 per maand</b>. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online.`],
+        `Ter herinnering: <b>€299,95 eenmalig + €69,95 per maand</b>. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.`],
     }),
   }).catch(() => {}));
   await Promise.allSettled(pending);
+  return { ok: true };
+}
+
+// Contactformulier (/contact): een gewone vraag of bericht. Komt binnen als klantvraag in HQ (bron "website").
+export async function submitContact(b, ip) {
+  if (str(b.website_url)) return { ok: true };
+  if (b.t && Date.now() - Number(b.t) < 2000) return { ok: true };
+  const errors = {};
+  const naam = str(b.naam, 120), email = cleanEmail(b.email), bedrijf = str(b.bedrijf, 160), telefoon = str(b.telefoon, 30), bericht = str(b.bericht, 4000);
+  if (naam.length < 2) errors.naam = "Vul je naam in.";
+  if (!EMAIL_RE.test(email)) errors.email = "Vul een geldig e-mailadres in, bijvoorbeeld naam@bedrijf.nl.";
+  if (telefoon && !/^[+()\d\s-]{8,20}$/.test(telefoon)) errors.telefoon = "Dit telefoonnummer klopt niet. Laat het leeg als je liever gemaild wordt.";
+  if (bericht.length < 10) errors.bericht = "Schrijf je bericht in een paar woorden.";
+  if (Object.keys(errors).length) fail(400, "Controleer de gemarkeerde velden.", { errors });
+  const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM tickets WHERE bron = 'website' AND (lower(email) = $1 OR created_at > NOW() - INTERVAL '2 minutes') AND created_at > NOW() - INTERVAL '1 hour'", [email]);
+  if (n >= 5) fail(429, "We hebben net al berichten van je ontvangen. We reageren zo snel mogelijk.");
+  const klant = await one("SELECT customer_id FROM users WHERE lower(email) = $1 AND customer_id IS NOT NULL LIMIT 1", [email]).catch(() => null);
+  const { newTicket } = await import("./service.mjs");
+  const extra = [bedrijf && `Bedrijf: ${bedrijf}`, telefoon && `Telefoon: ${telefoon}`].filter(Boolean).join("\n");
+  await newTicket({ customerId: klant?.customer_id || null, email, naam: bedrijf ? `${naam} (${bedrijf})` : naam,
+    onderwerp: `Bericht via de website${bedrijf ? `: ${bedrijf}` : ""}`, tekst: bericht + (extra ? `\n\n${extra}` : ""), bron: "website" });
   return { ok: true };
 }

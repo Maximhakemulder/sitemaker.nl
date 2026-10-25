@@ -495,6 +495,21 @@ p { margin: 0 0 1em; }
   .mobiel-cta .prijsje b { display: block; color: var(--paars); font-size: 14px; }
   .mobiel-cta .knop { width: auto; margin-left: auto; min-height: 44px; padding: 0 14px; font-size: 15px; box-shadow: 0 3px 0 var(--knop-rand); }
 }
+/* Contactpagina */
+.contact { background: var(--t-ijs); padding: 64px 0 96px; }
+.contact .wrap { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: start; }
+.contact h1 { font-size: clamp(36px, 5vw, 56px); line-height: 1.04; letter-spacing: -0.025em; margin-bottom: 16px; }
+.contact-lead { font-size: clamp(17px, 1.6vw, 20px); color: var(--grijs); margin-bottom: 28px; }
+.contact-wegen { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+.contact-wegen li { display: flex; gap: 14px; align-items: flex-start; }
+.contact-wegen li[hidden] { display: none; }
+.contact-wegen svg { width: 44px; height: 44px; padding: 11px; border-radius: 12px; background: var(--paars); color: var(--cyaan); flex: none; }
+.contact-wegen b { display: block; }
+.contact-wegen span { color: var(--grijs); }
+.contact-wegen a { color: var(--paars); font-weight: 700; }
+.contact .formulier { box-shadow: 0 18px 50px rgba(28,7,71,.10); }
+.contact .formulier .knop { width: 100%; justify-content: center; }
+@media (max-width: 900px) { .contact .wrap { grid-template-columns: 1fr; gap: 32px; } .contact { padding: 40px 0 64px; } }
 @media (max-width: 700px) {
   .hero-garanties { margin: 0 auto 22px; }
   .garantie { padding: 12px 14px; }
