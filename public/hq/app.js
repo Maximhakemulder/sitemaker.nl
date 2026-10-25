@@ -479,7 +479,7 @@
 
   const INTAKE_LABEL = { omschrijving: "Wat doet het bedrijf", diensten: "Diensten", onderscheid: "Waarom kiezen klanten voor hen", werkgebied: "Werkgebied", doelgroep: "Klanten", openingstijden: "Openingstijden",
     sitePhone: "Telefoon op de site", siteEmail: "E-mail op de site", siteAddress: "Adres op de site", socials: "Social media", domein: "Domeinnaam", huidigeSite: "Huidige website", stijl: "Stijl", kleuren: "Kleuren", voorbeelden: "Mooie websites", opmerkingen: "Opmerkingen",
-    prijzenTonen: "Prijzen tonen", hoofdactie: "Belangrijkste actie", boekingslink: "Online agenda", aanspreekvorm: "Je of u", whatsapp: "WhatsApp", drieWoorden: "Zo wil hij overkomen", voorbeeldenWaarom: "Wat hij daar mooi aan vindt", nietWillen: "Beslist niet", sfeerfotos: "Sfeerfoto's mogen", reviewsLink: "Google-reviews", reviewsToestemming: "Reviews tonen", team: "Team", vragen: "Veelgestelde vragen", voorIngevuld: "Vooraf ingevuld uit" };
+    prijzenTonen: "Prijzen tonen", hoofdactie: "Belangrijkste actie", boekingslink: "Online agenda", aanspreekvorm: "Je of u", whatsapp: "WhatsApp", drieWoorden: "Zo wil hij overkomen", voorbeeldenWaarom: "Wat hij daar mooi aan vindt", nietWillen: "Beslist niet", sfeerfotos: "Sfeerfoto's mogen", reviewsLink: "Google-reviews", reviewsToestemming: "Reviews tonen", team: "Team", vragen: "Veelgestelde vragen", voorIngevuld: "Vooraf ingevuld uit", domeinProvider: "Provider domein" };
   function startPaneel(st, c) {
     const stap = (ok, tekst, wanneer) => html`<li><span class="ic ${ok ? "ja" : "nee"}">${ok ? raw(icon.ok) : "·"}</span><div>${tekst}${wanneer ? html`<small>${tijd(wanneer)}</small>` : ""}</div></li>`;
     const ingevuld = Object.keys(INTAKE_LABEL).map((k) => [k, (st.intake || {})[k]]).filter(([, v]) => v);

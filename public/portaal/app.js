@@ -247,10 +247,14 @@
         </fieldset>
         <fieldset><legend>3. Je merk en sfeer</legend>
           ${veld("drieWoorden", "Hoe wil je overkomen, in drie woorden?", i.drieWoorden, { opt: true, hulp: "Bijvoorbeeld: betrouwbaar, nuchter, vakkundig. Of: luxe, rustig, persoonlijk." })}
-          <div class="rij2">${veld("kleuren", "Je kleuren", i.kleuren, { opt: true, hulp: "Bijv. de kleuren van je logo. Weet je het niet? Dan halen wij ze uit je logo." })}${veld("domein", "Domeinnaam", i.domein, { opt: true, hulp: "Heb je er nog geen? Koop hem zelf bij een provider; wij verbinden hem met je site." })}</div>
+          ${veld("kleuren", "Je kleuren", i.kleuren, { opt: true, hulp: "Bijv. de kleuren van je logo. Weet je het niet? Dan halen wij ze uit je logo." })}
           <div class="rij2">${veld("voorbeelden", "Websites die je mooi vindt", i.voorbeelden, { opt: true })}${veld("voorbeeldenWaarom", "Wat vind je daar mooi aan?", i.voorbeeldenWaarom, { opt: true })}</div>
           ${tekstvak("nietWillen", "Wat wil je beslist niet op je website?", i.nietWillen, { opt: true, rows: 2, plaats: "Bijv. geen roze, geen foto's van mij, geen prijzen" })}
           ${veld("huidigeSite", "Huidige website", i.huidigeSite, { opt: true })}
+        </fieldset>
+        <fieldset><legend>Domeinnaam</legend>
+          <p class="klein dempen">Op welk adres moet je website komen? Je domeinnaam blijft van jou en bij je eigen provider; wij verbinden hem met je website en je e-mail blijft gewoon werken. Heb je er nog geen? Koop er een bij een provider zoals TransIP, Hostnet of Strato, op naam van je bedrijf. Tot die tijd staat je website op een tijdelijk adres.</p>
+          <div class="rij2">${veld("domein", "Je domeinnaam", i.domein, { opt: true, hulp: "Bijv. jouwbedrijf.nl" })}${veld("domeinProvider", "Bij welke provider staat hij?", i.domeinProvider, { opt: true, hulp: "Bijv. TransIP, Hostnet, Strato" })}</div>
         </fieldset>
         <fieldset><legend>4. Beeld en vertrouwen</legend>
           ${keuze("sfeerfotos", "Mogen we sfeerfoto's gebruiken waar eigen foto's ontbreken?", { ja: "Ja, prima", nee: "Nee, alleen mijn eigen foto's" }, i.sfeerfotos, { opt: true })}

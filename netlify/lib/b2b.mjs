@@ -76,8 +76,12 @@ function textToHtml(text, meet = null) {
     return `<a href="${escH(href)}" style="color:#1C0747">${u}</a>`;
   });
   const pixel = meet?.opens ? `<img src="${escH(trackPixel(meet.leadId, meet.mail))}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px">` : "";
+  // Visitekaartje van Maxim tussen de mail en de wettelijke voetregel.
+  const [hoofd, ...rest] = text.split(/\n\n--\n/);
+  const voet = rest.join("\n\n--\n");
+  const kaart = `<p style="margin:18px 0 18px"><a href="${escH(publicBase())}" style="text-decoration:none"><img src="${escH(publicBase())}/assets/brand/maxim-visitekaart.png" width="400" height="200" alt="Maxim, websiteadviseur bij Sitemaker · +31 6 19 92 12 22 · www.sitemaker.nl · hallo@sitemaker.nl" style="display:block;border:0;width:100%;max-width:400px;height:auto;border-radius:10px"></a></p>`;
   return `<!doctype html><html lang="nl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#1C0747">
-${text.split(/\n\n/).map((p) => `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`).join("")}${pixel}</body></html>`;
+${hoofd.split(/\n\n/).map((p) => `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${linkify(voet).replace(/\n/g, "<br>")}</p>` : ""}${pixel}</body></html>`;
 }
 // Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
 const SCANNER = /bot|crawl|spider|preview|scanner|safelinks|barracuda|mimecast|proofpoint|curl|python|go-http|headless/i;
