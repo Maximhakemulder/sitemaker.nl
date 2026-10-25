@@ -15,7 +15,7 @@ import { mailReady } from "../lib/mail.mjs";
 import { switchSite, requestCode, verifyCode, loginWithKey, keyLoginOpen, openMode, viewAsCustomer, openPortalAs, currentUser, logout, clearCookie, ipOf, requireCustomer, requireStaff, requireAdmin, isStaff } from "../lib/auth.mjs";
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
 import { saveDetails, startPayment as startPortalPayment, saveIntake, addIntakeFile, deleteIntakeFile, intakeFile } from "../lib/start.mjs";
-import { submitAppointment } from "../lib/site.mjs";
+import { submitAppointment, submitContact } from "../lib/site.mjs";
 import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
 import { checkUnsub, unsubscribe, checkTrack, recordTrack } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
@@ -86,7 +86,7 @@ export default async (req, context) => {
       const s = await getSettings(), co = s.company;
       const adres = [co.address, [co.postcode, co.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
       return json({ naam: co.name || "Sitemaker", rechtsvorm: co.legalName || "", kvk: co.kvk || "", btw: co.vat || "", adres, email: co.email || "", telefoon: co.phone || "",
-        pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 60, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
+        pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 30, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
     }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
     // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.
@@ -141,6 +141,7 @@ export default async (req, context) => {
     if (seg[0] === "voorbeeld" && seg[2] === "gezien" && m === "POST") return json(await concepts.markViewed(seg[1]));
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
+    if (path === "contact" && m === "POST") return json(await submitContact(await body(req), ipOf(req, context)));
 
     // ------------------------------------------------ inloggen
     if (path === "auth/code" && m === "POST") {

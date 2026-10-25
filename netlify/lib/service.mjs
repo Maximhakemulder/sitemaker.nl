@@ -22,7 +22,7 @@ export async function newTicket({ customerId = null, email = "", naam = "", onde
     [customerId, str(email, 200), str(naam, 120), str(onderwerp, 160) || "Vraag", bron, str(messageId, 300)]);
   await q("INSERT INTO ticket_messages (ticket_id, van, tekst, message_id, user_id) VALUES ($1,'klant',$2,$3,$4)", [t.id, str(tekst, 6000), str(messageId, 300), userId]);
   await queueDraft(t.id).catch((e) => console.log("[service] concept", e.message));
-  await notifyStaff(`Klantvraag: ${t.onderwerp}`, [`${naam || email || "Een klant"} stelt een vraag${bron === "mail" ? " per mail" : bron === "opzeggen" ? " tijdens het opzeggen" : " in het portaal"}:`, str(tekst, 600)], `/hq/#service`).catch(() => {});
+  await notifyStaff(`Klantvraag: ${t.onderwerp}`, [`${naam || email || "Een klant"} stelt een vraag${bron === "mail" ? " per mail" : bron === "opzeggen" ? " tijdens het opzeggen" : bron === "website" ? " via het contactformulier" : " in het portaal"}:`, str(tekst, 600)], `/hq/#service`).catch(() => {});
   return t;
 }
 
@@ -80,7 +80,7 @@ export async function draftAnswer(ticketId) {
   const msgs = await q("SELECT van, tekst FROM ticket_messages WHERE ticket_id = $1 ORDER BY created_at", [t.id]);
   try {
     const tekst = await claude({
-      system: `Je bent Emma van de klantenservice van Sitemaker (websites voor het mkb: €299,95 eenmalig + €69,95 per maand, hosting inbegrepen, ${OFFER.changesPerMonth} wijzigingen per maand via het klantenportaal, verwerkt binnen 48 uur; nieuwe site binnen ${OFFER.deliveryText}; geen webshops). Schrijf een kort, vriendelijk en concreet antwoord in de je-vorm, in het Nederlands. Beloof niets wat niet in deze informatie staat (geen kortingen, geen extra diensten, geen termijnen die je niet weet); zeg dan dat je het nagaat. Wijzigingen aan de website laat je de klant doorgeven via het portaal (${portalUrl()}). Onderteken met "Groet, Sitemaker". Alleen de mailtekst, geen onderwerp.`,
+      system: `Je bent Emma van de klantenservice van Sitemaker (websites voor het mkb: €299,95 eenmalig + €69,95 per maand, hosting inbegrepen, ${OFFER.changesPerMonth} wijzigingen per maand via het klantenportaal, verwerkt binnen 48 uur; nieuwe site binnen ${OFFER.deliveryText}; geen webshops). Schrijf een kort, vriendelijk en concreet antwoord in de je-vorm, in het Nederlands. Beloof niets wat niet in deze informatie staat (geen kortingen, geen extra diensten, geen termijnen die je niet weet); zeg dan dat je het nagaat. Wijzigingen aan de website laat je de klant doorgeven via het portaal (${portalUrl()}). Garantie: wie binnen 30 dagen na livegang niet tevreden is, krijgt alles terug. Is het (nog) geen klant, bijvoorbeeld een bericht via het contactformulier, nodig dan uit voor een kennismaking (${publicBase()}/#kennismaking). Onderteken met "Groet, Sitemaker". Alleen de mailtekst, geen onderwerp.`,
       prompt: `Klant: ${t.company || t.naam || t.email}${t.site_url ? ` (site: ${t.site_url}, status ${t.site_status})` : ""}\nOnderwerp: ${t.onderwerp}\n\nGesprek:\n${msgs.map((m) => `${m.van === "klant" ? "Klant" : "Sitemaker"}: ${m.tekst}`).join("\n\n")}`,
       maxTokens: 1500, timeoutMs: 60000,
     });

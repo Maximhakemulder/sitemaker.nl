@@ -130,7 +130,7 @@ export async function opslaan(id, { content, html }) {
   const fouten = feitencheck(h, schoon);
   if (fouten.length) fail(400, `Feitencontrole: ${fouten.slice(0, 6).join(", ")}. Haal dit weg of neem het exact over uit content.json.`);
   const s = await getSettings();
-  const dagen = Number(s.b2b.concepten?.geldigDagen || 60);
+  const dagen = Number(s.b2b.concepten?.geldigDagen || 30);
   await q(`UPDATE concepts SET status = 'klaar', content = $2, html = $3, ontwerp_fout = '', reden = '', ready_at = NOW(), expires_at = NOW() + ($4 || ' days')::interval, updated_at = NOW() WHERE id = $1`,
     [id, JSON.stringify(schoon), h, String(dagen)]);
   await audit(null, "concept_taak_klaar", "concept", id, { bytes: h.length });

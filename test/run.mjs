@@ -72,6 +72,16 @@ await test("honeypot: bots worden stil genegeerd", async () => {
   await call("POST", "aanvraag", { body: { name: "Bot", company: "Bot", email: "bot@bot.test", website_url: "x" } });
   assert.equal((await q("SELECT COUNT(*)::int n FROM appointments"))[0].n, 1);
 });
+await test("contactformulier: valideert en komt binnen als klantvraag", async () => {
+  const fout = await call("POST", "contact", { body: { naam: "", email: "x", bericht: "kort" } });
+  assert.equal(fout.status, 400); assert.ok(fout.data.errors.naam && fout.data.errors.email && fout.data.errors.bericht);
+  const r = await call("POST", "contact", { body: { naam: "Piet Jansen", email: "piet@schilder.test", bedrijf: "Schildersbedrijf Jansen", bericht: "Hoi, kunnen jullie ook een site met meerdere pagina's maken?", t: Date.now() - 10000 } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const [t] = await q("SELECT * FROM tickets WHERE bron = 'website'");
+  assert.ok(t && t.email === "piet@schilder.test" && /Schildersbedrijf Jansen/.test(t.onderwerp));
+  await call("POST", "contact", { body: { naam: "Bot", email: "bot@bot.test", bericht: "spam spam spam", website_url: "x" } });
+  assert.equal((await q("SELECT COUNT(*)::int n FROM tickets WHERE bron = 'website'"))[0].n, 1, "honeypot");
+});
 await test("zonder x-sm-header wordt een POST geweigerd (CSRF)", async () => {
   const r = await call("POST", "aanvraag", { body: { name: "X" }, csrf: false }); assert.equal(r.status, 403);
 });
@@ -619,7 +629,7 @@ console.log("Concept-websites voor leads");
   });
   await test("mail bevat de conceptlink; bekeken geeft een seintje", async () => {
     const pv = (await call("GET", `hq/leads/${lead}/preview?kind=eerste`, { cookie: admin })).data;
-    assert.ok(pv.body.includes(`/voorbeeld/${token}`) && pv.body.indexOf("eerste opzet") < pv.body.indexOf("Ik ben"), pv.body);
+    assert.equal(pv.body.split(`/voorbeeld/${token}`).length, 2, pv.body);
     const voor = captured.length;
     assert.equal((await call("POST", `voorbeeld/${token}/gezien`, { body: {} })).status, 200);
     await call("POST", `voorbeeld/${token}/gezien`, { body: {} });
