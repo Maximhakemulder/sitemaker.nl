@@ -3,6 +3,20 @@
 import crypto from "node:crypto";
 
 export const DNA = {
+  richting: {
+    zwitsers: "Zwitsers/internationaal: strak raster, uitgelijnd op één as, grote typografie, veel wit, functionele details.",
+    editoriaal: "Editoriaal: als een glossy tijdschrift, met kolommen, grote foto's, bijschriften en een sterke typografische hiërarchie.",
+    architectonisch: "Architectonisch: maatlijnen, rasterlijnen, technische tekening-details, precisie.",
+    boutique: "Luxe boutique: rust, ruimte, verfijnde letters, gedempte kleuren, kleine gouden of donkere accenten.",
+    speels: "Speels en vriendelijk: ronde vormen, warme kleurvlakken, iets scheve elementen, sticker-achtige labels.",
+    werkplaats: "Ambachtelijk/werkplaats: materialen en texturen (hout, beton, papier), stempel-achtige details, eerlijk en stoer.",
+    blokken: "Grafisch en krachtig: grote kleurblokken, harde typografie, sterke contrasten, maar netjes uitgelijnd.",
+    scandinavisch: "Scandinavisch minimal: licht, zacht, veel lucht, dunne lijnen, natuurlijke tinten.",
+    precisie: "Tech/precisie: strak, koel, details als meters, schalen, labels en coördinaten.",
+    botanisch: "Botanisch/natuurlijk: organische vormen, bladmotieven, zachte groenen of aardetinten, golvende lijnen.",
+    galerie: "Kunstgalerie: hun werk als kunst gepresenteerd, veel wit, grote beelden, kleine bijschriften.",
+    lokaal: "Lokaal en trots: hun stad/wijk centraal, kaartdetails, straatnamen, buurtgevoel.",
+  },
   hero: {
     volbeeld: "Foto over de volle breedte (max. één scherm hoog), grote kop linksonder op een donker verloop; geen kaart, geen badge.",
     typografisch: "De kop ís het beeld: gigantisch (tot ~11vw), over de volle breedte; een foto klein als uitsnede tussen of naast de letters.",
@@ -24,6 +38,29 @@ export const DNA = {
     spoor: "Grote kaarten met foto in een horizontaal spoor (data-horizontaal) dat zijwaarts schuift bij het scrollen.",
     accordeon: "Uitklaplijst met <details>/<summary>: grote koppen, bij openen de uitleg met een foto.",
     verhaal: "Scroll-verhaal: een vaste afbeelding of illustratie die per dienst verandert (data-verhaal/data-stap).",
+  },
+  navigatie: {
+    balk: "Klassieke balk bovenaan, logo links, menu rechts.",
+    midden: "Logo in het midden, menu-items links en rechts ervan verdeeld.",
+    pil: "Zwevende afgeronde menubalk (pil) die over de hero ligt.",
+    zijkant: "Op desktop een smalle verticale balk aan de linkerkant met logo en knop; op mobiel een normale kop.",
+    minimaal: "Alleen logo en één grote knop; het menu als ankerlinks onderaan de hero.",
+  },
+  beeld: {
+    puur: "Foto's puur en groot, harde rechte uitsnedes.",
+    duotone: "Eén of twee beelden met een subtiele kleurtoon in hun merkkleur (mix-blend of overlay), de rest puur.",
+    kader: "Foto's met een witte rand of passe-partout, als afdrukken.",
+    vormen: "Foto's in vormen die bij de vormtaal horen (bogen, cirkels, schuin).",
+    overlap: "Foto's die over sectiegrenzen heen lopen en elkaar deels overlappen.",
+    zwartwit: "Sfeerbeelden licht gedesatureerd, hun eigen werk in volle kleur zodat dat opvalt.",
+  },
+  extra: {
+    kernzin: "Een sectie met alleen één grote kernzin uit hun tekst.",
+    gebied: "Hun werkgebied of plaatsen (alleen als die in de tekst staan), als grote lijst of kaartdetail.",
+    tijden: "Openingstijden groot en prominent (alleen als die er zijn), anders een sectie 'Zo werken we'.",
+    galerij: "Een masonry-fotogalerij met hun eigen werk.",
+    doelgroep: "Voor wie ze werken (alleen uit de tekst), als grote woorden of chips.",
+    vragen: "Een paar vragen en antwoorden die echt uit hun tekst volgen (met <details>), anders een kernzin.",
   },
   pronkstuk: {
     verhaal: "Scroll-verhaal met een vast element uit hun vak dat per stap verandert.",
@@ -81,19 +118,25 @@ export function maakDNA(recentDNA = [], seed = "") {
   const h = crypto.createHash("sha256").update(String(seed) + Date.now()).digest();
   const rnd = () => h[i++ % h.length] / 256;
   const dna = {};
-  const venster = { hero: 7, diensten: 5, pronkstuk: 4, over: 3, contact: 3, letters: 4, basis: 2, vormen: 3 };
+  const venster = { richting: 9, hero: 8, navigatie: 3, beeld: 4, extra: 4, diensten: 6, pronkstuk: 5, over: 4, contact: 3, letters: 5, basis: 3, vormen: 4 };
   for (const [k, opties] of Object.entries(DNA)) {
     const recent = recentDNA.slice(0, venster[k] || 3).map((d) => d?.[k]).filter(Boolean);
     dna[k] = kies(Object.keys(opties), recent, rnd);
   }
   // diensten en pronkstuk niet allebei hetzelfde mechanisme
   if ((dna.diensten === "verhaal" && dna.pronkstuk === "verhaal") || (dna.diensten === "spoor" && dna.pronkstuk === "spoor")) dna.pronkstuk = kies(Object.keys(DNA.pronkstuk).filter((x) => x !== dna.pronkstuk), [], rnd);
-  dna.strook = rnd() < 0.4; // doorlopende strook alleen soms
+  dna.strook = rnd() < 0.3; // doorlopende strook alleen soms
+  // volgorde van het middendeel wisselt
+  const midden = ["diensten", "pronkstuk", "over", "extra", "fotos"];
+  for (let j = midden.length - 1; j > 0; j--) { const k = Math.floor(rnd() * (j + 1)); [midden[j], midden[k]] = [midden[k], midden[j]]; }
+  dna.volgorde = ["hero", ...midden, "contact"];
   return dna;
 }
 
 export function dnaTekst(dna) {
   return [
+    `Richting (art direction): ${DNA.richting[dna.richting]}`,
+    `Navigatie: ${DNA.navigatie[dna.navigatie]}`,
     `Hero: ${DNA.hero[dna.hero]}`,
     `Diensten: ${DNA.diensten[dna.diensten]}`,
     `Pronkstuk: ${DNA.pronkstuk[dna.pronkstuk]}`,
@@ -102,6 +145,14 @@ export function dnaTekst(dna) {
     `Letters: ${DNA.letters[dna.letters]}`,
     `Basis: ${DNA.basis[dna.basis]}`,
     `Vormen: ${DNA.vormen[dna.vormen]}`,
+    `Beeld: ${DNA.beeld[dna.beeld]}`,
+    `Extra sectie: ${DNA.extra[dna.extra]}`,
+    `Volgorde: ${(dna.volgorde || []).join(" → ")} (fotos = een fotosectie als er genoeg goede foto's zijn; mag samenvallen met een ander onderdeel)`,
     dna.strook ? "Strook: een doorlopende strook (marquee) mag." : "Strook: GEEN doorlopende strook in dit ontwerp.",
   ].join("\n");
+}
+
+// Lettertypen die recent al gebruikt zijn (uit de opgeslagen HTML), om herhaling te voorkomen.
+export function lettertypenUit(html) {
+  return [...String(html || "").matchAll(/fonts\.bunny\.net\/css2?\?family=([^"'&]+)/g)].flatMap((m) => decodeURIComponent(m[1]).split("|")).map((f) => f.split(":")[0]);
 }

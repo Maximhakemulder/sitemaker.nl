@@ -7,7 +7,7 @@ import { putFile, getFile, deleteFile } from "./files.mjs";
 import { SYSTEM as CONTENT_SYSTEM, clean, zoekStock, haal, imageSize, conceptUrl } from "./concepts.mjs";
 import { SYSTEM as ONTWERP_SYSTEM, sanitize, feitencheck, kleurcheck, VANGNET_CSS } from "./ontwerp.mjs";
 import { BEWEGING } from "./beweging.mjs";
-import { maakDNA, dnaTekst } from "./dna.mjs";
+import { maakDNA, dnaTekst, lettertypenUit } from "./dna.mjs";
 import { sprite, ICOON_NAMEN } from "./iconen.mjs";
 
 export const taakSleutel = () => crypto.createHash("sha256").update(`${env("AUTH_SECRET", "x")}:concept-taak`).digest("hex").slice(0, 40);
@@ -36,12 +36,17 @@ export async function claim(max = 5) {
   const out = [];
   // ontwerp-DNA: elke site een andere opbouw, en niet wat de laatste concepten al hadden
   const recent = (await q("SELECT bron->'dna' AS dna FROM concepts WHERE bron ? 'dna' ORDER BY COALESCE(taak_at, updated_at) DESC LIMIT 12")).map((r) => r.dna);
+  const recentHtml = await q("SELECT html FROM concepts WHERE status = 'klaar' AND html IS NOT NULL AND html <> '' ORDER BY ready_at DESC NULLS LAST LIMIT 10");
+  const telF = {};
+  for (const r of recentHtml) for (const f of new Set(lettertypenUit(r.html))) telF[f] = (telF[f] || 0) + 1;
+  const vermijdFonts = Object.keys(telF).sort((a, b) => telF[b] - telF[a]);
   for (const c of rows) {
     const l = await one("SELECT company, category, city, website, phone, email FROM leads WHERE id = $1", [c.lead_id]);
     const dna = maakDNA(recent, c.id);
     recent.unshift(dna);
     await q("UPDATE concepts SET bron = COALESCE(bron, '{}'::jsonb) || jsonb_build_object('dna', $2::jsonb) WHERE id = $1", [c.id, JSON.stringify(dna)]);
-    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", ontwerpDNA: dnaTekst(dna), dna, bron: c.bron || {}, analyse: c.analysis || {},
+    const tekst = dnaTekst(dna) + (vermijdFonts.length ? `\nLettertypen: kies NIET uit deze recent gebruikte: ${vermijdFonts.join(", ")}. Zoek iets anders op Bunny Fonts dat bij de richting past.` : "");
+    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", ontwerpDNA: tekst, dna, bron: c.bron || {}, analyse: c.analysis || {},
       afbeeldingen: (c.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: !!i.logo, alt: i.alt || "", sfeerbeeld: !!i.stock })) });
   }
   return { concepten: out };
