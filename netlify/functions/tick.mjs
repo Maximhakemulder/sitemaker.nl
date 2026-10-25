@@ -1,6 +1,7 @@
 // Draait elke 5 minuten: B2B-mail versturen, inbox lezen, scout en research, en de online-check van klantsites.
 // Netlify kapt geplande functies af na ongeveer 15 seconden; daarom kleine porties.
-import { withLock, one, q } from "../lib/core.mjs";
+import { withLock, one, q, env, getSettings, saveSetting } from "../lib/core.mjs";
+import { mailReady, notifyStaff } from "../lib/mail.mjs";
 import { sendBatch, scanInbox, runScout, runResearch } from "../lib/b2b.mjs";
 import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
@@ -22,6 +23,7 @@ export default async () => {
   await step("klantvragen", () => retryDrafts());
   await step("concepten", () => runConcepts({ max: 2 }));
   await step("briefings", () => maybeBriefings());
+  await step("start-herinnering", () => startHerinnering());
   if (autoReady()) await step("ai-retry", () => retryStuck());
   if (left() > 9000) await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(8000, left() - 3000) }));
   const last = (await one("SELECT value FROM settings WHERE key = 'inbox_scan'"))?.value;
@@ -34,4 +36,22 @@ export default async () => {
   if (left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
 };
 
-export const config = { schedule: "*/5 * * * *" };
+// Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Mollie, btw).
+async function startHerinnering() {
+  if (!mailReady() || env("MAIL_TRANSPORT") === "capture") return { skip: true };
+  if ((await one("SELECT 1 FROM settings WHERE key = 'start_herinnering'"))) return { klaar: true };
+  const s = await getSettings();
+  const regels = [
+    "De mail werkt. HQ is nu niet meer open: inloggen gaat met een code per mail.",
+    env("ADMIN_EMAILS") ? `Log in op HQ met ${env("ADMIN_EMAILS").split(",")[0].trim()}.` : "Let op: ADMIN_EMAILS staat nog niet in Netlify. Zet daar je eigen adres in, anders kun je niet inloggen.",
+    env("OPEN_MODE") ? "Haal OPEN_MODE weg uit Netlify (Project configuration › Environment variables), zodat HQ nooit per ongeluk weer open gaat." : null,
+    env("MOLLIE_API_KEY") ? null : "Zet de live Mollie-sleutel in Netlify als MOLLIE_API_KEY (begint met live_).",
+    s.billing?.pricesIncludeVat !== false ? "Check de btw: in HQ › Instellingen staan de prijzen nu als inclusief btw. Reken je €299,95 en €69,95 exclusief btw, zet dat dan uit." : null,
+    "Na het wijzigen van variabelen is één nieuwe deploy nodig.",
+  ].filter(Boolean);
+  await notifyStaff("Mail werkt: rond de start van Sitemaker af", regels, "/hq/");
+  await saveSetting("start_herinnering", { at: new Date().toISOString() });
+  return { verstuurd: true };
+}
+
+export const config ={ schedule: "*/5 * * * *" };
