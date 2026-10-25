@@ -42,9 +42,8 @@
     render(vak, html`
       <div class="paneel-kop"><h2 id="t-domein">Domeinnaam</h2><span class="status ${STATUS_KLASSE[d.status] || "s-grijs"}">${d.statusLabel}</span></div>
       <p class="domein-naam">${d.naam}</p>
-      ${d.keuze === "eigen" ? html`
         ${d.status === "actief" ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Je website draait op ${d.naam}. Er is niets meer te doen.</p></div>` : html`
-          <p>Je houdt je domein zelf. Log in bij je provider${d.provider ? ` (${d.provider})` : ""} en zet deze twee instellingen bij de DNS van ${d.naam}:</p>
+          <p>Je domein blijft van jou en bij je eigen provider; wij beheren het niet. Log in bij je provider${d.provider ? ` (${d.provider})` : ""} en zet deze twee instellingen bij de DNS van ${d.naam}:</p>
           ${ins.records.length ? html`<div class="tabel-scroll"><table class="dns-tabel"><thead><tr><th>Type</th><th>Naam</th><th>Waarde</th></tr></thead><tbody>
             ${ins.records.map((r) => html`<tr><td><b>${r.type}</b></td><td>${r.naam}</td><td><code>${r.waarde}</code> <button class="knop knop-tekst knop-klein" type="button" data-kopieer="${r.waarde}">Kopiëren</button></td></tr>`)}
           </tbody></table></div>
@@ -52,9 +51,7 @@
           : html`<div class="melding melding-info">${raw(icon.let)}<p>Zodra je website klaarstaat, zie je hier precies welke instellingen je moet aanpassen. Je krijgt dan ook een mail.</p></div>`}
           ${d.dnsAt ? html`<p class="klein ${d.dnsOk ? "" : "dempen"}">Laatste controle ${tijd(d.dnsAt)}: ${d.uitleg}</p>` : ""}
           ${ins.records.length ? html`<div class="knoppen"><button class="knop" type="button" id="dns-check">Ik heb het aangepast, controleer nu</button></div>` : ""}
-          <p class="klein dempen">We controleren het ook zelf elk halfuur en mailen je als het werkt.</p>`}`
-      : html`<p>${d.keuze === "verhuizen" ? "We verhuizen je domein naar Sitemaker en zetten alles voor je goed." : "We registreren deze domeinnaam op jouw naam en zetten alles voor je goed."} Eventuele kosten voor registratie of verlenging spreken we vooraf met je af.</p>
-        ${d.status === "actief" ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Je website draait op ${d.naam}.</p></div>` : html`<p class="klein dempen">We nemen contact met je op als we iets van je nodig hebben.</p>`}`}
+          <p class="klein dempen">We controleren het ook zelf elk halfuur en mailen je als het werkt.</p>`}
       <p class="klein dempen">Klopt de domeinnaam niet? Stel hieronder een vraag, dan passen we het aan.</p>`);
     vak.querySelectorAll("[data-kopieer]").forEach((b) => b.addEventListener("click", async () => { try { await navigator.clipboard.writeText(b.dataset.kopieer); toast("Gekopieerd"); } catch { toast("Kopiëren lukte niet; selecteer de tekst", "fout"); } }));
     vak.querySelector("#dns-check")?.addEventListener("click", async (e) => {
