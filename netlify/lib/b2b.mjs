@@ -38,12 +38,19 @@ export function fillTemplate(tpl, lead, s) {
     intro: lead.intro ? lead.intro.trim() + "\n\n" : "", link: `${publicBase()}/#kennismaking`,
     concept: conceptReady(lead) ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
     conceptlink: conceptReady(lead) ? conceptUrl(lead.concept_token) : "",
+    dagen: String(conceptDagen(s)),
+    verloopt: lead.concept_expires ? datumNl(lead.concept_expires) : datumNl(Date.now() + conceptDagen(s) * 86400000),
   };
   // Oudere eigen mailteksten zonder {concept}: zet de conceptregel na de openingszin.
   if (map.concept && !/\{concept(link)?\}/.test(tpl || "") && /\{intro\}/.test(tpl || "")) tpl = tpl.replace("{intro}", "{intro}{concept}");
   return String(tpl || "").replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
 }
+// Hoe lang een voorbeeldwebsite te bekijken is, gerekend vanaf de eerste mail.
+export const conceptDagen = (s) => Math.max(7, Number(s.b2b.concepten?.geldigDagen || 30));
+const datumNl = (d) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "long", timeZone: "Europe/Amsterdam" });
 export function compose(lead, kind, s) {
+  // De eerste mail zet de looptijd opnieuw vanaf het versturen (sendBatch schrijft dat ook weg).
+  if (kind !== "opvolging" && lead.concept_status === "klaar") lead = { ...lead, concept_expires: new Date(Date.now() + conceptDagen(s) * 86400000).toISOString() };
   const t = s.b2b.templates[kind === "opvolging" ? "opvolging" : "eerste"];
   const subject = fillTemplate(t.subject, lead, s).slice(0, 200);
   const co = s.company;
@@ -123,7 +130,7 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
            FROM concepts c WHERE c.lead_id = l.id AND l.status = 'goedgekeurd' AND c.status IN ('fout','overgeslagen')`);
   await q("UPDATE leads SET status = 'nieuw', error = 'Geen website: zonder voorbeeldwebsite sturen we geen eerste mail.', updated_at = NOW() WHERE status = 'goedgekeurd' AND website = ''");
   const todo = await q(`${LEAD_SELECT} WHERE l.status IN ('goedgekeurd','opvolging_goedgekeurd') AND l.email IS NOT NULL
-    AND (l.status = 'opvolging_goedgekeurd' OR (c.status = 'klaar' AND (c.expires_at IS NULL OR c.expires_at > NOW() + INTERVAL '7 days')))
+    AND (l.status = 'opvolging_goedgekeurd' OR c.status = 'klaar')
     ORDER BY l.updated_at LIMIT $1`, [Math.min(max, room)]);
   let sent = 0, failed = 0;
   for (const lead of todo) {
@@ -132,6 +139,8 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
     if (supp) { await q("UPDATE leads SET status = 'afgemeld', updated_at = NOW() WHERE id = $1", [lead.id]); continue; }
     const kind = lead.status === "opvolging_goedgekeurd" ? "opvolging" : "eerste";
     const { subject, body } = compose(lead, kind, s);
+    // Voorbeeld blijft vanaf nu conceptDagen te bekijken (staat zo in de mail).
+    if (kind === "eerste") await q("UPDATE concepts SET expires_at = NOW() + ($2 || ' days')::interval, updated_at = NOW() WHERE lead_id = $1", [lead.id, String(conceptDagen(s))]);
     const res = await sendMail({
       to: lead.email, subject, text: body, html: textToHtml(body, { leadId: lead.id, mail: kind, opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false }), kind: `b2b-${kind}`, ref: `lead:${lead.id}`,
       fromName: `${s.b2b.senderName || ""} | Sitemaker`.replace(/^ \| /, ""),

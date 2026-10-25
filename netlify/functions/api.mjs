@@ -86,7 +86,7 @@ export default async (req, context) => {
       const s = await getSettings(), co = s.company;
       const adres = [co.address, [co.postcode, co.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
       return json({ naam: co.name || "Sitemaker", rechtsvorm: co.legalName || "", kvk: co.kvk || "", btw: co.vat || "", adres, email: co.email || "", telefoon: co.phone || "",
-        pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 60, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
+        pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 30, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
     }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
     // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.

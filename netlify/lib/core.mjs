@@ -96,15 +96,15 @@ export const DEFAULT_SETTINGS = {
     scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "fysiotherapeut"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
     // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
-    concepten: { auto: true, perDag: 15, geldigDagen: 60, wachten: true, maker: "taak" },
+    concepten: { auto: true, perDag: 15, geldigDagen: 30, wachten: true, maker: "taak" },
     templates: {
       eerste: {
         subject: "Vraagje over {bedrijf}",
-        body: "Hallo,\n\n{intro}We hebben de website van {bedrijf} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen: meer bezoekers die bellen, mailen of een afspraak maken.\n\nDaarom hebben we alvast laten zien hoe dat eruit kan zien. Jullie nieuwe website staat klaar:\n{conceptlink}\n\nWat het kost is simpel, alles inbegrepen:\n- €299,95 eenmalig: je complete website, binnen 48 uur (2 werkdagen) live\n- €69,95 per maand: hosting, onderhoud en elke maand 4 wijzigingen\nGeen opstartkosten, geen uurtje-factuurtje, geen verrassingen.\n\nZin om er even kort over te bellen? Reageer gerust op deze mail.\n\nMet vriendelijke groet,\n{afzender}",
+        body: "Hallo,\n\n{intro}We hebben de website van {bedrijf} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen: meer bezoekers die bellen, mailen of een afspraak maken.\n\nDaarom hebben we alvast laten zien hoe dat eruit kan zien. Jullie nieuwe website staat klaar:\n{conceptlink}\n\nLet op: dit is een voorbeeld en staat nog niet live. Hij is {dagen} dagen te bekijken, tot {verloopt}.\n\nWat het kost is simpel, alles inbegrepen:\n- €299,95 eenmalig: je complete website, binnen 48 uur (2 werkdagen) live\n- €69,95 per maand: hosting, onderhoud en elke maand 4 wijzigingen\nGeen opstartkosten, geen uurtje-factuurtje, geen verrassingen.\n\nZin om er even kort over te bellen? Reageer gerust op deze mail.\n\nMet vriendelijke groet,\n{afzender}",
       },
       opvolging: {
         subject: "Re: Vraagje over {bedrijf}",
-        body: "Hallo,\n\nEen korte herinnering: de nieuwe website die we voor {bedrijf} hebben gemaakt, staat nog voor je klaar.\n{conceptlink}\n\nAlles inbegrepen: €299,95 eenmalig en €69,95 per maand voor hosting, onderhoud en 4 wijzigingen per maand.\n\nNiet interessant? Laat het even weten, dan haal ik hem offline en hoor je niets meer van ons.\n\nMet vriendelijke groet,\n{afzender}",
+        body: "Hallo,\n\nEen korte herinnering: de nieuwe website die we voor {bedrijf} hebben gemaakt, staat nog tot {verloopt} voor je klaar. Daarna vervalt het voorbeeld.\n{conceptlink}\n\nAlles inbegrepen: €299,95 eenmalig en €69,95 per maand voor hosting, onderhoud en 4 wijzigingen per maand.\n\nNiet interessant? Laat het even weten, dan haal ik hem offline en hoor je niets meer van ons.\n\nMet vriendelijke groet,\n{afzender}",
       },
     },
   },

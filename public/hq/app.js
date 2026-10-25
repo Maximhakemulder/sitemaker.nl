@@ -1552,7 +1552,7 @@ ${p.body}</div>
             <h3>Concept-websites</h3>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="cAuto" ${b.concepten?.auto !== false ? raw("checked") : ""}> <span>Automatisch een concept maken voor nieuwe leads met een website<small class="hulp">De link komt in de eerste mail. Elk concept is één Claude-aanroep.</small></span></label></div>
             <p class="klein dempen">Elke eerste mail gaat altijd met een voorbeeldwebsite. Een goedgekeurde mail wacht tot het concept klaar is; lukt het concept niet, dan gaat de lead terug naar "Klaar om te mailen".</p>
-            <div class="rij2">${v("cPerDag", "Max. concepten per dag", b.concepten?.perDag ?? 20, { type: "number" })}${v("cDagen", "Link geldig (dagen)", b.concepten?.geldigDagen ?? 60, { type: "number" })}</div>
+            <div class="rij2">${v("cPerDag", "Max. concepten per dag", b.concepten?.perDag ?? 20, { type: "number" })}${v("cDagen", "Link geldig (dagen)", b.concepten?.geldigDagen ?? 30, { type: "number" })}</div>
             <h3>Scout (Outscraper)</h3>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="scoutActive" ${b.scout.active ? raw("checked") : ""}> Elke werkdag automatisch nieuwe bedrijven zoeken</label></div>
             <div class="rij2"><div class="veld"><label for="s-cats">Branches</label><textarea id="s-cats" name="categories" rows="4">${b.scout.categories.join("\n")}</textarea><div class="hulp">Eén per regel.</div></div>

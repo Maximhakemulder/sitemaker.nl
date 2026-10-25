@@ -353,7 +353,7 @@ export async function processConcept(conceptId) {
   const lead = await one("SELECT * FROM leads WHERE id = $1", [c.lead_id]);
   const klaar = async (status, fields = {}) => {
     const s = await getSettings();
-    const dagen = Number(s.b2b.concepten?.geldigDagen || 60);
+    const dagen = Number(s.b2b.concepten?.geldigDagen || 30);
     await q(`UPDATE concepts SET status = $2, content = COALESCE($3::jsonb, content), images = COALESCE($4::jsonb, images), analysis = COALESCE($5::jsonb, analysis), reden = $6,
              ready_at = CASE WHEN $2 = 'klaar' THEN NOW() ELSE ready_at END, expires_at = CASE WHEN $2 = 'klaar' THEN NOW() + ($7 || ' days')::interval ELSE expires_at END, updated_at = NOW() WHERE id = $1`,
       [c.id, status, fields.content ? JSON.stringify(fields.content) : null, fields.images ? JSON.stringify(fields.images) : null, fields.analysis ? JSON.stringify(fields.analysis) : null, fields.reden || "", String(dagen)]);
