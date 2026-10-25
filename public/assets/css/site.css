@@ -81,6 +81,24 @@ p { margin: 0 0 1em; }
 .hero .acties { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 24px; }
 .hero-prijs { display: inline-flex; align-items: baseline; gap: 8px; margin: 0 0 22px; padding: 10px 18px; border-radius: 999px; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); color: #E3DDF5; font-size: 16px; white-space: nowrap; }
 .hero-prijs b { color: var(--wit); font-size: 20px; }
+/* Garanties in de hero: groot en direct zichtbaar */
+.hero-garanties { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 520px; margin: -6px 0 26px; }
+.garantie { margin: 0; padding: 14px 18px; border-radius: var(--r); background: rgba(12,192,223,.12); box-shadow: inset 0 0 0 1.5px rgba(12,192,223,.55); }
+.garantie b { display: block; color: var(--wit); font-size: clamp(26px, 2.6vw, 34px); font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; }
+.garantie span { display: block; color: #E3DDF5; font-size: 15px; margin-top: 4px; }
+/* Band: niet goed, geld terug */
+.garantieband { background: var(--paars); color: var(--wit); padding: 72px 0; }
+.garantieband .wrap { display: grid; grid-template-columns: auto 1fr; gap: 56px; align-items: center; }
+.garantie-zegel { width: 220px; height: 220px; border-radius: 50%; display: grid; place-content: center; text-align: center; background: var(--cyaan); color: var(--paars); box-shadow: 0 0 0 10px rgba(12,192,223,.18), 0 0 0 22px rgba(12,192,223,.08); transform: rotate(-8deg); }
+.garantie-zegel b { font-size: 92px; font-weight: 900; line-height: .9; letter-spacing: -0.04em; }
+.garantie-zegel span { font-size: 17px; font-weight: 800; line-height: 1.15; }
+.garantieband h2 { color: var(--wit); font-size: clamp(36px, 5vw, 60px); line-height: 1.02; letter-spacing: -0.025em; margin-bottom: 16px; }
+.garantie-tekst > p { color: #E3DDF5; font-size: clamp(17px, 1.6vw, 20px); max-width: 36em; margin-bottom: 22px; }
+.garantie-punten { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.garantie-punten li { display: flex; gap: 10px; align-items: flex-start; color: #E3DDF5; }
+.garantie-punten svg { width: 20px; height: 20px; color: var(--cyaan); flex: none; margin-top: 3px; }
+.garantie-punten b { color: var(--wit); }
+.garantie-punten a { color: var(--cyaan); }
 .feiten { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 0; margin: 0; list-style: none; color: #E3DDF5; font-size: 15px; }
 .feiten li { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
 .feiten svg { width: 17px; height: 17px; color: var(--cyaan); flex: none; }
@@ -475,6 +493,16 @@ p { margin: 0 0 1em; }
   .mobiel-cta .prijsje { font-size: 12px; line-height: 1.3; color: var(--grijs); white-space: nowrap; }
   .mobiel-cta .prijsje b { display: block; color: var(--paars); font-size: 14px; }
   .mobiel-cta .knop { width: auto; margin-left: auto; min-height: 44px; padding: 0 14px; font-size: 15px; box-shadow: 0 3px 0 var(--knop-rand); }
+}
+@media (max-width: 700px) {
+  .hero-garanties { margin: 0 auto 22px; }
+  .garantie { padding: 12px 14px; }
+  .garantie span { font-size: 14px; }
+  .garantieband { padding: 52px 0; }
+  .garantieband .wrap { grid-template-columns: 1fr; gap: 30px; justify-items: center; }
+  .garantie-zegel { width: 160px; height: 160px; }
+  .garantie-zegel b { font-size: 66px; }
+  .garantie-zegel span { font-size: 14px; }
 }
 @media (max-width: 380px) { .hero h1 { font-size: 34px; } .allin-bedrag { font-size: 38px; } .mobiel-cta .prijsje { display: none; } .mobiel-cta .knop { margin: 0; width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .band-rij, .hero-blokken span { animation: none; } }
