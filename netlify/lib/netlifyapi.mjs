@@ -31,4 +31,6 @@ export async function createSite({ name, repoFullName, repoId }) {
   return { id: site.id, name: site.name, url: site.ssl_url || site.url, linked: !!body.repo };
 }
 
+export const deleteSite = (id) => nf("DELETE", `/sites/${id}`);
+
 export const previewUrl = (siteName, prNumber) => (siteName && prNumber ? `https://deploy-preview-${prNumber}--${siteName}.netlify.app` : "");

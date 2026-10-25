@@ -272,6 +272,7 @@ export default async (req, context) => {
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
         case "GET opdrachten": return json(await opdrachten.lijst());
+        case "POST koppelingen/test": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest(user)); }
         case "POST opdrachten/:id/live": return json(await opdrachten.liveZetten(id, user));
         case "POST opdrachten/:id/opnieuw": return json(await opdrachten.opnieuw(id, (await body(req)).feedback, user));
         case "POST customers/:id/opdracht": return json(await opdrachten.maakOpdracht(id, { user }).then((o) => ({ ok: !!o })));
