@@ -409,6 +409,19 @@ await test("nieuwe klant met startflow: gegevens → akkoord en betalen → meld
   assert.equal(st.start.stage, "bouwen"); assert.ok(st.start.dueAt);
   const dom = (await call("GET", "portal/domein", { cookie: kz })).data.domein;
   assert.equal(dom.naam, "bakkerij-start.nl", "domein uit de onboarding is vastgelegd"); assert.equal(dom.provider, "TransIP");
+  const opd = (await call("GET", "hq/opdrachten", { cookie: admin })).data.opdrachten.find((x) => x.customerId === cid);
+  assert.ok(opd && opd.status === "wacht" && !opd.opBasisVanConcept, "na versturen staat er een opdracht klaar voor de ontwerper");
+  // het klantsite-sjabloon bouwt een eigen ontwerp (ontwerp.html) met beweging en iconen
+  {
+    const fs = await import("node:fs"), os = await import("node:os"), path = await import("node:path"), { execFileSync } = await import("node:child_process");
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "klantsite-"));
+    fs.cpSync("templates/klantsite", tmp, { recursive: true });
+    fs.writeFileSync(path.join(tmp, "ontwerp.html"), "<!doctype html><html><head><title>x</title></head><body><h1>Eigen ontwerp</h1></body></html>");
+    fs.writeFileSync(path.join(tmp, "beweging.js"), "/*b*/"); fs.writeFileSync(path.join(tmp, "sprite.svg"), '<svg id="sprite"></svg>'); fs.writeFileSync(path.join(tmp, "vangnet.css"), "img{max-width:100%}");
+    execFileSync(process.execPath, ["build.mjs"], { cwd: tmp });
+    const uit = fs.readFileSync(path.join(tmp, "dist/index.html"), "utf8");
+    assert.ok(uit.includes("Eigen ontwerp") && uit.includes('src="/beweging.js"') && uit.includes('id="sprite"') && uit.includes("img{max-width:100%}") && fs.existsSync(path.join(tmp, "dist/beweging.js")));
+  }
   const hq = (await call("GET", `hq/customers/${cid}`, { cookie: admin })).data;
   assert.equal(hq.start.stage, "bouwen"); assert.equal(hq.start.files.length, 1); assert.equal(hq.start.intake.stijl, "natuur"); assert.ok(hq.start.termsAt);
   assert.equal((await call("GET", `hq/customers/${cid}/bestanden/${up.data.file.id}`, { cookie: admin })).status, 200);
@@ -644,6 +657,38 @@ console.log("Concept-websites voor leads");
     assert.equal(st.intake.voorIngevuld, "concept");
     assert.match(st.intake.diensten, /Vers brood/); assert.equal(st.intake.sitePhone, "030 123 45 67"); assert.equal(st.intake.hoofdactie, "bellen");
     assert.ok(st.files.some((f) => f.kind === "logo") && st.files.some((f) => f.kind === "foto"), JSON.stringify(st.files));
+    // opdracht: de ontwerper past het concept aan, Maxim zet live
+    const opd = await import("../netlify/lib/opdrachten.mjs");
+    const { taakSleutel } = await import("../netlify/lib/concepttaak.mjs");
+    const o = await opd.maakOpdracht(klant.id);
+    assert.ok(o && o.concept_id, "opdracht op basis van het concept");
+    const tk = { "x-taak-sleutel": taakSleutel() };
+    const cl = (await call("POST", "taak/opdrachten/claim", { headers: tk, body: { max: 3 } })).data.opdrachten.find((x) => x.id === o.id);
+    assert.equal(cl.basis, "concept"); assert.ok(cl.concept.html.length > 100 || cl.concept.content.hero, "concept meegestuurd"); assert.equal(cl.intake.hoofdactie, "bellen");
+    const naamFoto = cl.afbeeldingen.find((i) => !i.logo).naam;
+    assert.equal((await call("GET", `taak/opdrachten/${o.id}/afbeeldingen/${naamFoto}`, { headers: tk, raw: true })).status, 200);
+    const inhoud = { thema: "zacht", kleuren: { primair: "#c8102e" }, bedrijf: { naam: "Bakkerij Zon", telefoon: "030 123 45 67" }, hero: { titel: "Elke dag vers", tekst: "Brood en taart.", foto: `afbeeldingen/${naamFoto}` }, diensten: { items: [{ titel: "Vers brood", tekst: "Elke ochtend." }] } };
+    const ontwerp = `<!doctype html><html><head><title>Bakkerij Zon</title><style>h1{color:#c8102e}</style></head><body><header>Bakkerij Zon</header><main><h1>Elke dag vers</h1><p>${"Ambachtelijk brood uit Utrecht. ".repeat(160)}</p><img src="afbeeldingen/${naamFoto}" data-reveal><a class="sm-hoofdactie" href="tel:0301234567">Bel 030 123 45 67</a></main></body></html>`;
+    const op = await call("PUT", `taak/opdrachten/${o.id}`, { headers: tk, body: { content: inhoud, html: ontwerp } });
+    assert.equal(op.status, 200, JSON.stringify(op.data));
+    let lijst = (await call("GET", "hq/opdrachten", { cookie: admin })).data.opdrachten;
+    const mijn = lijst.find((x) => x.id === o.id);
+    assert.equal(mijn.status, "controle"); assert.ok(mijn.dueAt === null || typeof mijn.dueAt === "string");
+    const vb = await call("GET", "opdracht/" + mijn.voorbeeldUrl.split("/").pop(), { raw: true });
+    const vbHtml = await vb.text();
+    assert.equal(vb.status, 200); assert.ok(vbHtml.includes("IntersectionObserver") && vbHtml.includes("/api/opdracht/"));
+    const lv = await call("POST", `hq/opdrachten/${o.id}/live`, { cookie: admin });
+    assert.equal(lv.status, 200, JSON.stringify(lv.data));
+    const rp = __ghFake.repos[site.data.repo];
+    const live = rp.commits[rp.refs.main].files;
+    assert.ok(live["ontwerp.html"] && live["beweging.js"] && live["sprite.svg"] && live[`afbeeldingen/${naamFoto}`], Object.keys(live).join(","));
+    const [na] = await dbq("SELECT site_status FROM customers WHERE id = $1", [klant.id]);
+    assert.equal(na.site_status, "live");
+    assert.ok(captured.some((m) => /website staat online/i.test(m.subject)));
+    // wijzigingen op een site met eigen ontwerp: zoek/vervang in de HTML
+    const { pasHtmlAan } = await import("../netlify/lib/sites.mjs");
+    assert.equal(pasHtmlAan("<p>a</p><p>b</p>", [{ zoek: "<p>b</p>", vervang: "<p>c</p>" }]).html, "<p>a</p><p>c</p>");
+    assert.ok(pasHtmlAan("<p>a</p><p>a</p>", [{ zoek: "<p>a</p>", vervang: "x" }]).fout);
   });
   await test("webshops slaat de agent over; afmelden haalt het concept weg", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Webwinkel", email: "info@webwinkel.test", website: "https://webwinkel.test/" } });

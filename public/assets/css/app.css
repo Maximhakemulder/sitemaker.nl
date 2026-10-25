@@ -586,3 +586,10 @@ details.anders[open] > summary { margin-bottom: 12px; }
 
 .kpis.kpis-8 { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 520px) { .kpis.kpis-8 { grid-template-columns: 1fr 1fr; } }
+
+/* Opdrachten */
+.opdracht-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:20px}
+.opdracht{background:#fff;border:1px solid var(--lijn,#e2e0ee);border-radius:14px;padding:18px;display:grid;gap:8px;align-content:start}
+.opdracht.krap{border-color:#FF5757}
+.opdracht .aftel{margin:0;font-size:15px}.opdracht .aftel.rood b{color:#C62828}
+.opdracht .knoppen{margin-top:4px}

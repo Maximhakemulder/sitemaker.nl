@@ -526,7 +526,7 @@ ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voor
 }
 
 // Klein script voor eigen ontwerpen: "vandaag" bij de openingstijden en het logo altijd zichtbaar.
-const ONTWERP_SCRIPT = `(function(){function L(r,g,b){return(0.2126*r+0.7152*g+0.0722*b)/255}
+export const ONTWERP_SCRIPT = `(function(){function L(r,g,b){return(0.2126*r+0.7152*g+0.0722*b)/255}
 function bgL(el){var n=el;while(n&&n!==document.documentElement){var c=getComputedStyle(n).backgroundColor,m=c.match(/[\\d.]+/g);if(m&&(m.length<4||+m[3]>0.5))return L(+m[0],+m[1],+m[2]);n=n.parentElement}return 1}
 function check(img){try{var w=Math.min(120,img.naturalWidth),h=Math.max(1,Math.round(w*img.naturalHeight/img.naturalWidth)),cv=document.createElement("canvas");cv.width=w;cv.height=h;var x=cv.getContext("2d");x.drawImage(img,0,0,w,h);var d=x.getImageData(0,0,w,h).data,s=0,n=0,v=0;for(var i=0;i<d.length;i+=4){if(d[i+3]>40){s+=L(d[i],d[i+1],d[i+2]);n++}if(d[i+3]>240)v++}if(!n||v>d.length/4*0.9)return;var lg=s/n;if(Math.abs(lg-bgL(img.parentElement))<0.28){img.style.background=lg>0.5?"#16151a":"#ffffff";img.style.padding="8px 12px";img.style.borderRadius="10px";img.style.boxSizing="content-box"}}catch(e){}}
 document.querySelectorAll("img.logo-img").forEach(function(i){i.complete&&i.naturalWidth?check(i):i.addEventListener("load",function(){check(i)})});
