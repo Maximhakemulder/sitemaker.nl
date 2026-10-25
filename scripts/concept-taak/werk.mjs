@@ -44,8 +44,9 @@ try {
     const d = await api("POST", "claim", { max: Number(args[0] || 5) });
     for (const c of d.concepten) {
       schrijf(dir(c.id, "bron.json"), JSON.stringify(c, null, 1));
+      schrijf(dir(c.id, "ontwerp-dna.md"), `# Ontwerp-DNA voor ${c.bedrijf.company} (bindend)\n\nDeze opbouw is gekozen zodat deze site anders wordt dan de vorige. Volg hem; vul hem in met een idee uit hun vak.\n\n${c.ontwerpDNA}\n`);
       for (const a of c.afbeeldingen) schrijf(dir(c.id, "afbeeldingen", a.naam), await api("GET", `concepten/${c.id}/afbeeldingen/${encodeURIComponent(a.naam)}`, null, { raw: true }));
-      console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen${c.instructie ? ` · wens: ${c.instructie}` : ""}`);
+      console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen · DNA: ${Object.entries(c.dna || {}).map(([k, v]) => `${k}=${v}`).join(" ")}${c.instructie ? ` · wens: ${c.instructie}` : ""}`);
     }
     if (!d.concepten.length) console.log("Geen concepten die op een ontwerp wachten.");
   } else if (cmd === "stock") {

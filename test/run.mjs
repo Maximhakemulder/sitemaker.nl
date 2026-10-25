@@ -661,6 +661,7 @@ console.log("Concept-websites voor leads");
     const cl = await call("POST", "taak/claim", { headers: k, body: { max: 5 } });
     const c = cl.data.concepten.find((x) => x.bedrijf.company === "Bakkerij Zon Twee");
     assert.ok(c && c.bron.tekst.includes("Bakkerij Zon") && c.afbeeldingen.some((i) => i.logo), JSON.stringify(cl.data).slice(0, 300));
+    assert.ok(c.dna?.hero && c.ontwerpDNA.includes("Hero:"), "elk concept krijgt een ontwerp-DNA");
     const foto = c.afbeeldingen.find((i) => !i.logo).naam;
     const img = await call("GET", `taak/concepten/${c.id}/afbeeldingen/${foto}`, { headers: k, raw: true });
     assert.equal(img.status, 200);

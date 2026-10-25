@@ -7,6 +7,7 @@ import { putFile, getFile, deleteFile } from "./files.mjs";
 import { SYSTEM as CONTENT_SYSTEM, clean, zoekStock, haal, imageSize, conceptUrl } from "./concepts.mjs";
 import { SYSTEM as ONTWERP_SYSTEM, sanitize, feitencheck, kleurcheck, VANGNET_CSS } from "./ontwerp.mjs";
 import { BEWEGING } from "./beweging.mjs";
+import { maakDNA, dnaTekst } from "./dna.mjs";
 import { sprite, ICOON_NAMEN } from "./iconen.mjs";
 
 export const taakSleutel = () => crypto.createHash("sha256").update(`${env("AUTH_SECRET", "x")}:concept-taak`).digest("hex").slice(0, 40);
@@ -33,9 +34,14 @@ export async function claim(max = 5) {
   const rows = await q(`UPDATE concepts SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
                         WHERE id IN (SELECT id FROM concepts WHERE status = 'ontwerp' ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED) RETURNING *`, [n]);
   const out = [];
+  // ontwerp-DNA: elke site een andere opbouw, en niet wat de laatste concepten al hadden
+  const recent = (await q("SELECT bron->'dna' AS dna FROM concepts WHERE bron ? 'dna' ORDER BY COALESCE(taak_at, updated_at) DESC LIMIT 12")).map((r) => r.dna);
   for (const c of rows) {
     const l = await one("SELECT company, category, city, website, phone, email FROM leads WHERE id = $1", [c.lead_id]);
-    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", bron: c.bron || {}, analyse: c.analysis || {},
+    const dna = maakDNA(recent, c.id);
+    recent.unshift(dna);
+    await q("UPDATE concepts SET bron = COALESCE(bron, '{}'::jsonb) || jsonb_build_object('dna', $2::jsonb) WHERE id = $1", [c.id, JSON.stringify(dna)]);
+    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", ontwerpDNA: dnaTekst(dna), dna, bron: c.bron || {}, analyse: c.analysis || {},
       afbeeldingen: (c.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: !!i.logo, alt: i.alt || "", sfeerbeeld: !!i.stock })) });
   }
   return { concepten: out };

@@ -32,12 +32,13 @@ dit bestand, het concept-id en de omgevingsvariabelen mee. Lukt een concept niet
    `kandidaten/` en kies alleen foto's die een klant direct herkent als HUN soort werk:
    `node scripts/concept-taak/werk.mjs kies <id> 3 7 1` (beste eerst). Twijfel = niet kiezen. Geen zonnepanelen bij een
    CV-installateur, geen buitenlandse winkelpuien, geen poserende stockmodellen.
-5. **Ontwerp** `/tmp/concepten/<id>/index.html` volgens `ontwerp-regels.md`. Denk eerst het plan uit (schrijf het in
+5. **Ontwerp** `/tmp/concepten/<id>/index.html` volgens `ontwerp-regels.md` én het **ontwerp-DNA** in `ontwerp-dna.md` (bindend: hero, diensten, pronkstuk, over, contact, letters, basis, vormen). Zet het DNA bovenaan je `plan.md` en vink het na afloop af. Het DNA zorgt dat elke site een ander skelet heeft; kies binnen het DNA een idee uit hun vak. Denk eerst het plan uit (schrijf het in
    `plan.md`, niet in de HTML). Afbeeldingen als `afbeeldingen/<naam>`. Geen eigen `<script>`: de beweging komt van de
    data-attributen; ons script en de iconen worden er bij het tonen automatisch bij gezet.
 6. **Bekijken en verbeteren** (minstens twee rondes, maximaal vier):
    `node scripts/concept-taak/bekijk.mjs <id>` → rapport + screenshots in `shots/` (390 en 1280 breed, de hele pagina in
    stukken, plus het eerste scherm en halverwege mét beweging). Bekijk ALLE screenshots met de Read-tool en toets streng:
+   - Volgt het ontwerp het DNA (hero, diensten, pronkstuk, over, contact, letters, basis, vormen)? Lijkt het skelet op "tekst links + foto rechts → strook → dienstenlijst → sticky kolom → over → fotoraster → contactkaart"? Dan opnieuw.
    - Zou de eigenaar zeggen "wauw, dit is mijn bedrijf"? Herkenbaar logo, hun kleuren, hun foto's, hun vak?
    - Is het high-end: rust, witruimte, uitlijning, grote typografie, niets rommeligs of half af?
    - Is er een laadmoment en één pronkstuk met beweging uit hun vak? Werkt het pronkstuk echt (screenshot "midden")?
