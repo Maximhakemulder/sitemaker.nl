@@ -619,7 +619,7 @@ console.log("Concept-websites voor leads");
   });
   await test("mail bevat de conceptlink; bekeken geeft een seintje", async () => {
     const pv = (await call("GET", `hq/leads/${lead}/preview?kind=eerste`, { cookie: admin })).data;
-    assert.ok(pv.body.includes(`/voorbeeld/${token}`) && pv.body.indexOf("eerste opzet") < pv.body.indexOf("Ik ben"), pv.body);
+    assert.equal(pv.body.split(`/voorbeeld/${token}`).length, 2, pv.body);
     const voor = captured.length;
     assert.equal((await call("POST", `voorbeeld/${token}/gezien`, { body: {} })).status, 200);
     await call("POST", `voorbeeld/${token}/gezien`, { body: {} });

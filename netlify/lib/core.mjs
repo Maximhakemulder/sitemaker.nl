@@ -99,12 +99,12 @@ export const DEFAULT_SETTINGS = {
     concepten: { auto: true, perDag: 15, geldigDagen: 60, wachten: true, maker: "taak" },
     templates: {
       eerste: {
-        subject: "Een website die aanvragen oplevert voor {bedrijf}",
-        body: "Goedendag,\n\n{intro}{concept}Ik ben {afzender} van Sitemaker. Wij bouwen professionele websites voor bedrijven, gericht op één ding: bezoekers omzetten in klanten.\n\nWat u krijgt:\n- Een professionele website, binnen 48 uur (2 werkdagen) online nadat u uw informatie hebt aangeleverd\n- Hosting inbegrepen\n- Elke maand vier wijzigingen, die we binnen 48 uur verwerken via uw eigen klantenportaal\n\nDe prijs is vast: €299,95 eenmalig en daarna €69,95 per maand. Geen onverwachte kosten.\n\nZullen we een korte kennismaking plannen? U kunt direct een moment kiezen via {link}, of gewoon op deze mail reageren.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
+        subject: "Even naar de website van {bedrijf} gekeken",
+        body: "Goedendag,\n\n{intro}We hebben de website van {bedrijf} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen: meer bezoekers die bellen, mailen of een afspraak maken.\n\nDaarom hebben we alvast laten zien hoe dat eruit kan zien. Uw nieuwe website staat klaar:\n{conceptlink}\n\nWat het kost is simpel, alles inbegrepen:\n- €299,95 eenmalig: uw complete website, binnen 48 uur (2 werkdagen) live\n- €69,95 per maand: hosting, onderhoud en elke maand 4 wijzigingen\nGeen opstartkosten, geen uurtje-factuurtje, geen verrassingen.\n\nZin om er even kort over te bellen? Reageer gerust op deze mail.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
       },
       opvolging: {
-        subject: "Re: Een website die aanvragen oplevert voor {bedrijf}",
-        body: "Goedendag,\n\nIk stuurde u onlangs een bericht over een nieuwe website voor {bedrijf}. Misschien is het toen ondergesneeuwd.\n\nKort samengevat: een professionele website binnen 48 uur (2 werkdagen) online, hosting en vier wijzigingen per maand inbegrepen, voor €299,95 eenmalig en €69,95 per maand.\n\nAls het nu niet past, hoor ik dat ook graag; dan stuur ik u niets meer.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
+        subject: "Re: Even naar de website van {bedrijf} gekeken",
+        body: "Goedendag,\n\nEen korte herinnering: de nieuwe website die we voor {bedrijf} hebben gemaakt, staat nog voor u klaar.\n{conceptlink}\n\nAlles inbegrepen: €299,95 eenmalig en €69,95 per maand voor hosting, onderhoud en 4 wijzigingen per maand.\n\nNiet interessant? Laat het even weten, dan haal ik hem offline en hoort u niets meer van ons.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
       },
     },
   },
@@ -116,10 +116,21 @@ function merge(base, over) {
   for (const [k, v] of Object.entries(over)) out[k] = base && typeof base[k] === "object" && !Array.isArray(base[k]) && base[k] !== null ? merge(base[k], v) : v;
   return out;
 }
+// Vorige standaardteksten: staan die nog opgeslagen, dan krijgt Maxim vanzelf de nieuwe (eigen teksten blijven).
+const OUDE_TEMPLATES = [
+  { subject: "Een website die aanvragen oplevert voor {bedrijf}", body: "Goedendag,\n\n{intro}{concept}Ik ben {afzender} van Sitemaker. Wij bouwen professionele websites voor bedrijven, gericht op één ding: bezoekers omzetten in klanten.\n\nWat u krijgt:\n- Een professionele website, binnen 48 uur (2 werkdagen) online nadat u uw informatie hebt aangeleverd\n- Hosting inbegrepen\n- Elke maand vier wijzigingen, die we binnen 48 uur verwerken via uw eigen klantenportaal\n\nDe prijs is vast: €299,95 eenmalig en daarna €69,95 per maand. Geen onverwachte kosten.\n\nZullen we een korte kennismaking plannen? U kunt direct een moment kiezen via {link}, of gewoon op deze mail reageren.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker" },
+  { subject: "Re: Een website die aanvragen oplevert voor {bedrijf}", body: "Goedendag,\n\nIk stuurde u onlangs een bericht over een nieuwe website voor {bedrijf}. Misschien is het toen ondergesneeuwd.\n\nKort samengevat: een professionele website binnen 48 uur (2 werkdagen) online, hosting en vier wijzigingen per maand inbegrepen, voor €299,95 eenmalig en €69,95 per maand.\n\nAls het nu niet past, hoor ik dat ook graag; dan stuur ik u niets meer.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker" },
+];
 export async function getSettings() {
   const rows = await q("SELECT key, value FROM settings");
   const stored = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  return merge(DEFAULT_SETTINGS, stored);
+  const out = merge(DEFAULT_SETTINGS, stored);
+  const tpl = out.b2b?.templates || {};
+  for (const k of ["eerste", "opvolging"]) {
+    const t = tpl[k];
+    if (t && OUDE_TEMPLATES.some((o) => o.body === t.body)) tpl[k] = { ...DEFAULT_SETTINGS.b2b.templates[k] };
+  }
+  return out;
 }
 export async function saveSetting(key, value) {
   await q(`INSERT INTO settings (key, value, updated_at) VALUES ($1, $2::jsonb, NOW())

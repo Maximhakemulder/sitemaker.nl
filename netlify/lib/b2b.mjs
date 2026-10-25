@@ -40,7 +40,7 @@ export function fillTemplate(tpl, lead, s) {
     conceptlink: conceptReady(lead) ? conceptUrl(lead.concept_token) : "",
   };
   // Oudere eigen mailteksten zonder {concept}: zet de conceptregel na de openingszin.
-  if (map.concept && !/\{concept\}/.test(tpl || "") && /\{intro\}/.test(tpl || "")) tpl = tpl.replace("{intro}", "{intro}{concept}");
+  if (map.concept && !/\{concept(link)?\}/.test(tpl || "") && /\{intro\}/.test(tpl || "")) tpl = tpl.replace("{intro}", "{intro}{concept}");
   return String(tpl || "").replace(/\{(\w+)\}/g, (m, k) => (k in map ? map[k] : m));
 }
 export function compose(lead, kind, s) {
