@@ -11,16 +11,40 @@
 <link rel="stylesheet" href="/assets/css/fonts.css">
 <link rel="stylesheet" href="/assets/css/site.css">
 <script src="/assets/js/juridisch.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
 <script src="/assets/js/contact.js" defer></script>
 </head>
 <body>
-<header class="kop"><div class="wrap"><a class="logo" href="/" aria-label="Sitemaker, naar de startpagina"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker" width="194" height="30"></a><a class="knop knop-actie" href="/#kennismaking">Plan een kennismaking</a></div></header>
+<a class="skip" href="#inhoud">Naar de inhoud</a>
 
-<main class="contact" id="inhoud">
+<header class="kop">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Sitemaker, naar de startpagina"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker" width="194" height="30"></a>
+    <button class="menuknop" type="button" aria-expanded="false" aria-controls="menu" aria-label="Menu openen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav id="menu" aria-label="Hoofdmenu">
+      <a href="/#wat-je-krijgt">Prijs</a>
+      <a href="/#hoe-het-werkt">Hoe het werkt</a>
+      <a href="/#portaal">Portaal</a>
+      <a href="/#vragen">Vragen</a>
+      <a href="/contact" aria-current="page">Contact</a>
+      <a class="inloggen" href="/portaal/">Inloggen klanten</a>
+      <a class="knop knop-actie" href="/#kennismaking">Plan een kennismaking</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inhoud">
+<section class="contact-kop">
+  <div class="wrap">
+    <h1>Stuur ons een bericht</h1>
+    <p class="contact-lead">Een vraag over je website, het portaal of ons aanbod? Laat een bericht achter en je hoort zo snel mogelijk van ons.</p>
+  </div>
+</section>
+<section class="contact">
   <div class="wrap">
     <div class="contact-uitleg">
-      <h1>Stuur ons een bericht</h1>
-      <p class="contact-lead">Een vraag over je website, het portaal of ons aanbod? Laat een bericht achter en je hoort zo snel mogelijk van ons.</p>
       <ul class="contact-wegen">
         <li>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
@@ -59,8 +83,53 @@
       </form>
     </div>
   </div>
+</section>
+
+  <section class="garantieband" aria-labelledby="garantie-titel">
+    <div class="wrap">
+      <div class="garantie-zegel" aria-hidden="true"><b>30</b><span>dagen<br>geld terug</span></div>
+      <div class="garantie-tekst">
+        <h2 id="garantie-titel">Niet goed? Geld terug.</h2>
+        <p>Ben je binnen 30 dagen na livegang niet tevreden, dan krijg je alles terug: de bouwprijs én de maandbedragen. Geen gedoe, geen kleine lettertjes. We willen dat iedereen tevreden is.</p>
+        <ul class="garantie-punten">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><b>Binnen 48 uur live</b> nadat je je informatie hebt aangeleverd</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><b>Wijzigingen binnen 48 uur</b> verwerkt, 4 per maand</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><b>Maandelijks opzegbaar</b>, geen langlopend contract</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span><b>30 dagen geld terug</b> als je niet tevreden bent (<a href="/voorwaarden.html#a5">voorwaarden</a>)</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer class="voet"><div class="wrap"><div class="regel"><span>© 2026 Sitemaker</span><span><a href="/contact">Contact</a> · <a href="/privacy.html">Privacyverklaring</a> · <a href="/voorwaarden.html">Algemene voorwaarden</a> · <a href="#" data-cookies>Cookies</a></span></div></div></footer>
+<footer class="voet">
+  <div class="wrap">
+    <div>
+      <img src="/assets/brand/logo-wit.png" alt="Sitemaker – Maak van je website je beste verkoper" width="180" height="34">
+      <p>Professionele websites voor bedrijven. €299,95 eenmalig + €69,95 per maand, online binnen 48 uur (2 werkdagen).</p>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <ul>
+        <li><a href="/contact">Stuur ons een bericht</a></li>
+        <li><a href="mailto:info@sitemaker.nl" data-bedrijf="email">info@sitemaker.nl</a></li>
+        <li><a href="/#kennismaking">Plan een kennismaking</a></li>
+        <li><a href="/portaal/">Klantenportaal</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Informatie</h4>
+      <ul>
+        <li><a href="/privacy.html">Privacyverklaring</a></li>
+        <li><a href="/voorwaarden.html">Algemene voorwaarden</a></li>
+        <li><a href="#" data-cookies>Cookie-instellingen</a></li>
+      </ul>
+    </div>
+    <div class="regel">
+      <span>© <span id="jaar">2026</span> Sitemaker</span>
+      <span>Maak van je website je beste verkoper</span>
+    </div>
+  </div>
+</footer>
 </body>
 </html>
