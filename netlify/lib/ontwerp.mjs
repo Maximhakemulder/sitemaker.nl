@@ -30,6 +30,7 @@ Toets je plan: zou je dit voor elk ander bedrijf in deze branche ook zo maken? D
 
 ## Beweging (verplicht, met smaak)
 Ons script voert de beweging uit; jij zet de data-attributen en schrijft zelf de CSS. Ons script zet de class "js" op <html>; schrijf beginstanden altijd met .js ervoor, zodat zonder JavaScript alles gewoon zichtbaar is. Zet bij prefers-reduced-motion alle animaties uit.
+De OPBOUW van de site (hero, diensten, pronkstuk, over, contact, letters, basis, vormen) krijg je als ONTWERP-DNA bij het bedrijf. Dat DNA is bindend en zorgt dat elke site een ander skelet heeft. Val nooit terug op het standaardskelet "tekst links + foto rechts met badge → donkere strook → lijst met diensten → sticky kolom → over met foto links → fotoraster → contactkaart".
 Elke site heeft:
 1. Een laadmoment in de hero: bijv. kopregels die één voor één omhoog schuiven (elke regel in een span met overflow:hidden), beeld dat iets inzoomt, tekst en knoppen die kort daarna invagen. Eén samenhangende reeks, niet alles tegelijk.
 2. Eén pronkstuk dat aan het scrollen hangt en uit hun vak komt. Kies wat het best bij het idee past, en niet steeds hetzelfde:
