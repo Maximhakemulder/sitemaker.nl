@@ -14,6 +14,7 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 - Mollie: eerste betaling `sequenceType: first` (bouwprijs + machtiging) → webhook maakt abonnement (`1 month`). Elke betaalde betaling wordt een factuur (PDF via pdf-lib) en een mail. De webhook haalt de betaling altijd zelf op bij Mollie.
 - B2B (zoals TrueSafe): leads → research (algemeen adres op eigen site, MX-check, optioneel AI-openingszin) → goedkeuren in HQ → `tick` verstuurt binnen verzendtijden en daglimiet → opvolging na X dagen alleen na goedkeuring → IMAP-scan voor reacties/bounces → one-click afmelden (`suppressions`). Bedrijfsnaam + KvK verplicht onder elke mail.
 - Strikte CSP op `/portaal/*` en `/hq/*`: geen inline scripts of `style=`-attributen in gegenereerde HTML. Gebruik `SM.html` (escapet alles) in `public/assets/js/ui.js`.
+- Visitekaartje van Maxim (Websiteadviseur, +316 19 92 12 22, Hallo@sitemaker.nl) voor in de footer/mailhandtekening: `public/assets/brand/maxim-visitekaart.png` (Maxim vroeg dit te bewaren voor zijn footer).
 - Huisstijl: paars #1C0747, koraal #FF5757 (alleen acties, met paarse tekst), cyaan #0CC0DF (alleen op paars), ijs #E7F4FF. Lettertype Archivo, zelf gehost in `public/assets/fonts/` (geen Google Fonts i.v.m. AVG). Logo's in `public/assets/brand/`.
 
 ## Werkwijze en kosten
