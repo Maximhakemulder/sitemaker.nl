@@ -401,7 +401,9 @@ await test("nieuwe klant met startflow: gegevens → akkoord en betalen → meld
   assert.equal((await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Bakkerij", verstuur: false } })).status, 200);
   const mis = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Bakkerij", verstuur: true } });
   assert.equal(mis.status, 400); assert.equal(mis.data.field, "omschrijving");
-  const ok = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Ambachtelijke bakkerij in het dorp, al 30 jaar.", diensten: "Brood\nTaart", sitePhone: "0612345678", stijl: "natuur", verstuur: true } });
+  const geenActie = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Ambachtelijke bakkerij in het dorp, al 30 jaar.", diensten: "Brood\nTaart", sitePhone: "0612345678", verstuur: true } });
+  assert.equal(geenActie.status, 400); assert.equal(geenActie.data.field, "hoofdactie");
+  const ok = await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "Ambachtelijke bakkerij in het dorp, al 30 jaar.", diensten: "Brood\nTaart", sitePhone: "0612345678", stijl: "natuur", hoofdactie: "bellen", drieWoorden: "warm, ambachtelijk, lokaal", verstuur: true } });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
   st = (await call("GET", "portal/state", { cookie: kz })).data;
   assert.equal(st.start.stage, "bouwen"); assert.ok(st.start.dueAt);
@@ -631,6 +633,15 @@ console.log("Concept-websites voor leads");
     const content = JSON.parse(files["content.json"]);
     assert.equal(content.hero.titel, "Elke dag vers, met liefde gebakken"); assert.equal(content.thema, "zacht");
     assert.ok(files["afbeeldingen/foto-1.png"] && files["afbeeldingen/logo.png"] && files["render.mjs"] && !files["afbeeldingen/hero.jpg"]);
+    // informatie aanleveren in het portaal: vooraf ingevuld uit het concept, met logo en eigen foto's
+    const { startState } = await import("../netlify/lib/start.mjs");
+    await dbq("UPDATE customers SET onboarding = true, details_at = NOW(), started_at = NOW(), intake = '{}'::jsonb, intake_at = NULL WHERE id = $1", [k.data.customer.id]);
+    const [klant] = await dbq("SELECT * FROM customers WHERE id = $1", [k.data.customer.id]);
+    const st = await startState(klant);
+    assert.equal(st.stage, "informatie");
+    assert.equal(st.intake.voorIngevuld, "concept");
+    assert.match(st.intake.diensten, /Vers brood/); assert.equal(st.intake.sitePhone, "030 123 45 67"); assert.equal(st.intake.hoofdactie, "bellen");
+    assert.ok(st.files.some((f) => f.kind === "logo") && st.files.some((f) => f.kind === "foto"), JSON.stringify(st.files));
   });
   await test("webshops slaat de agent over; afmelden haalt het concept weg", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Webwinkel", email: "info@webwinkel.test", website: "https://webwinkel.test/" } });
