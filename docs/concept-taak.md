@@ -35,6 +35,10 @@ Een betaalde klant heeft binnen 2 werkdagen zijn site. Doe deze dus eerst, elk m
   beste plekken; vervang sfeerbeelden waar het kan. `sfeerfotos = nee` → geen sfeerbeelden meer.
 - `vragen` → een sectie met veelgestelde vragen in dezelfde stijl. `team` → namen en rollen. `reviewsLink` +
   `reviewsToestemming = ja` → een knop "Lees onze reviews op Google" (verzin GEEN reviews of sterren).
+- Formulieren: had hun oude site een formulier (`analyse.formulieren` in `opdracht.json`/het concept) of past er een bij de hoofdactie
+  (offerte, intake, afspraak), maak dan een **werkend** formulier: `<form data-sm-formulier="Offerte aanvragen">` zonder action (die
+  zetten wij), dezelfde vragen en keuzes, elk veld met `<label>` en een `name`, en `<button type="submit">`. Geen uploads. Berichten
+  gaan per mail naar de klant. Een online boekingssysteem (`analyse.boeken` of `boekingslink`) blijft de afspraakknop.
 - Goede `<title>` en meta description voor Google.
 - `content.json`: neem `concept-content.json` als basis en werk de feiten bij (zelfde opbouw).
 **Basis = nieuw**: ontwerp zoals bij een concept (met `ontwerp-dna.md`), maar met de informatie van de klant als bron.
@@ -50,6 +54,9 @@ Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
    foto's in `afbeeldingen/` met de Read-tool. Kijk echt: wat doet dit bedrijf, welke foto's zijn goed, welke kleuren heeft het logo?
+   Kijk ook naar `analyse.formulieren` (offerte-, intake-, afspraak- of contactformulier op hun site) en `analyse.boeken`
+   (online boekingssysteem). Die neem je over: hetzelfde formulier met dezelfde vragen in jouw ontwerp (in het concept nagebouwd
+   met div's, want `<form>` wordt eruit gehaald), en de afspraakknop linkt naar hun boekingssysteem.
 2. **Niet geschikt** (webshop als hoofdzaak, te weinig informatie, geen bedrijf):
    `node scripts/concept-taak/werk.mjs afmelden <id> "reden" --overslaan`
 3. **content.json** in `/tmp/concepten/<id>/content.json`, precies volgens `content-regels.md` (alleen het `content`-deel, dus

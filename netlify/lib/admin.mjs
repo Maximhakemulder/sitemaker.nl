@@ -1,6 +1,6 @@
 // Sitemaker HQ: alles wat medewerkers beheren. Rollen: medewerker en admin (admin mag ook instellingen, team en abonnementen opzeggen).
 import { q, one, tx, OFFER, getSettings, saveSetting, DEFAULT_SETTINGS, str, cleanEmail, EMAIL_RE, normUrl, monthKey, dayKey, euro, escH, publicBase, fail, audit, env, portalUrl } from "./core.mjs";
-import { publicConcept, queueConcept, setTheme, deleteConcept } from "./concepts.mjs";
+import { publicConcept, queueConcept, setTheme, deleteConcept, rejectConcept } from "./concepts.mjs";
 import { startStage, deliveryDue, hqStart } from "./start.mjs";
 import { publicCustomer, publicChange, publicInvoice, changeUsage, mailChangeStatus, STATUS_LABEL, freeSlot } from "./portal.mjs";
 import { createInvoice, generateInvoicePdf, mailInvoice, partsFromGross, priceParts, companyComplete, vatModeSet } from "./billing.mjs";
@@ -492,7 +492,7 @@ export const scoutNow = () => runScout({ force: true });
 export { addLead };
 export const sitesInfo = () => ({ themas: THEMAS, github: githubReady(), netlify: netlifyReady(), netlifyLink: netlifyLinkReady(), ai: claudeReady(), auto: autoReady() });
 export { provisionSite, linkSite, approveChange, redoChange, manualChange, queueChange };
-export { queueConcept, setTheme as setConceptTheme, deleteConcept };
+export { queueConcept, setTheme as setConceptTheme, deleteConcept, rejectConcept };
 
 // ---------------------------------------------------------------- instellingen en team (admin)
 export async function getAdminSettings() {

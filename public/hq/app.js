@@ -1267,7 +1267,7 @@ ${p.body}</div>
             <p class="klein dempen">${[c.category, c.city].filter(Boolean).join(" · ")}${c.status === "klaar" ? ` · ${c.fotos} foto's · ${c.uniek ? "uniek ontwerp" : "vaste opmaak"}` : ""}${c.reden && c.status !== "klaar" ? ` · ${c.reden}` : ""}</p>${c.status === "klaar" && !c.uniek && c.ontwerpFout ? html`<p class="klein dempen">Ontwerp-agent: ${c.ontwerpFout}</p>` : ""}
             ${c.views ? html`<p class="klein"><b>Laatst bekeken ${geleden(c.lastViewAt)}</b>${c.phone ? html` · <a href="tel:${c.phone}">${c.phone}</a>` : ""}</p>` : ""}
             ${c.status === "klaar" && c.leadStatus === "nieuw" ? html`<div class="knoppen">${c.email ? html`<button class="knop knop-actie knop-klein" data-akkoord="${c.leadId}" data-naam="${c.company}">Akkoord, verstuur mail</button>` : html`<span class="klein dempen">Geen e-mailadres</span>`}<button class="knop knop-tekst knop-klein" data-opnieuw="${c.leadId}">Opnieuw maken</button></div>` : c.status === "klaar" ? html`<p class="klein">${chip(L.lead, c.leadStatus)}</p>` : ""}
-            <div class="knoppen">${c.status === "klaar" ? html`<a class="knop knop-licht knop-klein" href="${c.hqUrl}" target="_blank" rel="noopener">Bekijken</a><button class="knop knop-tekst knop-klein" data-kopieer="${c.url}">Link kopiëren</button>` : ""}<button class="knop knop-tekst knop-klein" data-lead="${c.leadId}">Lead</button></div></div>
+            <div class="knoppen">${c.status === "klaar" ? html`<a class="knop knop-licht knop-klein" href="${c.hqUrl}" target="_blank" rel="noopener">Bekijken</a><button class="knop knop-tekst knop-klein" data-kopieer="${c.url}">Link kopiëren</button>` : ""}${/^https?:\/\//i.test(c.website || "") ? html`<a class="knop knop-licht knop-klein" href="${c.website}" target="_blank" rel="noopener noreferrer" title="${c.website}">Huidige website</a>` : ""}${c.status !== "overgeslagen" && ["kandidaat", "nieuw", "goedgekeurd", "fout"].includes(c.leadStatus) ? html`<button class="knop knop-tekst knop-klein" data-afwijzen="${c.leadId}" data-naam="${c.company}">Afwijzen</button>` : ""}<button class="knop knop-tekst knop-klein" data-lead="${c.leadId}">Lead</button></div></div>
         </article>`)}</div>`
         : html`<section class="paneel"><div class="leeg"><h3>Nog geen concepten${conceptFilter ? " in deze lijst" : ""}</h3><p>Voor nieuwe leads met een website maakt de agent automatisch een concept (instelbaar bij Instellingen). Je kunt het ook per lead starten bij B2B-mail.</p></div></section>`}`);
     main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { conceptFilter = b.dataset.f; concepten(main); }));
@@ -1279,6 +1279,10 @@ ${p.body}</div>
         e.preventDefault();
         try { await api(`hq/leads/${b.dataset.opnieuw}/concept`, { method: "POST", body: { instructie: e.target.elements.instructie.value } }); dlg.close(); toast("Staat klaar voor de ontwerper: in de volgende ronde wordt hij opnieuw gemaakt."); concepten(main); } catch (err) { toast(err.message, "fout"); }
       });
+    }));
+    main.querySelectorAll("[data-afwijzen]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig(`${b.dataset.naam} afwijzen?`, "Er gaat geen mail naar dit bedrijf, de voorbeeldwebsite gaat offline en het concept verdwijnt uit je lijst. De lead komt niet terug.", "Ja, afwijzen"))) return;
+      try { await api(`hq/leads/${b.dataset.afwijzen}/afwijzen`, { method: "POST", body: {} }); toast(`${b.dataset.naam} is afgewezen.`); concepten(main); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelectorAll("[data-lead]").forEach((b) => b.addEventListener("click", async () => {
       const { leads } = await api("hq/leads?status=");

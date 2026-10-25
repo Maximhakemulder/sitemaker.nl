@@ -60,7 +60,8 @@ Gebruik onze lijn-iconen via <svg class="..." aria-hidden="true"><use href="#i-N
 
 ## Harde regels
 - Antwoord: <plan>…</plan> en daarna één compleet HTML5-document (<!doctype html> … </html>), alle CSS in één <style> in de <head>. Geen markdown.
-- GEEN eigen JavaScript (de beweging gaat via de data-attributen), geen <script>, geen event-attributen, geen <iframe>, geen <form>, geen <foreignObject>, geen externe afbeeldingen of video. Externe bronnen alleen: lettertypen via <link rel="stylesheet" href="https://fonts.bunny.net/css?family=..."> (maximaal 2 families, namen in kleine letters met streepjes, bijv. family=bricolage-grotesque:500,700,800|instrument-sans:400,500,600).
+- GEEN eigen JavaScript (de beweging gaat via de data-attributen), geen <script>, geen event-attributen, geen <iframe>, geen <foreignObject>, geen externe afbeeldingen of video. Externe bronnen alleen: lettertypen via <link rel="stylesheet" href="https://fonts.bunny.net/css?family=..."> (maximaal 2 families, namen in kleine letters met streepjes, bijv. family=bricolage-grotesque:500,700,800|instrument-sans:400,500,600).
+- Formulieren en online boeken: heeft hun huidige site een formulier (offerte, intake, afspraak, contact; zie "formulieren" in de analyse), neem het over met DEZELFDE vragen, keuzes en knoptekst, mooi vormgegeven in de stijl van het ontwerp. In een voorbeeld (concept) bouw je het na zonder <form>/<input> (die worden weggehaald): labels met nagebootste velden van <div>'s en een knop die naar #contact of de hoofdactie linkt. In de echte website (opdracht) maak je een werkend formulier: <form data-sm-formulier="Offerte aanvragen"> (geen action, die zetten wij), elk veld een <label> met <input name="…">, <select>, <textarea> of radio/checkbox, en een <button type="submit">. Geen bestanden uploaden. Hebben ze een online boekingssysteem ("boeken" in de analyse), dan linkt de afspraakknop daarheen.
 - Teksten: ALLEEN teksten en feiten uit de JSON. Inkorten, opdelen en korte labels ("Bel ons", "Onze diensten", "Openingstijden", "Route plannen") mag. GEEN feiten toevoegen: geen jaartallen, aantallen, ervaring, reviews, sterren, keurmerken, garanties, prijzen of beloftes die niet in de JSON staan. Telefoon, e-mail, adres, prijzen en tijden exact overnemen.
 - Kleur: gebruik alleen hun huisstijlkleuren (uit hun logo) als merkkleur, plus neutralen. Verzin geen andere merkkleur. Bij diensten mogen subtiele tinten die bij het idee horen (warm en koel bij een klimaatinstallateur), maar de hoofdkleur blijft van hen.
 - Afbeeldingen: alleen bestanden uit de lijst, als src="afbeeldingen/<naam>". Gebruik een foto alleen als hij echt bij hun werk past (lees de omschrijving); liever minder foto's dan een verkeerde (bijv. geen zonnepanelen bij een CV-installateur). Altijd object-fit en een vaste aspect-ratio tussen 3:4 en 16:9 (of een vaste hoogte); nooit extreem lange of smalle vlakken. Eigen foto's voorop, sfeerbeelden aanvullend. Logo (als er een is) in de kop en onderaan met class="logo-img", nooit vervormd.
@@ -84,7 +85,9 @@ ${JSON.stringify({ ...content, ontwerp: undefined, stock: undefined }, null, 1)}
 }
 
 // ---------------------------------------------------------------- opschonen
-export function sanitize(html, { imgBase, namen }) {
+export const FORMULIER_ACTIE = "{{SM_FORMULIER}}";
+// formulieren: true (echte website/opdracht) laat werkende formulieren staan; ze posten altijd naar ons eigen adres (FORMULIER_ACTIE wordt bij live zetten ingevuld).
+export function sanitize(html, { imgBase, namen, formulieren = false }) {
   let h = String(html || "");
   const s = h.indexOf("<!doctype"), s2 = h.toLowerCase().indexOf("<html");
   const start = s >= 0 ? s : s2;
@@ -92,8 +95,10 @@ export function sanitize(html, { imgBase, namen }) {
   if (start < 0 || eind < 0) return null;
   h = h.slice(start, eind + 7);
   // gevaarlijke elementen helemaal weg
-  h = h.replace(/<(script|iframe|object|embed|form|template|noscript|svg:script|frameset|frame|applet|portal|foreignObject|animate|set)\b[\s\S]*?<\/\1\s*>/gi, "")
-    .replace(/<(script|iframe|object|embed|form|base|frame|applet|portal|input|button|textarea|select|foreignObject|animate|set)\b[^>]*\/?>/gi, "")
+  const weg = formulieren ? "script|iframe|object|embed|template|noscript|svg:script|frameset|frame|applet|portal|foreignObject|animate|set" : "script|iframe|object|embed|form|template|noscript|svg:script|frameset|frame|applet|portal|foreignObject|animate|set";
+  const losWeg = formulieren ? "script|iframe|object|embed|base|frame|applet|portal|foreignObject|animate|set" : "script|iframe|object|embed|form|base|frame|applet|portal|input|button|textarea|select|foreignObject|animate|set";
+  h = h.replace(new RegExp(`<(${weg})\\b[\\s\\S]*?<\\/\\1\\s*>`, "gi"), "")
+    .replace(new RegExp(`<(${losWeg})\\b[^>]*\\/?>`, "gi"), "")
     .replace(/<meta\b[^>]*http-equiv[^>]*>/gi, "");
   // <use> alleen naar onze eigen iconen in de pagina (#i-...)
   h = h.replace(/<use\b[^>]*>/gi, (t) => (/^<use\s+href\s*=\s*["']#i-[a-z]+["']\s*\/?>$/i.test(t.trim()) ? t : ""));
@@ -120,6 +125,14 @@ export function sanitize(html, { imgBase, namen }) {
     if (/^https:\/\/fonts\.bunny\.net\//.test(u) || /^data:image\/(svg\+xml|png|gif);/i.test(u)) return m;
     return "none";
   });
+  if (formulieren) {
+    // Elk formulier post naar ons; een verborgen veld vangt spambots. Geen uploads of verborgen velden van de ontwerper.
+    h = h.replace(/<form\b[^>]*>/gi, (t) => {
+      const naam = str((t.match(/data-sm-formulier\s*=\s*["']([^"']*)["']/i) || [])[1] || "Formulier", 60).replace(/["<>&]/g, "");
+      return `<form method="post" action="${FORMULIER_ACTIE}" accept-charset="utf-8" data-sm-formulier="${naam}"><input type="hidden" name="_formulier" value="${naam}"><div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true"><label>Laat dit veld leeg <input name="website_url" tabindex="-1" autocomplete="off"></label></div>`;
+    });
+    h = h.replace(/<input\b[^>]*>/gi, (t) => (/type\s*=\s*["']?(file|password|image)\b/i.test(t) || (/type\s*=\s*["']?hidden/i.test(t) && !/name="_formulier"/.test(t)) ? "" : t));
+  }
   if (/<script|javascript:/i.test(h)) ok = false;
   return ok ? h : null;
 }
@@ -207,7 +220,7 @@ export async function ontwerp(content, images, extra = {}) {
 export const VANGNET_CSS = `html,body{max-width:100%;overflow-x:clip}img{max-width:100%}main>:first-child img,body>header+section img,main>:first-child *:has(>img){max-height:min(88vh,820px)}section img{max-height:min(90vh,900px)}[data-verhaal] [data-stap]{min-height:min(46vh,440px)!important}[data-horizontaal-uit]{height:auto!important}[data-horizontaal-uit]>*{position:relative!important;height:auto!important;min-height:0!important;top:auto!important;overflow:visible!important}[data-horizontaal-uit] [data-spoor]{flex-wrap:wrap;width:auto!important;max-width:100%;transform:none!important}@media(max-width:899px){[data-horizontaal-uit] [data-spoor]{flex-wrap:nowrap;overflow-x:auto;scroll-snap-type:x mandatory}}`;
 
 export function toonOntwerp(html, { imgBase, bodyStart = "", bodyEnd = "", headExtra = "" }) {
-  let h = html.replace(/(["'(])afbeeldingen\//g, `$1${imgBase}`);
+  let h = html.replace(/(["'(])afbeeldingen\//g, `$1${imgBase}`).split(FORMULIER_ACTIE).join("#");
   h = h.replace(/<head\b[^>]*>/i, (m) => `${m}<meta name="robots" content="noindex,nofollow">${headExtra}`);
   // Vangnet tegen uit de hand gelopen beeldvlakken (te hoog/smal) en horizontaal scrollen.
   h = h.replace(/<\/head>/i, `<style>${VANGNET_CSS}</style></head>`);

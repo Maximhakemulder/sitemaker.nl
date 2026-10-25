@@ -6,7 +6,7 @@ import { sendBatch, scanInbox, runScout, runResearch } from "../lib/b2b.mjs";
 import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
-import { runConcepts } from "../lib/concepts.mjs";
+import { runConcepts, vulFormulierenAan } from "../lib/concepts.mjs";
 import { pulse, maybeBriefings } from "../lib/team.mjs";
 import { runDomainChecks } from "../lib/domains.mjs";
 import { runCancellations, retryDrafts } from "../lib/service.mjs";
@@ -22,6 +22,7 @@ export default async () => {
   await step("opzeggingen", () => runCancellations());
   await step("klantvragen", () => retryDrafts());
   await step("concepten", () => runConcepts({ max: 2 }));
+  if (left() > 9000) await step("concept-formulieren", () => vulFormulierenAan());
   await step("briefings", () => maybeBriefings());
   await step("start-herinnering", () => startHerinnering());
   if (autoReady()) await step("ai-retry", () => retryStuck());

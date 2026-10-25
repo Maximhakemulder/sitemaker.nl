@@ -10,6 +10,7 @@ import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { clean, imageSize, ONTWERP_SCRIPT } from "./concepts.mjs";
 import { sanitize, feitencheck, toonOntwerp, VANGNET_CSS } from "./ontwerp.mjs";
 import { BEWEGING } from "./beweging.mjs";
+import { vulFormulierActie } from "./formulieren.mjs";
 import { sprite } from "./iconen.mjs";
 import { maakDNA, dnaTekst } from "./dna.mjs";
 import { deliveryDue, HOOFDACTIES } from "./start.mjs";
@@ -130,7 +131,7 @@ export async function opslaan(id, { content, html }) {
   const schoon = clean(content || {}, { text: bronTekst, images, lead: { company: c.company, city: "" } });
   if (!schoon) fail(400, "content.json is onvolledig (hero.titel en minstens één dienst zijn verplicht).");
   const namen = new Set(images.map((i) => i.name));
-  const h = sanitize(String(html || ""), { imgBase: "afbeeldingen/", namen });
+  const h = sanitize(String(html || ""), { imgBase: "afbeeldingen/", namen, formulieren: true });
   if (!h || h.length < 4000) fail(400, "Het ontwerp is geen geldig of volledig HTML-document (of bevatte <script>/javascript:).");
   const fouten = feitencheck(h, { ...schoon, extraTekst: bronTekst });
   if (fouten.length) fail(400, `Feitencontrole: ${fouten.slice(0, 6).join(", ")}. Haal dit weg of neem het exact over uit wat de klant aanleverde.`);
@@ -158,7 +159,7 @@ export async function voorbeeld(token, { nonce }) {
 // De bestanden van de echte site: ontwerp.html (zoals ontworpen), afbeeldingen, beweging en iconen, en content.json (de feiten).
 export async function siteBestanden(o) {
   const files = [
-    { path: "ontwerp.html", content: o.html },
+    { path: "ontwerp.html", content: vulFormulierActie(o.html, o.customer_id) },
     { path: "content.json", content: JSON.stringify(o.content || {}, null, 2) + "\n" },
     { path: "beweging.js", content: `${ONTWERP_SCRIPT}\n${BEWEGING}\n` },
     { path: "sprite.svg", content: sprite() },

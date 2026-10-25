@@ -135,6 +135,9 @@ export default async (req, context) => {
       fail(404, "Onbekend.");
     }
 
+    // Formulieren op klantsites (komen van hun eigen domein, dus zonder x-sm-header).
+    if (seg[0] === "formulier" && seg[1] && seg[2] && m === "POST") { const { ontvang } = await import("../lib/formulieren.mjs"); return await ontvang(req, seg[1], seg[2], ipOf(req, context)); }
+
     if (m !== "GET" && !sameOrigin(req)) fail(403, "Verzoek geweigerd.");
 
     // ------------------------------------------------ website
@@ -282,6 +285,7 @@ export default async (req, context) => {
         case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
         case "PUT leads/:id/concept": return json(await hq.setConceptTheme(id, (await body(req)).thema, user));
         case "DELETE leads/:id/concept": return json(await hq.deleteConcept(id));
+        case "POST leads/:id/afwijzen": return json(await hq.rejectConcept(id, user));
         case "GET appointments": return json({ appointments: await hq.listAppointments() });
         case "PUT appointments/:id": return json(await hq.updateAppointment(id, await body(req), user));
         case "POST customers/:id/extra-website": return json(await websites.staffExtra(id, await body(req), user));

