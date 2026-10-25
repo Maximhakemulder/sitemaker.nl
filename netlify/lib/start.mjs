@@ -46,6 +46,7 @@ export async function startState(c) {
   if (!stage) return null;
   const s = await getSettings();
   const build = priceParts(c.build_cents, s.billing), monthly = priceParts(c.monthly_cents, s.billing);
+  if (stage === "informatie") await voorinvullen(c).catch((e) => console.log("[start] voorinvullen", e.message));
   const files = stage === "informatie" || stage === "bouwen" ? await q("SELECT * FROM intake_files WHERE customer_id = $1 ORDER BY id", [c.id]) : [];
   return {
     stage,
@@ -59,6 +60,7 @@ export async function startState(c) {
     dueAt: deliveryDue(c.intake_at),
     files: files.map(fileOut),
     themas: THEMAS,
+    hoofdacties: HOOFDACTIES,
     maxFiles: MAX_INTAKE_FILES,
   };
 }
@@ -131,9 +133,49 @@ export async function markStarted(customerId) {
 
 // ---------------------------------------------------------------- stap 3: informatie aanleveren
 const INTAKE_FIELDS = {
-  omschrijving: 3000, diensten: 3000, onderscheid: 2000, werkgebied: 300, doelgroep: 1000, openingstijden: 1000,
-  sitePhone: 40, siteEmail: 200, siteAddress: 300, socials: 1000, domein: 200, huidigeSite: 300, stijl: 20, kleuren: 300, voorbeelden: 1000, opmerkingen: 3000,
+  omschrijving: 3000, diensten: 3000, prijzenTonen: 10, onderscheid: 2000, werkgebied: 300, doelgroep: 1000, openingstijden: 1000,
+  hoofdactie: 20, boekingslink: 300, aanspreekvorm: 5,
+  sitePhone: 40, whatsapp: 40, siteEmail: 200, siteAddress: 300, socials: 1000, domein: 200, huidigeSite: 300,
+  stijl: 20, kleuren: 300, drieWoorden: 200, voorbeelden: 1000, voorbeeldenWaarom: 1000, nietWillen: 1000,
+  sfeerfotos: 5, reviewsLink: 300, reviewsToestemming: 5, team: 1500, vragen: 3000, opmerkingen: 3000,
 };
+export const HOOFDACTIES = { bellen: "Bellen", whatsapp: "WhatsApp sturen", afspraak: "Online een afspraak maken", offerte: "Een offerte aanvragen", langskomen: "Langskomen", mailen: "Mailen" };
+const KEUZES = { prijzenTonen: ["ja", "nee", "deels"], aanspreekvorm: ["je", "u"], sfeerfotos: ["ja", "nee"], reviewsToestemming: ["ja", "nee"] };
+
+// Vooraf invullen: kwam de klant via een concept (voorbeeldwebsite), dan weten we al veel. De klant controleert en vult aan.
+async function voorinvullen(c) {
+  if (!c.lead_id || (c.intake && Object.keys(c.intake).length) || c.intake_at) return null;
+  const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM intake_files WHERE customer_id = $1", [c.id]);
+  if (n) return null;
+  const con = await one("SELECT * FROM concepts WHERE lead_id = $1 AND status = 'klaar'", [c.lead_id]);
+  const lead = await one("SELECT website FROM leads WHERE id = $1", [c.lead_id]);
+  if (!con?.content) return null;
+  const k = con.content, b = k.bedrijf || {};
+  const intake = {
+    omschrijving: str([k.hero?.tekst, k.over?.tekst].filter(Boolean).join("\n\n"), 3000),
+    diensten: str((k.diensten?.items || []).map((d) => [d.titel, d.tekst].filter(Boolean).join(": ") + (d.prijs ? ` (${d.prijs})` : "")).join("\n"), 3000),
+    werkgebied: str(b.plaats, 300),
+    openingstijden: str((k.openingstijden || []).map((r) => `${r.dag} ${r.tijd}`).join("\n"), 1000),
+    sitePhone: str(b.telefoon, 40), whatsapp: str(b.whatsapp, 40), siteEmail: str(b.email, 200), siteAddress: str(b.adres, 300),
+    huidigeSite: str(lead?.website, 300),
+    kleuren: [k.kleuren?.primair, k.kleuren?.accent].filter(Boolean).join(", "),
+    hoofdactie: b.telefoon ? "bellen" : b.email ? "mailen" : "",
+    prijzenTonen: (k.diensten?.items || []).some((d) => d.prijs) ? "ja" : "",
+    voorIngevuld: "concept",
+  };
+  // logo en hun eigen foto's (geen sfeerbeelden) meekopiëren als bestanden
+  let teller = 0;
+  for (const i of (con.images || []).filter((x) => !x.stock).slice(0, 10)) {
+    const buf = await getFile(i.key);
+    if (!buf) continue;
+    const key = `intake/${c.id}/${crypto.randomUUID()}`;
+    await putFile(key, buf, { type: i.type, name: i.name });
+    await q("INSERT INTO intake_files (customer_id, kind, key, name, type, size) VALUES ($1,$2,$3,$4,$5,$6)", [c.id, i.logo ? "logo" : "foto", key, `${i.logo ? "logo" : "foto"}-van-je-site-${++teller}.${(i.name.split(".").pop() || "jpg")}`, i.type, buf.length]);
+  }
+  await q("UPDATE customers SET intake = $2::jsonb, updated_at = NOW() WHERE id = $1 AND intake_at IS NULL", [c.id, JSON.stringify(intake)]);
+  c.intake = intake;
+  return intake;
+}
 
 export async function saveIntake(user, b) {
   const c = await own(user);
@@ -142,6 +184,10 @@ export async function saveIntake(user, b) {
   const intake = {};
   for (const [k, max] of Object.entries(INTAKE_FIELDS)) intake[k] = str(b[k], max);
   if (intake.stijl && intake.stijl !== "kies" && !THEMAS[intake.stijl]) intake.stijl = "";
+  if (intake.hoofdactie && !HOOFDACTIES[intake.hoofdactie]) intake.hoofdactie = "";
+  for (const [k, ok] of Object.entries(KEUZES)) if (intake[k] && !ok.includes(intake[k])) intake[k] = "";
+  for (const k of ["boekingslink", "reviewsLink"]) if (intake[k] && !/^https?:\/\/[^\s]+\.[^\s]+/i.test(intake[k])) fail(400, "Vul een volledige link in, beginnend met https://", { field: k });
+  if (c.intake?.voorIngevuld) intake.voorIngevuld = c.intake.voorIngevuld;
   if (intake.siteEmail && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(intake.siteEmail)) fail(400, "Dit e-mailadres klopt niet.", { field: "siteEmail" });
   const verstuur = b.verstuur === true;
   if (verstuur) {
@@ -149,6 +195,8 @@ export async function saveIntake(user, b) {
     if (intake.omschrijving.length < 20) fouten.push(["omschrijving", "Vertel in een paar zinnen wat je bedrijf doet (minimaal 20 tekens)."]);
     if (intake.diensten.length < 3) fouten.push(["diensten", "Noem je belangrijkste diensten of producten."]);
     if (!intake.sitePhone && !intake.siteEmail) fouten.push(["sitePhone", "Vul minstens een telefoonnummer of e-mailadres in voor op je website."]);
+    if (!intake.hoofdactie) fouten.push(["hoofdactie", "Kies wat een bezoeker vooral moet doen."]);
+    if (intake.hoofdactie === "whatsapp" && !intake.whatsapp) fouten.push(["whatsapp", "Vul je WhatsApp-nummer in."]);
     if (fouten.length) fail(400, fouten[0][1], { field: fouten[0][0], errors: Object.fromEntries(fouten) });
   }
   await q("UPDATE customers SET intake = $2::jsonb, intake_at = $3, updated_at = NOW() WHERE id = $1", [c.id, JSON.stringify(intake), verstuur ? new Date().toISOString() : null]);

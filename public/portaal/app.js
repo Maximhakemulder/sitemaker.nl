@@ -222,29 +222,44 @@
   function stapInformatie(vak) {
     const st = state.start, i = st.intake, c = state.customer;
     const adres = (st.details.street ? st.details.street + ", " : "") + [st.details.postcode, st.details.city].filter(Boolean).join(" ");
+    const keuze = (name, label, opties, waarde, { opt = false, hulp = "" } = {}) => html`<div class="veld"><span class="label" id="l-${name}">${label}${opt ? html` <span class="opt">(optioneel)</span>` : ""}</span>${hulp ? html`<div class="hulp">${hulp}</div>` : ""}
+      <div class="stijl-keuze" role="radiogroup" aria-labelledby="l-${name}">${Object.entries(opties).map(([k, t]) => html`<label class="stijl-optie"><input type="radio" name="${name}" value="${k}" ${waarde === k ? raw("checked") : ""}><span>${t}</span></label>`)}</div><div class="fout" data-fout-voor="${name}"></div></div>`;
     render(vak, html`<h2>Informatie voor je website</h2>
       <p class="dempen">Vertel ons wat er op je website moet komen. Schrijf het gewoon op zoals je het aan een klant zou vertellen; wij maken er goede teksten van. Je kunt tussendoor opslaan en later verder.</p>
+      ${i.voorIngevuld ? html`<div class="melding melding-info">${raw(icon.let)}<p><b>We hebben alvast ingevuld wat we van je huidige website weten</b>, en je logo en foto's toegevoegd. Controleer het, pas aan wat niet klopt en vul de rest aan.</p></div>` : ""}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-        <fieldset><legend>Je bedrijf</legend>
+        <fieldset><legend>1. Je bedrijf</legend>
           ${tekstvak("omschrijving", "Wat doet je bedrijf, en voor wie?", i.omschrijving, { rows: 5, plaats: "Bijvoorbeeld: wij zijn een hoveniersbedrijf in Utrecht en omgeving. We leggen tuinen aan en onderhouden ze voor particulieren." })}
-          ${tekstvak("diensten", "Je belangrijkste diensten of producten", i.diensten, { rows: 5, hulp: "Eén per regel, eventueel met een korte uitleg of prijs.", plaats: "Tuinontwerp\nAanleg\nOnderhoud" })}
-          ${tekstvak("onderscheid", "Waarom kiezen klanten voor jou?", i.onderscheid, { opt: true, rows: 3 })}
-          <div class="rij2">${veld("werkgebied", "Werkgebied of plaats", i.werkgebied, { opt: true })}${veld("doelgroep", "Je klanten", i.doelgroep, { opt: true, hulp: "Bijv. particulieren, bedrijven, ouderen" })}</div>
+          ${tekstvak("diensten", "Je belangrijkste diensten", i.diensten, { rows: 6, hulp: "Eén per regel, met een korte uitleg. Zet er een prijs bij als die op je site mag.", plaats: "Tuinontwerp: we tekenen je tuin samen met jou\nAanleg: van grondwerk tot beplanting\nOnderhoud: vanaf € 45 per uur" })}
+          ${keuze("prijzenTonen", "Mogen er prijzen op je website?", { ja: "Ja", deels: "Alleen vanaf-prijzen", nee: "Nee" }, i.prijzenTonen, { opt: true })}
+          ${tekstvak("onderscheid", "Waarom kiezen klanten voor jou?", i.onderscheid, { opt: true, rows: 3, hulp: "Hoe concreter hoe beter: jaren ervaring, keurmerken of certificaten, garanties, snelheid. We zetten alleen op je site wat jij hier noemt.", plaats: "Al 15 jaar in de regio, VCA-gecertificeerd, 2 jaar garantie op aanleg" })}
+          <div class="rij2">${veld("werkgebied", "Werkgebied of plaatsen", i.werkgebied, { opt: true })}${veld("doelgroep", "Voor wie werk je?", i.doelgroep, { opt: true, hulp: "Bijv. particulieren, VvE's, bedrijven" })}</div>
+          ${tekstvak("vragen", "Vragen die klanten vaak stellen", i.vragen, { opt: true, rows: 3, hulp: "Met je antwoord erbij. Dan maken we er een stukje 'veelgestelde vragen' van.", plaats: "Hoe snel kunnen jullie komen? Meestal binnen een week." })}
+        </fieldset>
+        <fieldset><legend>2. Wat moet een bezoeker doen?</legend>
+          ${keuze("hoofdactie", "De belangrijkste actie op je website", st.hoofdacties || {}, i.hoofdactie, { hulp: "Deze knop komt overal op je site terug." })}
+          ${veld("boekingslink", "Link naar je online agenda", i.boekingslink, { opt: true, type: "url", hulp: "Bijv. je Salonized-, Treatwell- of Calendly-link." })}
+          <div class="rij2">${veld("sitePhone", "Telefoon", i.sitePhone ?? c.phone ?? st.details.phone, { type: "tel" })}${veld("whatsapp", "WhatsApp", i.whatsapp, { opt: true, type: "tel" })}</div>
+          <div class="rij2">${veld("siteEmail", "E-mailadres", i.siteEmail ?? c.email, { type: "email" })}${veld("siteAddress", "Adres", i.siteAddress ?? adres, { opt: true, hulp: "Laat leeg als je adres niet op de website mag." })}</div>
           ${tekstvak("openingstijden", "Openingstijden", i.openingstijden, { opt: true, rows: 3, plaats: "ma t/m vr 8:00 - 17:00\nza op afspraak" })}
-        </fieldset>
-        <fieldset><legend>Contact op je website</legend>
-          <div class="rij2">${veld("sitePhone", "Telefoon", i.sitePhone ?? c.phone ?? st.details.phone, { type: "tel" })}${veld("siteEmail", "E-mailadres", i.siteEmail ?? c.email, { type: "email" })}</div>
-          ${veld("siteAddress", "Adres", i.siteAddress ?? adres, { opt: true, hulp: "Laat leeg als je adres niet op de website mag." })}
           ${tekstvak("socials", "Social media", i.socials, { opt: true, rows: 2, plaats: "Links naar Instagram, Facebook, LinkedIn…" })}
+          ${keuze("aanspreekvorm", "Spreek je klanten aan met je of u?", { je: "Je", u: "U" }, i.aanspreekvorm, { opt: true })}
         </fieldset>
-        <fieldset><legend>Domein en stijl</legend>
-          <div class="rij2">${veld("domein", "Domeinnaam", i.domein, { opt: true, hulp: "Heb je er nog geen? Koop hem zelf bij een provider; wij verbinden hem met je site." })}${veld("huidigeSite", "Huidige website", i.huidigeSite, { opt: true })}</div>
-          <div class="veld"><span class="label" id="l-stijl">Welke stijl past bij je?</span>
-            <div class="stijl-keuze" role="radiogroup" aria-labelledby="l-stijl">${Object.entries({ kies: "Kies maar voor mij", ...st.themas }).map(([k, t]) => html`<label class="stijl-optie"><input type="radio" name="stijl" value="${k}" ${(i.stijl || "kies") === k ? raw("checked") : ""}><span>${t}</span></label>`)}</div></div>
-          <div class="rij2">${veld("kleuren", "Kleuren", i.kleuren, { opt: true, hulp: "Bijv. de kleuren van je logo" })}${veld("voorbeelden", "Websites die je mooi vindt", i.voorbeelden, { opt: true })}</div>
+        <fieldset><legend>3. Je merk en sfeer</legend>
+          ${veld("drieWoorden", "Hoe wil je overkomen, in drie woorden?", i.drieWoorden, { opt: true, hulp: "Bijvoorbeeld: betrouwbaar, nuchter, vakkundig. Of: luxe, rustig, persoonlijk." })}
+          <div class="rij2">${veld("kleuren", "Je kleuren", i.kleuren, { opt: true, hulp: "Bijv. de kleuren van je logo. Weet je het niet? Dan halen wij ze uit je logo." })}${veld("domein", "Domeinnaam", i.domein, { opt: true, hulp: "Heb je er nog geen? Koop hem zelf bij een provider; wij verbinden hem met je site." })}</div>
+          <div class="rij2">${veld("voorbeelden", "Websites die je mooi vindt", i.voorbeelden, { opt: true })}${veld("voorbeeldenWaarom", "Wat vind je daar mooi aan?", i.voorbeeldenWaarom, { opt: true })}</div>
+          ${tekstvak("nietWillen", "Wat wil je beslist niet op je website?", i.nietWillen, { opt: true, rows: 2, plaats: "Bijv. geen roze, geen foto's van mij, geen prijzen" })}
+          ${veld("huidigeSite", "Huidige website", i.huidigeSite, { opt: true })}
         </fieldset>
-        <fieldset><legend>Logo en foto's</legend>
-          <p class="klein dempen">Maximaal 4 MB per bestand en ${st.maxFiles} bestanden in totaal. Heb je grotere bestanden? Zet een link (bijvoorbeeld WeTransfer) bij Opmerkingen.</p>
+        <fieldset><legend>4. Beeld en vertrouwen</legend>
+          ${keuze("sfeerfotos", "Mogen we sfeerfoto's gebruiken waar eigen foto's ontbreken?", { ja: "Ja, prima", nee: "Nee, alleen mijn eigen foto's" }, i.sfeerfotos, { opt: true })}
+          ${veld("reviewsLink", "Link naar je Google-reviews", i.reviewsLink, { opt: true, type: "url", hulp: "Dan tonen we echte reviews van je klanten." })}
+          ${keuze("reviewsToestemming", "Mogen we reviews van je klanten op je website zetten?", { ja: "Ja", nee: "Nee" }, i.reviewsToestemming, { opt: true })}
+          ${tekstvak("team", "Wie werken er (namen en rollen die op de site mogen)?", i.team, { opt: true, rows: 2, plaats: "Jan de Vries, eigenaar\nSara, planning" })}
+        </fieldset>
+        <fieldset><legend>5. Logo en foto's</legend>
+          <p class="klein dempen">Je logo (het liefst los, op een transparante achtergrond) en foto's van jezelf of je team, je werk en je pand. Voor- en na-foto's werken heel goed. Maximaal 4 MB per bestand en ${st.maxFiles} bestanden in totaal. Heb je grotere bestanden? Zet een link (bijvoorbeeld WeTransfer) bij Opmerkingen.</p>
           <div class="upload-rij">
             <label class="knop knop-licht knop-klein upload-knop"><input type="file" class="sr" data-soort="logo" accept="image/*,.pdf,.svg">Logo toevoegen</label>
             <label class="knop knop-licht knop-klein upload-knop"><input type="file" class="sr" data-soort="foto" accept="image/*" multiple>Foto's toevoegen</label>
