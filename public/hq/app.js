@@ -16,6 +16,7 @@
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
     start: { gegevens: ["Vult gegevens in", "s-grijs"], betalen: ["Moet nog betalen", "s-let"], informatie: ["Betaald · levert info aan", "s-info"], bouwen: ["Bouwen!", "s-fout"], klaar: ["Gestart", "s-ok"] },
+    opdracht: { wacht: ["Wacht op de ontwerper", "s-grijs"], ontwerpen: ["Wordt ontworpen", "s-info"], controle: ["Klaar: controleer hem", "s-let"], live: ["Live", "s-ok"], fout: ["Lukte niet", "s-fout"] },
     concept: { wachtrij: ["In de wachtrij", "s-grijs"], bezig: ["Site wordt gescand", "s-info"], ontwerp: ["Wacht op de ontwerper", "s-grijs"], ontwerpen: ["Wordt ontworpen", "s-info"], klaar: ["Klaar", "s-ok"], fout: ["Mislukt", "s-fout"], overgeslagen: ["Overgeslagen", "s-grijs"] },
     opzeg: { aangevraagd: ["Opgezegd", "s-fout"], afgerond: ["Beëindigd", "s-grijs"], ingetrokken: ["Ingetrokken", "s-ok"] },
     reden: { te_duur: "Te duur", geen_resultaat: "Levert te weinig op", zelf_doen: "Zelf of ander bureau", stoppen: "Stopt met bedrijf", ontevreden: "Niet tevreden over de service", anders: "Andere reden" },
@@ -43,6 +44,7 @@
     ["bedrijf", "Bedrijf", '<path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M11 21v-3h2v3"/>'],
     ["overzicht", "Overzicht", '<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>'],
     ["klanten", "Klanten", '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>'],
+    ["opdrachten", "Opdrachten", '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'],
     ["wijzigingen", "Wijzigingen", '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'],
     ["service", "Klantvragen", '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'],
     ["aanvragen", "Agenda", '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'],
@@ -79,7 +81,7 @@
   }
 
   function zetBadges(c) {
-    badges = { concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt, service: c.klantvragen, domeinen: c.domeinen_werk, reviews: c.reviews_nieuw };
+    badges = { opdrachten: c.opdrachten_controle, concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt, service: c.klantvragen, domeinen: c.domeinen_werk, reviews: c.reviews_nieuw };
     app.querySelectorAll("[data-badge]").forEach((el) => { const n = badges[el.dataset.badge]; el.hidden = !n; el.textContent = n || ""; });
   }
 
@@ -89,7 +91,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina === "afdeling" ? "bedrijf" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { bedrijf, afdeling, overzicht, klanten, klant, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten }[pagina] || bedrijf;
+    const fn = { bedrijf, afdeling, overzicht, klanten, klant, opdrachten, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten }[pagina] || bedrijf;
     if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
     try { await fn(main, id); zetBalk(main, pagina); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
@@ -149,7 +151,7 @@
   }
 
   // Het team van de afdeling bovenaan elke werkpagina: wie er werkt, wat ze nu doen, en hun verdieping in 3D.
-  const PAGINA_AFD = { b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance" };
+  const PAGINA_AFD = { opdrachten: "projecten", b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance" };
   let teamCache = null;
   const balkDicht = () => { try { return localStorage.getItem("sm_balk") === "dicht"; } catch { return false; } };
   async function zetBalk(main, pagina) {
@@ -1396,6 +1398,57 @@ ${p.body}</div>
   }
 
   // ================================================ KOSTEN EN WINST (Bram)
+  // ================================================ OPDRACHTEN (echte websites van betalende klanten)
+  function aftellen(due) {
+    if (!due) return "";
+    const s = (new Date(due).getTime() - Date.now()) / 1000;
+    if (s <= 0) return "te laat";
+    const u = Math.floor(s / 3600), d = Math.floor(u / 24);
+    return d ? `nog ${d} ${d === 1 ? "dag" : "dagen"} ${u % 24} uur` : u ? `nog ${u} uur` : `nog ${Math.max(1, Math.round(s / 60))} min`;
+  }
+  async function opdrachten(main) {
+    const d = await api("hq/opdrachten");
+    const open = d.opdrachten.filter((o) => o.status !== "live"), live = d.opdrachten.filter((o) => o.status === "live");
+    const kaart = (o) => {
+      const krap = o.dueAt && o.status !== "live" && new Date(o.dueAt).getTime() - Date.now() < 12 * 3600 * 1000;
+      return html`<article class="opdracht ${krap ? "krap" : ""}">
+        <div class="wijziging-kop"><b><a href="#klant/${o.customerId}">${o.company}</a></b>${chip(L.opdracht, o.status)}</div>
+        <p class="klein dempen">${o.opBasisVanConcept ? "Op basis van het concept dat de klant zag" : "Nieuw ontwerp"} · ${o.fotos} foto's${o.intakeAt ? ` · informatie binnen ${geleden(o.intakeAt)}` : ""}</p>
+        ${o.status !== "live" && o.dueAt ? html`<p class="aftel ${krap ? "rood" : ""}"><b>${aftellen(o.dueAt)}</b> <span class="klein dempen">online uiterlijk ${tijd(o.dueAt)}</span></p>` : ""}
+        ${o.status === "live" ? html`<p class="klein">Live sinds ${tijd(o.liveAt)}${o.siteUrl ? html` · <a href="${o.siteUrl}" target="_blank" rel="noopener">${o.siteUrl.replace(/^https?:\/\//, "")}</a>` : ""}</p>` : ""}
+        ${o.feedback && o.status !== "live" ? html`<div class="notitie"><b>Jouw feedback:</b> ${o.feedback}</div>` : ""}
+        ${o.status === "fout" && o.reden ? html`<div class="melding melding-fout"><p>${o.reden}</p></div>` : ""}
+        <div class="knoppen">
+          ${["controle", "live"].includes(o.status) ? html`<a class="knop knop-licht knop-klein" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Bekijken</a>` : ""}
+          ${o.status === "controle" ? html`<button class="knop knop-actie knop-klein" data-live="${o.id}" data-naam="${o.company}">Live zetten</button>` : ""}
+          ${["controle", "fout"].includes(o.status) ? html`<button class="knop knop-tekst knop-klein" data-opnieuw="${o.id}">${o.status === "controle" ? "Aanpassen (feedback)" : "Opnieuw laten maken"}</button>` : ""}
+          ${o.status === "live" ? html`<a class="knop knop-tekst knop-klein" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Ontwerp</a>` : ""}
+        </div></article>`;
+    };
+    render(main, html`
+      <div class="hq-kop"><div><h1>Opdrachten</h1><p>Betaalde klanten die op hun website wachten. De ontwerper maakt hun site (op basis van het concept dat ze zagen, of nieuw). Jij bekijkt hem, geeft eventueel feedback en zet hem live.</p></div></div>
+      ${d.zonderOpdracht.length ? html`<section class="paneel"><h2>Informatie binnen, nog geen opdracht</h2><ul class="lijst">${d.zonderOpdracht.map((k) => html`<li class="factuur-rij"><div><a href="#klant/${k.customerId}"><b>${k.company}</b></a><br><span class="klein dempen">${aftellen(k.dueAt)}</span></div><button class="knop knop-actie knop-klein" data-start="${k.customerId}">Opdracht starten</button></li>`)}</ul></section>` : ""}
+      ${open.length ? html`<div class="opdracht-raster">${open.map(kaart)}</div>` : html`<section class="paneel"><div class="leeg"><h3>Geen openstaande opdrachten</h3><p>Zodra een klant na betalen zijn informatie aanlevert, verschijnt hij hier en gaat de ontwerper aan de slag.</p></div></section>`}
+      ${live.length ? html`<details class="paneel"><summary><b>Live gezet (${live.length})</b></summary><div class="opdracht-raster">${live.map(kaart)}</div></details>` : ""}`);
+    main.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", async () => {
+      SM.bezig(b, true, "Starten…");
+      try { await api(`hq/customers/${b.dataset.start}/opdracht`, { method: "POST" }); toast("De ontwerper pakt hem op in de volgende ronde."); opdrachten(main); } catch (e) { toast(e.message, "fout"); SM.bezig(b, false); }
+    }));
+    main.querySelectorAll("[data-live]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig(`${b.dataset.naam} live zetten?`, "De website wordt gepubliceerd en de klant krijgt een mail dat zijn site online staat.", "Live zetten"))) return;
+      SM.bezig(b, true, "Live zetten…");
+      try { const r = await api(`hq/opdrachten/${b.dataset.live}/live`, { method: "POST" }); toast(r.url ? `Live: ${r.url}` : "Live gezet", "ok"); if (r.needsLink) toast("Koppel de repo nog even met de hand aan het Netlify-project.", "fout"); opdrachten(main); }
+      catch (e) { toast(e.message, "fout"); SM.bezig(b, false); }
+    }));
+    main.querySelectorAll("[data-opnieuw]").forEach((b) => b.addEventListener("click", () => {
+      const dlg = SM.dialoog("Wat moet er anders?", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div><div class="veld"><label for="op-fb">Feedback voor de ontwerper</label><textarea id="op-fb" name="feedback" rows="4" placeholder="Bijv. de hero mag rustiger, gebruik de foto van het team bovenaan, telefoonnummer groter"></textarea></div><button class="knop knop-actie" type="submit">Terug naar de ontwerper</button></form>`);
+      dlg.querySelector("form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        try { await api(`hq/opdrachten/${b.dataset.opnieuw}/opnieuw`, { method: "POST", body: { feedback: e.target.elements.feedback.value } }); dlg.close(); toast("De ontwerper past hem aan in de volgende ronde."); opdrachten(main); } catch (err) { SM.toonFouten(e.target, err); }
+      });
+    }));
+  }
+
   async function kosten(main) {
     const d = await api("hq/kosten");
     const mnd = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 15).toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }); };

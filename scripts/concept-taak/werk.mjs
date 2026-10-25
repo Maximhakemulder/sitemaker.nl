@@ -49,6 +49,39 @@ try {
       console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen · DNA: ${Object.entries(c.dna || {}).map(([k, v]) => `${k}=${v}`).join(" ")}${c.instructie ? ` · wens: ${c.instructie}` : ""}`);
     }
     if (!d.concepten.length) console.log("Geen concepten die op een ontwerp wachten.");
+  } else if (cmd === "opdracht-claim") {
+    // Opdrachten (betaalde klanten) gaan altijd voor. Map: $CONCEPT_WERK/opdracht-<id>/
+    const d = await api("POST", "opdrachten/claim", { max: Number(args[0] || 3) });
+    for (const o of d.opdrachten) {
+      const m = `opdracht-${o.id}`;
+      schrijf(dir(m, "opdracht.json"), JSON.stringify(o, null, 1));
+      for (const a of o.afbeeldingen) schrijf(dir(m, "afbeeldingen", a.naam), await api("GET", `opdrachten/${o.id}/afbeeldingen/${encodeURIComponent(a.naam)}`, null, { raw: true }));
+      const i = o.intake || {};
+      const regels = Object.entries(i).filter(([k, v]) => v && k !== "voorIngevuld").map(([k, v]) => `- **${k}**: ${String(v).replace(/\n/g, "\n  ")}`).join("\n");
+      schrijf(dir(m, "informatie-klant.md"), `# Informatie van ${o.bedrijf.naam} (bindend)\n\nKlantgegevens: ${[o.bedrijf.contactpersoon, o.bedrijf.email, o.bedrijf.telefoon, o.bedrijf.adres].filter(Boolean).join(" · ")}\n\n${regels}\n${o.feedback ? `\n## Feedback van Maxim op de vorige versie (verwerken!)\n${o.feedback}\n` : ""}`);
+      if (o.basis === "concept" && o.concept?.html) {
+        schrijf(dir(m, "concept.html"), o.concept.html);
+        schrijf(dir(m, "concept-content.json"), JSON.stringify(o.concept.content, null, 1));
+        // startpunt: de vorige versie (bij feedback) of het concept
+        schrijf(dir(m, "index.html"), o.vorigeVersie?.html || o.concept.html);
+        if (o.vorigeVersie?.content) schrijf(dir(m, "content.json"), JSON.stringify(o.vorigeVersie.content, null, 1));
+      } else {
+        if (o.vorigeVersie?.html) { schrijf(dir(m, "index.html"), o.vorigeVersie.html); schrijf(dir(m, "content.json"), JSON.stringify(o.vorigeVersie.content || {}, null, 1)); }
+        schrijf(dir(m, "ontwerp-dna.md"), `# Ontwerp-DNA voor ${o.bedrijf.naam} (bindend)\n\n${o.ontwerpDNA}\n`);
+      }
+      console.log(`opdracht #${o.id} ${o.bedrijf.naam} · basis: ${o.basis}${o.feedback ? " · MET FEEDBACK" : ""} → ${dir(m)} · ${o.afbeeldingen.length} afbeeldingen`);
+    }
+    if (!d.opdrachten.length) console.log("Geen opdrachten die wachten.");
+  } else if (cmd === "opdracht-opslaan") {
+    const [id] = args, m = `opdracht-${id}`;
+    const content = JSON.parse(fs.readFileSync(dir(m, "content.json"), "utf8"));
+    const html = fs.readFileSync(dir(m, "index.html"), "utf8");
+    const d = await api("PUT", `opdrachten/${id}`, { content, html });
+    console.log(`Opgeslagen: ${d.url}\nControleer nu: node scripts/concept-taak/controle.mjs ${d.url}`);
+  } else if (cmd === "opdracht-afmelden") {
+    const [id, reden] = args;
+    await api("POST", `opdrachten/${id}/afmelden`, { reden });
+    console.log("Afgemeld.");
   } else if (cmd === "stock") {
     const [id, ...termen] = args;
     const d = await api("POST", `concepten/${id}/stock`, { termen });
@@ -74,6 +107,6 @@ try {
     await api("POST", `concepten/${id}/afmelden`, { reden, overslaan: vlag === "--overslaan" });
     console.log("Afgemeld.");
   } else {
-    console.log("Gebruik: werk.mjs instructies | status | claim [n] | stock <id> <term>... | kies <id> <n>... | opslaan <id> | afmelden <id> \"reden\" [--overslaan]");
+    console.log("Gebruik: werk.mjs instructies | status | opdracht-claim [n] | opdracht-opslaan <id> | opdracht-afmelden <id> \"reden\" | claim [n] | stock <id> <term>... | kies <id> <n>... | opslaan <id> | afmelden <id> \"reden\" [--overslaan]");
   }
 } catch (e) { console.error("FOUT:", e.message); process.exit(1); }

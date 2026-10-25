@@ -34,7 +34,7 @@ function templateFiles(dir, base = dir) {
   return out;
 }
 
-export async function provisionSite(customerId, b, user) {
+export async function provisionSite(customerId, b, user, { bestanden = null } = {}) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [customerId]);
   if (!c) fail(404, "Klant niet gevonden.");
   if (c.site_repo) fail(409, "Deze klant heeft al een gekoppelde site.");
@@ -56,7 +56,8 @@ export async function provisionSite(customerId, b, user) {
   content.hero = { ...content.hero, label: "", titel: `Welkom bij ${c.company}`, tekst: "Hier komt een korte, krachtige zin over wat jullie doen." };
   let files = templateFiles(dir).filter((f) => f.path !== "content.json");
   // Was deze klant eerst een lead met een concept? Dan starten we vanuit dat concept (teksten, foto's, thema).
-  const concept = await conceptForCustomer(c).catch(() => null);
+  // Komt het ontwerp uit een opdracht (eigen ontwerp van de ontwerper), dan gebruiken we precies die bestanden.
+  const concept = bestanden ? null : await conceptForCustomer(c).catch(() => null);
   let start = content, bron = "sjabloon";
   if (concept) {
     start = { ...concept.content, thema: b.thema && THEMAS[b.thema] ? b.thema : concept.content.thema || thema };
@@ -64,9 +65,10 @@ export async function provisionSite(customerId, b, user) {
     files = files.filter((f) => !f.path.startsWith("afbeeldingen/")).concat(concept.files);
     bron = "concept";
   }
-  files.push({ path: "content.json", content: JSON.stringify(start, null, 2) + "\n" });
+  if (bestanden) { files = files.filter((f) => !f.path.startsWith("afbeeldingen/") && !bestanden.some((x) => x.path === f.path)).concat(bestanden); bron = "opdracht"; }
+  else files.push({ path: "content.json", content: JSON.stringify(start, null, 2) + "\n" });
   await waitForMain(repo.full_name);
-  await commitFiles(repo.full_name, "main", files, bron === "concept" ? "Start vanuit het concept" : "Startsjabloon Sitemaker");
+  await commitFiles(repo.full_name, "main", files, bron === "opdracht" ? "Website van de ontwerper" : bron === "concept" ? "Start vanuit het concept" : "Startsjabloon Sitemaker");
   // 3. Netlify-project
   let site = { id: "", name: "", url: "", linked: false };
   if (netlifyReady()) {
@@ -129,6 +131,35 @@ Antwoord alleen met JSON, zonder uitleg eromheen:
 of
 {"kan": false, "reden": "<korte uitleg voor de beheerder>"}`;
 
+// Sites met een eigen ontwerp (ontwerp.html van de ontwerper): Claude past de HTML aan met zoek/vervang-stukken.
+const SYSTEM_HTML = `Je bent webredacteur bij Sitemaker. Je verwerkt wijzigingsverzoeken van klanten in hun website.
+De site is één HTML-bestand (ontwerp.html) met een eigen ontwerp. Jij geeft de aanpassingen terug als zoek/vervang-stukken.
+
+Regels:
+- Pas alleen aan wat de klant vraagt. Laat het ontwerp, de opmaak (CSS) en alle andere teksten exact hetzelfde.
+- Elk "zoek"-stuk moet LETTERLIJK en precies één keer in de HTML voorkomen (kopieer het exact, inclusief tags). Houd de stukken kort maar uniek.
+- Schrijf in correct Nederlands, in de toon die de site al heeft.
+- Verzin geen feiten: geen telefoonnummers, prijzen, adressen, namen, reviews of beloftes die de klant niet geeft.
+- Geen <script>, geen externe bronnen. Afbeeldingen: alleen paden die al in de HTML staan of het pad van een meegestuurde bijlage.
+- Kan het verzoek niet met kleine aanpassingen in deze ene pagina (een nieuwe pagina, een webshop, een formulier met een koppeling, een volledig nieuw ontwerp), is het onduidelijk, of mis je informatie? Doe dan niets en leg kort uit waarom.
+
+Antwoord alleen met JSON, zonder uitleg eromheen:
+{"kan": true, "samenvatting": "<1-2 zinnen voor de beheerder>", "wijzigingen": [{"zoek": "<exact stuk>", "vervang": "<nieuw stuk>"}]}
+of
+{"kan": false, "reden": "<korte uitleg voor de beheerder>"}`;
+
+export function pasHtmlAan(html, wijzigingen) {
+  let h = html;
+  for (const w of wijzigingen || []) {
+    const zoek = String(w?.zoek ?? ""), vervang = String(w?.vervang ?? "");
+    if (!zoek) return { fout: "Leeg zoek-stuk." };
+    const n = h.split(zoek).length - 1;
+    if (n !== 1) return { fout: n ? "Een zoek-stuk komt meer dan één keer voor." : "Een zoek-stuk staat niet in de HTML." };
+    h = h.replace(zoek, () => vervang);
+  }
+  return { html: h };
+}
+
 function flatten(o, pre = "", out = {}) {
   if (Array.isArray(o)) o.forEach((v, i) => flatten(v, `${pre}[${i}]`, out));
   else if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) flatten(v, pre ? `${pre}.${k}` : k, out);
@@ -158,7 +189,8 @@ export async function processChange(changeId) {
   if (!claim) return { skipped: true };
   try {
     const repo = w.site_repo;
-    const tekst = await readFile(repo, "content.json");
+    const ontwerpHtml = await readFile(repo, "ontwerp.html").catch(() => null);
+    const tekst = ontwerpHtml ? "{}" : await readFile(repo, "content.json");
     if (!tekst) throw Object.assign(new Error("content.json niet gevonden in de repo."), { handmatig: true });
     const oud = JSON.parse(tekst);
     // bijlage: afbeelding mee in de branch, tekst als context
@@ -179,6 +211,7 @@ export async function processChange(changeId) {
         bijlageInfo = `De klant stuurde een bestand mee (${w.attachment_name}) dat je niet kunt lezen. Als het verzoek daarvan afhangt: kan=false.`;
       }
     }
+    if (ontwerpHtml) return await verwerkHtml(w, repo, ontwerpHtml, extraFiles, bijlageInfo);
     const prompt = `Bedrijf: ${w.company}
 Pagina volgens de klant: ${w.page || "niet opgegeven"}
 Wijzigingsverzoek van de klant:
@@ -214,6 +247,39 @@ ${JSON.stringify(oud, null, 2)}`;
       [changeId, e.handmatig ? "handmatig" : "fout", str(e.message, 600)]);
     return { error: e.message };
   }
+}
+
+async function verwerkHtml(w, repo, oudHtml, extraFiles, bijlageInfo) {
+  const prompt = `Bedrijf: ${w.company}
+Pagina volgens de klant: ${w.page || "niet opgegeven"}
+Wijzigingsverzoek van de klant:
+"""${w.description}"""
+${w.ai_feedback ? `\nOpmerking van de beheerder bij het vorige voorstel (verwerk dit):\n"""${w.ai_feedback}"""\n` : ""}
+${bijlageInfo}
+
+Huidige ontwerp.html:
+${oudHtml}`;
+  const antwoord = parseJson(await claude({ system: SYSTEM_HTML, prompt, maxTokens: 8000 }));
+  if (!antwoord) throw new Error("Claude gaf geen leesbaar antwoord.");
+  if (antwoord.kan === false) {
+    await q("UPDATE change_requests SET ai_status = 'handmatig', ai_reason = $2, ai_updated_at = NOW() WHERE id = $1", [w.id, str(antwoord.reden, 600) || "Kan niet automatisch."]);
+    return { handmatig: true };
+  }
+  const r = pasHtmlAan(oudHtml, antwoord.wijzigingen);
+  if (r.fout) throw Object.assign(new Error(`Voorstel afgekeurd door controle: ${r.fout}`), { handmatig: true });
+  const bekend = new Set([...(oudHtml.match(/afbeeldingen\/[\w.\-]+/g) || []), ...extraFiles.map((f) => f.path)]);
+  for (const p of r.html.match(/afbeeldingen\/[\w.\-]+/g) || []) if (!bekend.has(p)) throw Object.assign(new Error(`Voorstel afgekeurd door controle: onbekende afbeelding ${p}.`), { handmatig: true });
+  if (/<script|javascript:|<[^>]+\son[a-z]+\s*=/i.test(r.html)) throw Object.assign(new Error("Voorstel afgekeurd door controle: script in de HTML."), { handmatig: true });
+  if (r.html === oudHtml) throw Object.assign(new Error("Het voorstel verandert niets aan de site."), { handmatig: true });
+  const diff = (antwoord.wijzigingen || []).slice(0, 40).map((x) => ({ veld: "ontwerp.html", oud: str(x.zoek, 400), nieuw: str(x.vervang, 400) }));
+  const branch = `wijziging-${w.id}`;
+  if (w.pr_number) { await closePr(repo, w.pr_number).catch(() => null); }
+  await commitFiles(repo, branch, [...extraFiles, { path: "ontwerp.html", content: r.html }], `Wijziging #${w.id}: ${str(antwoord.samenvatting, 70) || "aanpassing"}`, { createFrom: "main" });
+  const pr = await openPr(repo, branch, `Wijziging #${w.id}: ${str(antwoord.samenvatting, 80)}`,
+    `Verzoek van de klant:\n\n> ${w.description.replace(/\n/g, "\n> ")}\n\nVoorstel: ${antwoord.samenvatting}\n\nGoedkeuren gaat via Sitemaker HQ.`);
+  await q(`UPDATE change_requests SET ai_status = 'voorstel', ai_summary = $2, ai_diff = $3::jsonb, ai_reason = '', branch = $4, pr_number = $5, pr_url = $6, preview_url = $7, ai_updated_at = NOW() WHERE id = $1`,
+    [w.id, str(antwoord.samenvatting, 500), JSON.stringify(diff), branch, pr.number, pr.html_url || "", previewUrl(w.site_netlify_name, pr.number)]);
+  return { voorstel: true, pr: pr.number };
 }
 
 // ---------------------------------------------------------------- beoordelen in HQ

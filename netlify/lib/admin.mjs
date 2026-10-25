@@ -47,6 +47,7 @@ export async function overview() {
       (SELECT COUNT(*)::int FROM leads WHERE status = 'reactie') AS leads_reactie,
       (SELECT COUNT(*)::int FROM tickets WHERE status = 'open') AS klantvragen,
       (SELECT COUNT(*)::int FROM domains WHERE status IN ('verhuizen','registreren','probleem')) AS domeinen_werk,
+      (SELECT COUNT(*)::int FROM opdrachten WHERE status IN ('controle','fout')) AS opdrachten_controle,
       (SELECT COUNT(*)::int FROM reviews WHERE source = 'portaal' AND NOT published) AS reviews_nieuw,
       (SELECT COUNT(*)::int FROM customers WHERE opzeg_status = 'aangevraagd') AS opzeggingen,
       (SELECT COUNT(*)::int FROM leads WHERE status IN ('verstuurd','opgevolgd') AND sent_at > NOW() - INTERVAL '30 days') AS leads_verstuurd_30d`, [month]);

@@ -8,6 +8,7 @@ import { mollieReady, startFirstPayment } from "./mollie.mjs";
 import { priceParts } from "./billing.mjs";
 import { THEMAS } from "./sites.mjs";
 import { normDomain, koppelDomein } from "./domains.mjs";
+import { maakOpdracht } from "./opdrachten.mjs";
 
 export const MAX_INTAKE_FILES = 20;
 
@@ -205,6 +206,8 @@ export async function saveIntake(user, b) {
   // Domeinnaam opgegeven: meteen vastleggen, dan koppelen we hem zodra de site er is (en tonen we de DNS-stappen).
   if (verstuur && intake.domein) await koppelDomein({ customerId: c.id, userId: user.id, naam: intake.domein, provider: intake.domeinProvider }).catch((e) => { if (e.status === 409) throw e; console.log("[start] domein", e.message); });
   await q("UPDATE customers SET intake = $2::jsonb, intake_at = $3, updated_at = NOW() WHERE id = $1", [c.id, JSON.stringify(intake), verstuur ? new Date().toISOString() : null]);
+  // De ontwerper krijgt meteen een opdracht (basis = het concept dat de klant zag, als dat er is).
+  if (verstuur) await maakOpdracht(c.id).catch((e) => console.log("[start] opdracht", e.message));
   if (!verstuur) return { ok: true, saved: true };
 
   const due = deliveryDue(new Date());

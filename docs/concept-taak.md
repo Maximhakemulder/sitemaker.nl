@@ -11,12 +11,41 @@ git checkout -q main && git pull -q
 export SITEMAKER_URL=...            # staat in de taakopdracht
 export SITEMAKER_TAAK_SLEUTEL=...   # staat in de taakopdracht
 node scripts/concept-taak/werk.mjs instructies     # → /tmp/concepten/_kit (regels, bewegingsscript, iconen)
-node scripts/concept-taak/werk.mjs claim 5         # → /tmp/concepten/<id>/ (bron.json + afbeeldingen/)
+node scripts/concept-taak/werk.mjs opdracht-claim 3   # eerst: betaalde klanten → /tmp/concepten/opdracht-<id>/
+node scripts/concept-taak/werk.mjs claim 5            # daarna concepten (5 min het aantal opdrachten) → /tmp/concepten/<id>/
 ```
 Lees `/tmp/concepten/_kit/content-regels.md` en `ontwerp-regels.md` helemaal. Die regels zijn bindend.
 
-Werk de concepten **één voor één af, elk met een eigen subagent** (Agent-tool), zodat je context schoon blijft. Geef de subagent
-dit bestand, het concept-id en de omgevingsvariabelen mee. Lukt een concept niet, meld het af en ga door met het volgende.
+Werk de opdrachten en concepten **één voor één af, elk met een eigen subagent** (Agent-tool), zodat je context schoon blijft. Geef de subagent
+dit bestand, het id (`opdracht-<id>` of het concept-id) en de omgevingsvariabelen mee. Lukt een concept niet, meld het af en ga door met het volgende.
+
+## Eerst: opdrachten van betaalde klanten (gaan altijd voor)
+`node scripts/concept-taak/werk.mjs opdracht-claim 3` → `/tmp/concepten/opdracht-<id>/` met `opdracht.json`, `informatie-klant.md`
+(alles wat de klant in de onboarding invulde: bindend), `afbeeldingen/` (concept-beelden + `klant-logo.*` / `klant-foto-N.*` die
+de klant uploadde) en, als hij via een concept kwam, `concept.html` + `concept-content.json` + `index.html` (startpunt).
+Een betaalde klant heeft binnen 2 werkdagen zijn site. Doe deze dus eerst, elk met een eigen subagent.
+
+**Basis = concept** (de klant zag een voorbeeld en kocht): bouw GEEN nieuw ontwerp. Pas `index.html` aan:
+- Houd het ontwerp: lay-out, kleuren, letters, vormen, beweging en het pronkstuk blijven zoals ze zijn.
+- Verwerk de informatie van de klant: teksten, diensten met uitleg (prijzen alleen volgens `prijzenTonen`), waarom kiezen,
+  werkgebied, doelgroep, openingstijden, contact (telefoon, WhatsApp, e-mail, adres), socials.
+- De hoofdknop overal = `hoofdactie` (bellen / WhatsApp / online afspraak met `boekingslink` / offerte / langskomen / mailen).
+- `aanspreekvorm` je/u overal consequent. `drieWoorden` bepaalt de toon van de teksten. `nietWillen` is heilig.
+- Logo: gebruikt de klant een eigen logo (`klant-logo.*`), vervang het logo overal. Eigen foto's (`klant-foto-*`) krijgen de
+  beste plekken; vervang sfeerbeelden waar het kan. `sfeerfotos = nee` → geen sfeerbeelden meer.
+- `vragen` → een sectie met veelgestelde vragen in dezelfde stijl. `team` → namen en rollen. `reviewsLink` +
+  `reviewsToestemming = ja` → een knop "Lees onze reviews op Google" (verzin GEEN reviews of sterren).
+- Goede `<title>` en meta description voor Google.
+- `content.json`: neem `concept-content.json` als basis en werk de feiten bij (zelfde opbouw).
+**Basis = nieuw**: ontwerp zoals bij een concept (met `ontwerp-dna.md`), maar met de informatie van de klant als bron.
+**Met feedback** (`informatie-klant.md` onderaan): `index.html` is de vorige versie; verwerk precies wat Maxim vraagt.
+
+Bekijken en verbeteren zoals hieronder (`node scripts/concept-taak/bekijk.mjs opdracht-<id>`), dan
+`node scripts/concept-taak/werk.mjs opdracht-opslaan <id>` en `controle.mjs <url>`. Lukt het niet: `opdracht-afmelden <id> "reden"`.
+Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
+
+## Daarna: concepten
+`node scripts/concept-taak/werk.mjs claim <5 min het aantal opdrachten>` en dan per concept:
 
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle

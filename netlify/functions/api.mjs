@@ -1,8 +1,10 @@
 // Eén API voor de website, het klantenportaal en Sitemaker HQ.
+import crypto from "node:crypto";
 import * as domains from "../lib/domains.mjs";
 import * as team from "../lib/team.mjs";
 import * as concepts from "../lib/concepts.mjs";
 import * as taak from "../lib/concepttaak.mjs";
+import * as opdrachten from "../lib/opdrachten.mjs";
 import * as agenda from "../lib/agenda.mjs";
 import * as service from "../lib/service.mjs";
 import * as kosten from "../lib/kosten.mjs";
@@ -108,6 +110,12 @@ export default async (req, context) => {
 
     if (path === "reviews" && m === "GET") return json(await publishedReviews(), 200, { "cache-control": "public, max-age=300" });
 
+    // ------------------------------------------------ voorbeeld van de echte website (opdracht), via geheime link
+    if (seg[0] === "opdracht" && seg[1] && m === "GET") {
+      if (seg[2] === "afbeeldingen" && seg[3]) return await opdrachten.afbeelding(0, decodeURIComponent(seg[3]), { token: seg[1] });
+      if (seg.length === 2) return await opdrachten.voorbeeld(seg[1], { nonce: crypto.randomBytes(12).toString("base64") });
+    }
+
     // ------------------------------------------------ geplande Claude-taak die concepten ontwerpt (sleutel in x-taak-sleutel)
     if (seg[0] === "taak") {
       taak.checkTaak(req);
@@ -115,6 +123,10 @@ export default async (req, context) => {
       if (path === "taak/instructies" && m === "GET") return json(taak.instructies());
       if (path === "taak/status" && m === "GET") return json(await taak.status());
       if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
+      if (path === "taak/opdrachten/claim" && m === "POST") return json(await opdrachten.claimOpdrachten((await body(req)).max));
+      if (seg[1] === "opdrachten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await opdrachten.afbeelding(tid, decodeURIComponent(seg[4]));
+      if (seg[1] === "opdrachten" && tid && !seg[3] && m === "PUT") return json(await opdrachten.opslaan(tid, await body(req)));
+      if (seg[1] === "opdrachten" && tid && seg[3] === "afmelden" && m === "POST") return json(await opdrachten.afmelden(tid, await body(req)));
       if (seg[1] === "concepten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await taak.afbeelding(tid, seg[4]);
       if (seg[1] === "concepten" && tid && seg[3] === "stock" && m === "POST") return json(await taak.stockZoeken(tid, (await body(req)).termen));
       if (seg[1] === "concepten" && tid && seg[3] === "kies" && m === "POST") return json(await taak.stockKiezen(tid, (await body(req)).nummers));
@@ -259,6 +271,10 @@ export default async (req, context) => {
         case "POST team/vraag": return json(await team.askQuestion(user, await body(req)));
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
+        case "GET opdrachten": return json(await opdrachten.lijst());
+        case "POST opdrachten/:id/live": return json(await opdrachten.liveZetten(id, user));
+        case "POST opdrachten/:id/opnieuw": return json(await opdrachten.opnieuw(id, (await body(req)).feedback, user));
+        case "POST customers/:id/opdracht": return json(await opdrachten.maakOpdracht(id, { user }).then((o) => ({ ok: !!o })));
         case "GET concepten/taak": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json({ sleutel: taak.taakSleutel(), ...(await taak.status()) });
         case "PUT concepten/:id/ontwerp": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await concepts.setConceptHtml(id, (await body(req)).html, user));
         case "POST leads/:id/concept": return json(await hq.queueConcept(id, { instructie: (await body(req)).instructie || "", direct: true }));
