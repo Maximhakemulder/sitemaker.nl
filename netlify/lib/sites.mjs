@@ -322,3 +322,32 @@ export async function retryStuck() {
   for (const r of rows) { await q("UPDATE change_requests SET ai_status = 'wachtrij', ai_updated_at = NOW() WHERE id = $1", [r.id]); await trigger(r.id); }
   return { retried: rows.length };
 }
+
+// Test van de koppelingen (HQ › Instellingen): maakt een test-repo + Netlify-project aan en ruimt ze direct weer op.
+export async function koppelTest(user) {
+  const { deleteRepo } = await import("./github.mjs");
+  const { deleteSite } = await import("./netlifyapi.mjs");
+  const stappen = [];
+  const stap = (naam, ok, info = "") => { stappen.push({ naam, ok, info }); return ok; };
+  if (!stap("GitHub-sleutels ingevuld", githubReady(), githubReady() ? `organisatie ${env("GITHUB_ORG")}` : "GITHUB_TOKEN of GITHUB_ORG ontbreekt")) return { ok: false, stappen };
+  if (!stap("Netlify-sleutels ingevuld", netlifyReady(), netlifyReady() ? `team ${env("NETLIFY_ACCOUNT_SLUG")}` : "NETLIFY_API_TOKEN of NETLIFY_ACCOUNT_SLUG ontbreekt")) return { ok: false, stappen };
+  const naam = `sitemaker-koppeltest-${crypto.randomBytes(3).toString("hex")}`;
+  let repo = null, site = null;
+  try {
+    repo = await createRepo(naam, "Test van Sitemaker HQ (wordt meteen verwijderd)");
+    stap("Repo aanmaken in GitHub", true, repo.full_name);
+    await waitForMain(repo.full_name);
+    await commitFiles(repo.full_name, "main", [{ path: "build.mjs", content: "import fs from 'node:fs';fs.mkdirSync('dist',{recursive:true});fs.writeFileSync('dist/index.html','ok');" }], "Koppeltest");
+    stap("Bestanden schrijven in de repo", true);
+    site = await createSite({ name: naam, repoFullName: repo.full_name, repoId: repo.id });
+    stap("Netlify-project aanmaken", true, site.name);
+    stap("Netlify bouwt vanuit GitHub", site.linked, site.linked ? "gekoppeld via de GitHub-app" : "NETLIFY_GITHUB_INSTALLATION_ID ontbreekt: repo's moet je dan met de hand koppelen");
+  } catch (e) {
+    stap("Fout", false, e.message);
+  } finally {
+    if (site?.id) await deleteSite(site.id).then(() => stap("Test-project in Netlify opgeruimd", true)).catch((e) => stap("Test-project in Netlify opruimen", false, e.message));
+    if (repo?.full_name) await deleteRepo(repo.full_name).then(() => stap("Test-repo in GitHub opgeruimd", true)).catch((e) => stap("Test-repo in GitHub opruimen", false, `${e.message} (verwijder ${repo.full_name} met de hand)`));
+  }
+  await audit(user.id, null, "koppelingen.test", { ok: stappen.every((x) => x.ok) });
+  return { ok: stappen.every((x) => x.ok), stappen };
+}

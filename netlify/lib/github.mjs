@@ -28,6 +28,7 @@ export async function createRepo(name, description) {
   return gh("POST", path, { name, description, private: true, auto_init: true, has_issues: false, has_wiki: false, has_projects: false });
 }
 export const getRepo = (repo) => gh("GET", `/repos/${repo}`, null, { ok404: true });
+export const deleteRepo = (repo) => gh("DELETE", `/repos/${repo}`, null, { ok404: true });
 
 // Meerdere bestanden in één commit op een branch zetten (Git Data API).
 export async function commitFiles(repo, branch, files, message, { createFrom } = {}) {
