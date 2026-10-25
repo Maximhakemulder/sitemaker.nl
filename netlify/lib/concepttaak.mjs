@@ -45,7 +45,7 @@ export async function claim(max = 5) {
     const dna = maakDNA(recent, c.id);
     recent.unshift(dna);
     await q("UPDATE concepts SET bron = COALESCE(bron, '{}'::jsonb) || jsonb_build_object('dna', $2::jsonb) WHERE id = $1", [c.id, JSON.stringify(dna)]);
-    const tekst = dnaTekst(dna) + (vermijdFonts.length ? `\nLettertypen: kies NIET uit deze recent gebruikte: ${vermijdFonts.join(", ")}. Zoek iets anders op Bunny Fonts dat bij de richting past.` : "");
+    const tekst = dnaTekst(dna) + (vermijdFonts.length ? `\nLettertypen: deze zijn recent veel gebruikt: ${vermijdFonts.join(", ")}. Kies liever iets anders op Bunny Fonts dat bij de richting past; gebruik er één alleen als die echt het beste bij dit bedrijf past (bijv. hun eigen huisletter), en schrijf in plan.md waarom.` : "");
     out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", ontwerpDNA: tekst, dna, bron: c.bron || {}, analyse: c.analysis || {},
       afbeeldingen: (c.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: !!i.logo, alt: i.alt || "", sfeerbeeld: !!i.stock })) });
   }
