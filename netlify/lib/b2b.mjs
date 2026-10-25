@@ -34,9 +34,9 @@ export const LEAD_SELECT = `SELECT l.*, c.token AS concept_token, c.status AS co
 export function fillTemplate(tpl, lead, s) {
   const sender = s.b2b.senderName || s.company.name || "Sitemaker";
   const map = {
-    bedrijf: lead.company || "uw bedrijf", plaats: lead.city || "", afzender: sender,
+    bedrijf: lead.company || "jullie bedrijf", plaats: lead.city || "", afzender: sender,
     intro: lead.intro ? lead.intro.trim() + "\n\n" : "", link: `${publicBase()}/#kennismaking`,
-    concept: conceptReady(lead) ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van uw huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
+    concept: conceptReady(lead) ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
     conceptlink: conceptReady(lead) ? conceptUrl(lead.concept_token) : "",
   };
   // Oudere eigen mailteksten zonder {concept}: zet de conceptregel na de openingszin.
@@ -48,12 +48,12 @@ export function compose(lead, kind, s) {
   const subject = fillTemplate(t.subject, lead, s).slice(0, 200);
   const co = s.company;
   const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : "", [co.address, co.postcode, co.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
-  const footer = `\n\n--\nU ontvangt deze mail omdat uw adres openbaar op uw website staat. Geen berichten meer van ons? Meld u af: ${unsubUrl(lead.id)}\n${legal}`;
+  const footer = `\n\n--\nJe ontvangt deze mail omdat je adres openbaar op je website staat. Geen berichten meer van ons? Meld je af: ${unsubUrl(lead.id)}\n${legal}`;
   let body = fillTemplate(t.body, lead, s);
   // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
   if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
     const [aanhef, ...rest] = body.split(/\n\n/);
-    const zin = `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van uw huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}`;
+    const zin = `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}`;
     body = rest.length ? [aanhef, zin, ...rest].join("\n\n") : `${zin}\n\n${aanhef}`;
   }
   body += footer;
@@ -69,7 +69,7 @@ export function checkTrack({ l, m, u, s }) {
   const a = Buffer.from(String(s || "")), b = Buffer.from(want);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
-function textToHtml(text, meet = null) {
+export function textToHtml(text, meet = null) {
   const linkify = (s) => escH(s).replace(/https?:\/\/[^\s<]+/g, (u) => {
     const echt = u.replace(/&amp;/g, "&");
     const href = meet?.kliks && !echt.includes("/api/b2b/afmelden") ? trackLink(meet.leadId, meet.mail, echt) : echt;
@@ -81,7 +81,16 @@ function textToHtml(text, meet = null) {
   const voet = rest.join("\n\n--\n");
   const kaart = `<p style="margin:18px 0 18px"><a href="${escH(publicBase())}" style="text-decoration:none"><img src="${escH(publicBase())}/assets/brand/maxim-visitekaart.png" width="400" height="200" alt="Maxim, websiteadviseur bij Sitemaker · +31 6 19 92 12 22 · www.sitemaker.nl · hallo@sitemaker.nl" style="display:block;border:0;width:100%;max-width:400px;height:auto;border-radius:10px"></a></p>`;
   return `<!doctype html><html lang="nl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#1C0747">
-${hoofd.split(/\n\n/).map((p) => `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${linkify(voet).replace(/\n/g, "<br>")}</p>` : ""}${pixel}</body></html>`;
+${hoofd.split(/\n\n/).map((p) => {
+    // Een regel met alleen de link naar de voorbeeldwebsite wordt een duidelijke knop.
+    const regels = p.split("\n");
+    const knop = regels.findIndex((r) => /^https?:\/\/\S+\/voorbeeld\/\S+$/.test(r.trim()));
+    if (knop < 0) return `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`;
+    const url = regels[knop].trim();
+    const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
+    const tekst = regels.filter((_, i) => i !== knop).join("\n");
+    return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#FF5757;color:#1C0747;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:8px">Bekijk jullie nieuwe website</a></p>`;
+  }).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${linkify(voet).replace(/\n/g, "<br>")}</p>` : ""}${pixel}</body></html>`;
 }
 // Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
 const SCANNER = /bot|crawl|spider|preview|scanner|safelinks|barracuda|mimecast|proofpoint|curl|python|go-http|headless/i;
@@ -328,7 +337,7 @@ export async function researchLead(lead) {
     try {
       const out = await claude({
         system: SITEMAKER + "\nJe bent researcher bij Sitemaker en bereidt een eerste zakelijke mail voor.",
-        prompt: `Bedrijf: ${lead.company} (${lead.category}, ${lead.city}). Website: ${lead.website}\nTekst van hun site (ingekort):\n"""${text.slice(0, 6000)}"""\n\nSchrijf één openingszin (max. 30 woorden, u-vorm) die verwijst naar iets concreets en waars van hun bedrijf. Geen complimenten over hun huidige website en geen kritiek erop. Niets verzinnen; is er niets bruikbaars, laat intro leeg.\nGeef ook een notitie (max. 20 woorden): wat voor bedrijf, en is hun huidige site verouderd, ontbreekt er iets (bijv. geen contactformulier, niet mobielvriendelijk)? Alleen wat uit de tekst blijkt.\nAntwoord alleen met JSON: {"intro":"...","notitie":"..."}`,
+        prompt: `Bedrijf: ${lead.company} (${lead.category}, ${lead.city}). Website: ${lead.website}\nTekst van hun site (ingekort):\n"""${text.slice(0, 6000)}"""\n\nSchrijf één openingszin (max. 30 woorden, je-vorm: je/jullie, nooit u) die verwijst naar iets concreets en waars van hun bedrijf. Geen complimenten over hun huidige website en geen kritiek erop. Niets verzinnen; is er niets bruikbaars, laat intro leeg.\nGeef ook een notitie (max. 20 woorden): wat voor bedrijf, en is hun huidige site verouderd, ontbreekt er iets (bijv. geen contactformulier, niet mobielvriendelijk)? Alleen wat uit de tekst blijkt.\nAntwoord alleen met JSON: {"intro":"...","notitie":"..."}`,
       });
       const j = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1));
       intro = str(j.intro, 300); note = str(j.notitie, 200);

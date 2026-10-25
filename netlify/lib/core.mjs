@@ -100,11 +100,11 @@ export const DEFAULT_SETTINGS = {
     templates: {
       eerste: {
         subject: "Even naar de website van {bedrijf} gekeken",
-        body: "Goedendag,\n\n{intro}We hebben de website van {bedrijf} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen: meer bezoekers die bellen, mailen of een afspraak maken.\n\nDaarom hebben we alvast laten zien hoe dat eruit kan zien. Uw nieuwe website staat klaar:\n{conceptlink}\n\nWat het kost is simpel, alles inbegrepen:\n- €299,95 eenmalig: uw complete website, binnen 48 uur (2 werkdagen) live\n- €69,95 per maand: hosting, onderhoud en elke maand 4 wijzigingen\nGeen opstartkosten, geen uurtje-factuurtje, geen verrassingen.\n\nZin om er even kort over te bellen? Reageer gerust op deze mail.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
+        body: "Hallo,\n\n{intro}We hebben de website van {bedrijf} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen: meer bezoekers die bellen, mailen of een afspraak maken.\n\nDaarom hebben we alvast laten zien hoe dat eruit kan zien. Jullie nieuwe website staat klaar:\n{conceptlink}\n\nWat het kost is simpel, alles inbegrepen:\n- €299,95 eenmalig: je complete website, binnen 48 uur (2 werkdagen) live\n- €69,95 per maand: hosting, onderhoud en elke maand 4 wijzigingen\nGeen opstartkosten, geen uurtje-factuurtje, geen verrassingen.\n\nZin om er even kort over te bellen? Reageer gerust op deze mail.\n\nMet vriendelijke groet,\n{afzender}",
       },
       opvolging: {
         subject: "Re: Even naar de website van {bedrijf} gekeken",
-        body: "Goedendag,\n\nEen korte herinnering: de nieuwe website die we voor {bedrijf} hebben gemaakt, staat nog voor u klaar.\n{conceptlink}\n\nAlles inbegrepen: €299,95 eenmalig en €69,95 per maand voor hosting, onderhoud en 4 wijzigingen per maand.\n\nNiet interessant? Laat het even weten, dan haal ik hem offline en hoort u niets meer van ons.\n\nMet vriendelijke groet,\n{afzender}\nSitemaker",
+        body: "Hallo,\n\nEen korte herinnering: de nieuwe website die we voor {bedrijf} hebben gemaakt, staat nog voor je klaar.\n{conceptlink}\n\nAlles inbegrepen: €299,95 eenmalig en €69,95 per maand voor hosting, onderhoud en 4 wijzigingen per maand.\n\nNiet interessant? Laat het even weten, dan haal ik hem offline en hoor je niets meer van ons.\n\nMet vriendelijke groet,\n{afzender}",
       },
     },
   },
