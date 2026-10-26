@@ -579,9 +579,9 @@ export async function conceptPage(token, { hq = false } = {}) {
   // De balk staat vast bovenaan; vaste/plakkende koppen van het ontwerp schuiven eronder (nooit eroverheen).
   const balkScript = `<script>(function(){var b=document.querySelector(".sm-balk");if(!b)return;var r=document.createElement("div");r.className="sm-balk-ruimte";b.after(r);var H=0,lijst=[];
 function hoog(){H=b.offsetHeight;r.style.height=H+"px";document.documentElement.style.setProperty("--sm-balk",H+"px")}
-function zet(el){if(el===b||b.contains(el)||el.closest(".sm-actiebalk"))return;var cs=getComputedStyle(el);if(cs.position!=="fixed"&&cs.position!=="sticky")return;if(cs.top==="auto"){return}
+function zet(el){if(el===b||b.contains(el)||el.closest(".sm-actiebalk"))return;var cs=getComputedStyle(el);var abs=cs.position==="absolute"&&(!el.offsetParent||el.offsetParent===document.body||el.offsetParent===document.documentElement);if(cs.position!=="fixed"&&cs.position!=="sticky"&&!abs)return;if(cs.top==="auto"){return}
 var o=el.dataset.smTop;if(o===undefined){o=String(parseFloat(cs.top)||0);if(parseFloat(o)>H+40)return;el.dataset.smTop=o;if(lijst.indexOf(el)<0)lijst.push(el)}el.style.setProperty("top",(parseFloat(o)+H)+"px","important")}
-function alles(){hoog();var a=document.body.getElementsByTagName("*");for(var i=0;i<a.length;i++)zet(a[i]);var m=0;lijst.forEach(function(e){if(getComputedStyle(e).position!=="static")m=Math.max(m,e.offsetHeight)});document.documentElement.style.scrollPaddingTop=(H+Math.min(m,140)+12)+"px"}
+function alles(){hoog();var a=document.body.getElementsByTagName("*");for(var i=0;i<a.length;i++)zet(a[i]);var m=0;lijst.forEach(function(e){var ps=getComputedStyle(e).position;if(ps==="fixed"||ps==="sticky")m=Math.max(m,e.offsetHeight)});document.documentElement.style.scrollPaddingTop=(H+Math.min(m,140)+12)+"px"}
 var kop=[];function koppen(){kop=Array.prototype.slice.call(document.querySelectorAll("header,nav,[class*=header],[class*=kop],[class*=nav],[class*=menu],[class*=balk]"))}
 var t=0;addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;kop.forEach(zet)})},{passive:true});
 addEventListener("resize",function(){lijst.forEach(function(e){delete e.dataset.smTop;e.style.removeProperty("top")});lijst=[];alles()});
