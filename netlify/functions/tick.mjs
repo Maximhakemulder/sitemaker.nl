@@ -11,6 +11,7 @@ import { pulse, maybeBriefings } from "../lib/team.mjs";
 import { runDomainChecks } from "../lib/domains.mjs";
 import { runCancellations, retryDrafts } from "../lib/service.mjs";
 import { controleer as controleerCredits, spaarstand, meet } from "../lib/credits.mjs";
+import { runMaandfacturen } from "../lib/billing.mjs";
 
 export default async () => {
   const started = Date.now();
@@ -29,6 +30,7 @@ async function ronde(started) {
   await step("agenda-herinnering", () => sendReminders());
   await step("domeinen", () => runDomainChecks({ max: 4 }));
   await step("opzeggingen", () => runCancellations());
+  await step("maandfacturen", () => runMaandfacturen({ max: 5 }));
   await step("klantvragen", () => retryDrafts());
   if (!spaar) await step("concepten", () => runConcepts({ max: 2 }));
   if (!spaar && left() > 9000) await step("concept-formulieren", () => vulFormulierenAan());

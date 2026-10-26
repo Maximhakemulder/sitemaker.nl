@@ -233,13 +233,14 @@ export async function sendWelcome(customerId, user) {
   const hulp = (await getSettings()).company?.email || env("MAIL_FROM") || env("MAIL_USER") || "hallo@sitemaker.nl";
   const hulpRegel = `Kom je er niet uit? Mail ons op ${hulp}, dan helpen we je verder.`;
   const st = startStage(c);
+  const stap2 = mollieReady() ? `Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch` : `Ga akkoord; je krijgt een factuur voor de bouw (${euro(c.build_cents)}) en daarna elke maand een factuur van ${euro(c.monthly_cents)}`;
   const res = st && st !== "klaar" && st !== "bouwen" ? await sendMail({
     to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: start je website in je portaal",
-    text: `Beste ${c.contact_name || c.company},\n\nLeuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen: ${link}\n\n1. Vul je bedrijfsgegevens aan\n2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch\n3. Lever de informatie voor je website aan (teksten, logo en foto's)\n\nDaarna staat je website binnen ${OFFER.deliveryText} online.\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\n${hulpRegel}\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Beste ${c.contact_name || c.company},\n\nLeuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen: ${link}\n\n1. Vul je bedrijfsgegevens aan\n2. ${stap2}\n3. Lever de informatie voor je website aan (teksten, logo en foto's)\n\nDaarna staat je website binnen ${OFFER.deliveryText} online.\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\n${hulpRegel}\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Welkom bij Sitemaker",
       intro: [`Beste ${escH(c.contact_name || c.company)},`, "Leuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen:",
-        `1. Vul je bedrijfsgegevens aan<br>2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch<br>3. Lever de informatie voor je website aan`],
+        `1. Vul je bedrijfsgegevens aan<br>2. ${stap2}<br>3. Lever de informatie voor je website aan`],
       button: { label: "Start in je portaal", href: link },
       after: [`Daarna staat je website binnen <b>${OFFER.deliveryText}</b> online.`, `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`, `Kom je er niet uit? Mail ons op <a href="mailto:${escH(hulp)}">${escH(hulp)}</a>, dan helpen we je verder.`],
     }),
@@ -365,6 +366,11 @@ export async function updateInvoice(id, b, user) {
   const status = pick(b.status, ["open", "betaald", "vervallen", "gecrediteerd"], inv.status);
   const upd = await one(`UPDATE invoices SET status = $2, paid_at = CASE WHEN $2 = 'betaald' THEN COALESCE(paid_at, NOW()) ELSE NULL END, updated_at = NOW() WHERE id = $1 RETURNING *`, [id, status]);
   await audit(user.id, inv.customer_id, "factuur.status", { number: inv.number, from: inv.status, to: status });
+  // Door ons gemaakte PDF bijwerken (status "Betaald" en de betaalregel); een geüploade PDF laten we staan.
+  if (status !== inv.status && inv.pdf_key && ["start", "maand"].includes(inv.source)) {
+    const { generateInvoicePdf } = await import("./billing.mjs");
+    await generateInvoicePdf(id).catch(() => {});
+  }
   return { invoice: publicInvoice(upd) };
 }
 
