@@ -416,9 +416,13 @@ export async function processConcept(conceptId) {
     if (!lead?.website) return await klaar("overgeslagen", { reden: "Geen website om naar te kijken." });
     const taak = await perTaak();
     if (!taak && !aiReady()) return await klaar("fout", { reden: "Claude is nog niet gekoppeld (ANTHROPIC_API_KEY of AI Gateway)." });
-    const site = await scan(lead.website);
+    // Met een wens/informatie van Maxim (Opnieuw maken) gaat het concept ook door als hun site weinig tekst heeft of niet te lezen is.
+    const handmatig = taak && String(c.instructie || "").trim().length >= 40;
+    let site = await scan(lead.website);
+    if (site.error && handmatig) site = { home: { url: lead.website }, text: "", analysis: { url: lead.website }, kleuren: [], cands: [] };
     if (site.error) return await klaar("overgeslagen", { reden: site.error });
-    if (site.text.length < 300) return await klaar("overgeslagen", { reden: "Te weinig tekst op hun site om een goed concept te maken.", analysis: site.analysis });
+    if (site.text.length < 300 && !handmatig) return await klaar("overgeslagen", { reden: "Te weinig tekst op hun site om een goed concept te maken. Tip: Opnieuw maken met de informatie over het bedrijf als wens.", analysis: site.analysis });
+    if (handmatig) site.text = `${site.text}\n\n### Informatie van Sitemaker (Maxim)\n${c.instructie}`.trim();
     // oude afbeeldingen van een eerdere poging opruimen
     for (const i of c.images || []) await deleteFile(i.key).catch(() => {});
     const images = await saveImages(c.id, site.cands);
