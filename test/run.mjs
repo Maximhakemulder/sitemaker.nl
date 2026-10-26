@@ -265,6 +265,22 @@ await test("medewerker mag geen instellingen of team wijzigen", async () => {
   assert.equal((await call("POST", "hq/medewerkers", { cookie: mw, body: { email: "x@y.test" } })).status, 403);
   assert.equal((await call("GET", "hq/customers", { cookie: mw })).status, 200);
 });
+await test("gebruikers helemaal verwijderen (portaal en team)", async () => {
+  const cs = (await call("GET", "hq/customers", { cookie: admin })).data.customers;
+  const cid = cs[0].id;
+  assert.equal((await call("POST", `hq/customers/${cid}/users`, { cookie: admin, body: { email: "weg@klant.test" } })).status, 200);
+  let d = (await call("GET", `hq/customers/${cid}`, { cookie: admin })).data;
+  const u = d.users.find((x) => x.email === "weg@klant.test"); assert.ok(u);
+  assert.equal((await call("DELETE", `hq/customers/${cid}/users/${u.id}`, { cookie: admin })).status, 200);
+  d = (await call("GET", `hq/customers/${cid}`, { cookie: admin })).data;
+  assert.ok(!d.users.some((x) => x.email === "weg@klant.test"));
+  await call("POST", "hq/medewerkers", { cookie: admin, body: { email: "tijdelijk@sitemaker.test", role: "medewerker" } });
+  const t = (await call("GET", "hq/medewerkers", { cookie: admin })).data.team.find((x) => x.email === "tijdelijk@sitemaker.test");
+  assert.equal((await call("DELETE", `hq/medewerkers/${t.id}`, { cookie: admin })).status, 200);
+  assert.ok(!(await call("GET", "hq/medewerkers", { cookie: admin })).data.team.some((x) => x.email === "tijdelijk@sitemaker.test"));
+  const me = (await call("GET", "hq/medewerkers", { cookie: admin })).data.me;
+  assert.equal((await call("DELETE", `hq/medewerkers/${me.id}`, { cookie: admin })).status, 400);
+});
 await test("uitloggen beëindigt de sessie", async () => {
   await call("POST", "auth/logout", { cookie: k1 });
   assert.equal((await call("GET", "portal/state", { cookie: k1 })).status, 401);
