@@ -143,7 +143,9 @@ export async function scan(website) {
   const links = [...html.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)]
     .map((m) => ({ url: abs(m[1], home.url), label: textOf(m[2]).toLowerCase() }))
     .filter((l) => l.url && new URL(l.url).host === host && l.url !== home.url && !/\.(pdf|jpe?g|png|zip)$/i.test(l.url))
-    .filter((l) => /(dienst|behandel|prijs|tarie|over|wie|team|contact|werkwijze|aanbod|specialis|praktijk|salon|menu|openingstijd)/.test(l.url.toLowerCase() + " " + l.label));
+    .filter((l) => /(dienst|behandel|prijs|tarie|over|wie|team|contact|werkwijze|aanbod|specialis|praktijk|salon|menu|openingstijd|offerte|aanvra|intake|afspra|aanmeld|inschrijv)/.test(l.url.toLowerCase() + " " + l.label))
+    // pagina's met een formulier (offerte, intake, afspraak, contact) eerst, die nemen we over
+    .sort((a, b) => Number(/(offerte|aanvra|intake|afspra|aanmeld|inschrijv|contact)/.test(b.url.toLowerCase() + " " + b.label)) - Number(/(offerte|aanvra|intake|afspra|aanmeld|inschrijv|contact)/.test(a.url.toLowerCase() + " " + a.label)));
   const seen = new Set(), sub = [];
   for (const l of links) { const k = l.url.replace(/\/$/, ""); if (!seen.has(k)) { seen.add(k); sub.push(l.url); } if (sub.length >= 3) break; }
   const pages = [{ url: home.url, html }];
@@ -154,7 +156,58 @@ export async function scan(website) {
   const sheet = (html.match(/<link[^>]+rel=["']stylesheet["'][^>]*>/i) || [""])[0];
   if (sheet) { const s = await get(abs(attr(sheet, "href"), home.url), { max: 400000, timeout: 4000 }); if (s?.text) css += s.text; }
   const cands = pages.flatMap((p) => imageCandidates(p.html, p.url));
-  return { home, html, text, analysis: analyse(home, html, textOf(html)), kleuren: colorsOf(css), cands };
+  return { home, html, text, analysis: { ...analyse(home, html, textOf(html)), formulieren: formulierenUit(pages), boeken: boekingUit(pages) }, kleuren: colorsOf(css), cands };
+}
+
+// Formulieren op hun site (offerte, intake, afspraak, contact): de vragen en keuzes nemen we over in het nieuwe ontwerp.
+// Zoek-, nieuwsbrief- en inlogformulieren tellen niet.
+export function formulierenUit(pages) {
+  const uit = [];
+  for (const p of pages) {
+    for (const m of p.html.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)) {
+      const [, fattr, f] = m;
+      if (/type=["']?(search|password)/i.test(f) || /role=["']search|search|zoek|login|inlog|newsletter|nieuwsbrief|mailchimp|subscribe/i.test(fattr)) continue;
+      const labels = {};
+      for (const l of f.matchAll(/<label\b[^>]*for=["']([^"']+)["'][^>]*>([\s\S]*?)<\/label>/gi)) labels[l[1]] = textOf(l[2]);
+      const velden = [], groepen = {};
+      for (const v of f.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>|<(input|textarea)\b([^>]*)>/gi)) {
+        const tag = v[3] ? v[3].toLowerCase() : "select", a = v[3] ? v[4] : v[1], inhoud = v[3] ? "" : v[2];
+        const type = tag === "input" ? (attr(`<x ${a}>`, "type") || "text").toLowerCase() : tag;
+        if (["hidden", "submit", "button", "image", "reset", "password", "file"].includes(type)) continue;
+        const naam = attr(`<x ${a}>`, "name"), id = attr(`<x ${a}>`, "id");
+        if (/(captcha|honeypot|recaptcha|_wp|nonce|website_url|^hp)/i.test(naam + " " + id) || /display:\s*none/i.test(a)) continue;
+        const label = str(labels[id] || attr(`<x ${a}>`, "aria-label") || attr(`<x ${a}>`, "placeholder") || naam.replace(/[_\-[\]]+/g, " "), 80).replace(/\s*\*\s*$/, "");
+        const verplicht = /\brequired\b|aria-required=["']true/i.test(a) || /\*\s*$/.test(labels[id] || "");
+        if (type === "radio" || type === "checkbox") {
+          const g = groepen[naam] || (groepen[naam] = { label: str(naam.replace(/[_\-[\]]+/g, " "), 60), type, opties: [], verplicht });
+          if (g.opties.length < 12) g.opties.push(label || attr(`<x ${a}>`, "value"));
+          if (g.opties.length === 1) velden.push(g);
+          continue;
+        }
+        const opties = tag === "select" ? [...inhoud.matchAll(/<option\b[^>]*>([\s\S]*?)<\/option>/gi)].map((o) => str(textOf(o[1]), 60)).filter((o) => o && !/^(-+|kies|selecteer|maak een keuze)/i.test(o)).slice(0, 15) : undefined;
+        if (label) velden.push({ label, type, ...(opties ? { opties } : {}), ...(verplicht ? { verplicht } : {}) });
+      }
+      if (velden.length < 2) continue;
+      const knop = str(textOf((f.match(/<button\b[^>]*>([\s\S]*?)<\/button>/i) || [])[1] || "") || attr((f.match(/<input\b[^>]*type=["']submit["'][^>]*>/i) || [""])[0], "value"), 40);
+      const sleutel = velden.map((v) => v.label).join("|");
+      if (uit.some((x) => x.velden.map((v) => v.label).join("|") === sleutel)) continue;
+      uit.push({ pagina: p.url, velden: velden.slice(0, 16), knop: knop || "" });
+      if (uit.length >= 3) return uit;
+    }
+  }
+  return uit;
+}
+
+// Online boeken via een extern systeem (Salonized, Treatwell, Calendly …): de afspraakknop linkt daarheen.
+const BOEKSYSTEMEN = /(salonized\.com|treatwell\.nl|calendly\.com|fresha\.com|planity\.com|zenchef\.com|bookings?\.|afspraak\.|onlineafspraken\.nl|timely\.|setmore\.com|simplybook\.|acuityscheduling\.com|booksy\.com|wix\.com\/booking|shore\.com|clinicminds|phorest\.com|mijnafspraak|reserveren\.)/i;
+export function boekingUit(pages) {
+  const uit = [];
+  for (const p of pages) for (const m of p.html.matchAll(/<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    if (!BOEKSYSTEMEN.test(m[1]) || uit.some((u) => u.url === m[1])) continue;
+    uit.push({ url: m[1].slice(0, 300), tekst: str(textOf(m[2]), 60) });
+    if (uit.length >= 2) return uit;
+  }
+  return uit;
 }
 
 // Kleuren uit een SVG-logo (betrouwbaarder dan de CSS van de site).
@@ -448,6 +501,17 @@ export async function queueConcept(leadId, { instructie = "", direct = false } =
 }
 
 // tick: nieuwe leads met een website automatisch in de wachtrij, en een paar starten (binnen de daglimiet).
+// Concepten die al gescand waren voordat we formulieren en boekingssystemen bekeken: één per ronde aanvullen.
+export async function vulFormulierenAan() {
+  const c = await one(`SELECT c.id, c.analysis, l.website FROM concepts c JOIN leads l ON l.id = c.lead_id
+                       WHERE c.status = 'ontwerp' AND NOT (COALESCE(c.analysis, '{}'::jsonb) ? 'formulieren') AND l.website <> '' ORDER BY c.id LIMIT 1`);
+  if (!c) return { klaar: true };
+  const s = await scan(c.website).catch(() => null);
+  const extra = { formulieren: s?.analysis?.formulieren || [], boeken: s?.analysis?.boeken || [] };
+  await q("UPDATE concepts SET analysis = COALESCE(analysis, '{}'::jsonb) || $2::jsonb WHERE id = $1", [c.id, JSON.stringify(extra)]);
+  return { id: c.id, formulieren: extra.formulieren.length, boeken: extra.boeken.length };
+}
+
 export async function runConcepts({ max = 2 } = {}) {
   const s = await getSettings();
   const cfg = s.b2b.concepten || {};
@@ -570,6 +634,15 @@ export async function setTheme(leadId, thema, user) {
   const c = await one("UPDATE concepts SET content = jsonb_set(content, '{thema}', to_jsonb($2::text)), updated_at = NOW() WHERE lead_id = $1 AND status = 'klaar' RETURNING id", [leadId, thema]);
   if (!c) fail(400, "Er is nog geen klaar concept.");
   await audit(user.id, null, "concept.thema", { lead: leadId, thema });
+  return { ok: true };
+}
+// Maxim wijst het concept af: geen mail, de voorbeeldpagina gaat dicht, de lead wordt overgeslagen (komt niet terug).
+export async function rejectConcept(leadId, user) {
+  const c = await one("UPDATE concepts SET status = 'overgeslagen', reden = 'Afgewezen in HQ', expires_at = NOW(), updated_at = NOW() WHERE lead_id = $1 RETURNING id", [leadId]);
+  const l = await one(`UPDATE leads SET status = 'overgeslagen', reject_reason = 'Concept afgewezen in HQ', updated_at = NOW()
+                       WHERE id = $1 AND status IN ('kandidaat','nieuw','goedgekeurd','fout') RETURNING id`, [leadId]);
+  if (!c && !l) fail(404, "Dit concept bestaat niet (meer) of de mail is al verstuurd.");
+  await audit(user?.id || null, null, "concept.afgewezen", { lead: leadId });
   return { ok: true };
 }
 export async function deleteConcept(leadId) {

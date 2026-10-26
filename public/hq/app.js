@@ -70,7 +70,7 @@
           <nav class="hq-nav" aria-label="HQ">${NAV.map(([k, t, svg, kop]) => html`${kop ? html`<div class="tussen">${kop}</div>` : ""}<a href="#${k}" data-nav="${k}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${raw(svg)}</svg>${t}<span class="tel" data-badge="${k}" hidden></span></a>`)}</nav>
           <div class="onder">${me.open ? html`<b>Open modus</b>` : html`${me.email}<br>${me.role === "admin" ? "Beheerder" : "Medewerker"} · <button class="knop knop-tekst" id="uit">Uitloggen</button>`}<br><a href="${websiteUrl}" target="_blank" rel="noopener" class="knop-tekst knop">Website bekijken</a></div>
         </aside>
-        <div class="hq-rechts">${me.open ? html`<div class="open-balk">Open modus: HQ is zonder inloggen bereikbaar. Dit gaat vanzelf dicht zodra de mail is ingesteld.</div>` : ""}<main class="hq-main" id="inhoud" tabindex="-1"></main></div>
+        <div class="hq-rechts"><div id="credit-balk"></div>${me.open ? html`<div class="open-balk">Open modus: HQ is zonder inloggen bereikbaar. Dit gaat vanzelf dicht zodra de mail is ingesteld.</div>` : ""}<main class="hq-main" id="inhoud" tabindex="-1"></main></div>
       </div>`);
     if (app.querySelector("#uit")) app.querySelector("#uit").onclick = () => SM.uitloggen();
     const zij = app.querySelector("#zij"), mk = app.querySelector("#menu");
@@ -78,6 +78,8 @@
     zij.addEventListener("click", (e) => { if (e.target.closest("a")) { zij.classList.remove("open"); mk.setAttribute("aria-expanded", "false"); } });
     window.addEventListener("hashchange", route);
     route();
+    creditBalk();
+    setInterval(creditBalk, 10 * 60000);
   }
 
   function zetBadges(c) {
@@ -1267,7 +1269,7 @@ ${p.body}</div>
             <p class="klein dempen">${[c.category, c.city].filter(Boolean).join(" · ")}${c.status === "klaar" ? ` · ${c.fotos} foto's · ${c.uniek ? "uniek ontwerp" : "vaste opmaak"}` : ""}${c.reden && c.status !== "klaar" ? ` · ${c.reden}` : ""}</p>${c.status === "klaar" && !c.uniek && c.ontwerpFout ? html`<p class="klein dempen">Ontwerp-agent: ${c.ontwerpFout}</p>` : ""}
             ${c.views ? html`<p class="klein"><b>Laatst bekeken ${geleden(c.lastViewAt)}</b>${c.phone ? html` · <a href="tel:${c.phone}">${c.phone}</a>` : ""}</p>` : ""}
             ${c.status === "klaar" && c.leadStatus === "nieuw" ? html`<div class="knoppen">${c.email ? html`<button class="knop knop-actie knop-klein" data-akkoord="${c.leadId}" data-naam="${c.company}">Akkoord, verstuur mail</button>` : html`<span class="klein dempen">Geen e-mailadres</span>`}<button class="knop knop-tekst knop-klein" data-opnieuw="${c.leadId}">Opnieuw maken</button></div>` : c.status === "klaar" ? html`<p class="klein">${chip(L.lead, c.leadStatus)}</p>` : ""}
-            <div class="knoppen">${c.status === "klaar" ? html`<a class="knop knop-licht knop-klein" href="${c.hqUrl}" target="_blank" rel="noopener">Bekijken</a><button class="knop knop-tekst knop-klein" data-kopieer="${c.url}">Link kopiëren</button>` : ""}<button class="knop knop-tekst knop-klein" data-lead="${c.leadId}">Lead</button></div></div>
+            <div class="knoppen">${c.status === "klaar" ? html`<a class="knop knop-licht knop-klein" href="${c.hqUrl}" target="_blank" rel="noopener">Bekijken</a><button class="knop knop-tekst knop-klein" data-kopieer="${c.url}">Link kopiëren</button>` : ""}${/^https?:\/\//i.test(c.website || "") ? html`<a class="knop knop-licht knop-klein" href="${c.website}" target="_blank" rel="noopener noreferrer" title="${c.website}">Huidige website</a>` : ""}${c.status !== "overgeslagen" && ["kandidaat", "nieuw", "goedgekeurd", "fout"].includes(c.leadStatus) ? html`<button class="knop knop-tekst knop-klein" data-afwijzen="${c.leadId}" data-naam="${c.company}">Afwijzen</button>` : ""}<button class="knop knop-tekst knop-klein" data-lead="${c.leadId}">Lead</button></div></div>
         </article>`)}</div>`
         : html`<section class="paneel"><div class="leeg"><h3>Nog geen concepten${conceptFilter ? " in deze lijst" : ""}</h3><p>Voor nieuwe leads met een website maakt de agent automatisch een concept (instelbaar bij Instellingen). Je kunt het ook per lead starten bij B2B-mail.</p></div></section>`}`);
     main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { conceptFilter = b.dataset.f; concepten(main); }));
@@ -1279,6 +1281,10 @@ ${p.body}</div>
         e.preventDefault();
         try { await api(`hq/leads/${b.dataset.opnieuw}/concept`, { method: "POST", body: { instructie: e.target.elements.instructie.value } }); dlg.close(); toast("Staat klaar voor de ontwerper: in de volgende ronde wordt hij opnieuw gemaakt."); concepten(main); } catch (err) { toast(err.message, "fout"); }
       });
+    }));
+    main.querySelectorAll("[data-afwijzen]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig(`${b.dataset.naam} afwijzen?`, "Er gaat geen mail naar dit bedrijf, de voorbeeldwebsite gaat offline en het concept verdwijnt uit je lijst. De lead komt niet terug.", "Ja, afwijzen"))) return;
+      try { await api(`hq/leads/${b.dataset.afwijzen}/afwijzen`, { method: "POST", body: {} }); toast(`${b.dataset.naam} is afgewezen.`); concepten(main); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelectorAll("[data-lead]").forEach((b) => b.addEventListener("click", async () => {
       const { leads } = await api("hq/leads?status=");
@@ -1449,8 +1455,31 @@ ${p.body}</div>
     }));
   }
 
+  // Netlify-credits: melding bovenaan HQ vanaf 75% (bij 100% zet Netlify alles op pauze).
+  async function creditBalk() {
+    const plek = document.getElementById("credit-balk"); if (!plek) return;
+    const c = await api("hq/credits").catch(() => null);
+    const s = c?.status;
+    if (!s || (s.pct < 75 && !c.spaarstand)) { plek.replaceChildren(); return; }
+    render(plek, html`<div class="credit-balk ${s.pct >= 90 ? "rood" : ""}" role="alert"><b>Netlify-credits: ${s.pct}% gebruikt</b> (${s.gebruikt.toLocaleString("nl-NL")} van ${s.inbegrepen.toLocaleString("nl-NL")}). Bij 100% gaan alle websites offline.${c.spaarstand ? " Spaarstand staat aan." : ""} <a href="#kosten">Bekijken</a></div>`);
+  }
+
+  function creditPaneel(c) {
+    const s = c?.status;
+    if (!s) return html`<section class="paneel compact"><h2>Netlify-credits</h2><p class="dempen">Nog geen meting. De eerste komt binnen een half uur na de deploy.</p></section>`;
+    const kleur = s.pct >= 90 ? "rood" : s.pct >= 75 ? "oranje" : "";
+    return html`<section class="paneel" id="credits"><div class="paneel-kop"><h2>Netlify-credits</h2><span class="chip ${c.spaarstand ? "s-let" : "s-ok"}">${c.spaarstand ? "Spaarstand aan" : "Normaal"}</span></div>
+      <p><b class="credit-groot">${s.pct}%</b> gebruikt: ${s.gebruikt.toLocaleString("nl-NL")} van ${s.inbegrepen.toLocaleString("nl-NL")} credits, periode ${datum(s.periode)} tot ${datum(s.tot)}. Verwacht aan het eind van de periode: ${s.prognose.toLocaleString("nl-NL")}.</p>
+      <div class="credit-meter ${kleur}" role="img" aria-label="${s.pct}% gebruikt"><span data-w="${Math.min(100, s.pct)}"></span><i data-w="75"></i></div>
+      <p class="klein dempen">${s.onderdelen.deploysAantal} productiedeploys (${s.onderdelen.deploys} credits) · rekentijd ±${s.onderdelen.compute} · AI ±${s.onderdelen.ai}. ${s.bron === "netlify" ? "Getal van Netlify." : s.bron === "ijkpunt" ? `Vanaf jouw ijkpunt (${c.ijkpunt?.waarde}) bijgeteld.` : "Schatting: bandbreedte en bezoekers tellen we niet mee, vul daarom af en toe het echte getal in."} Bijgewerkt ${geleden(s.at)}.</p>
+      <p class="klein">Vanaf 75% krijg je een mail en gaat de spaarstand aan: geen nieuwe leads zoeken, geen concepten scannen en geen AI-briefings. Mail, betalingen, klantvragen en klantsites lopen door. Zeker weten dat niets offline gaat? Zet in Netlify › Billing <b>Auto recharge</b> aan.</p>
+      ${isAdmin() ? html`<form class="rij-form" id="credit-form"><div class="veld"><label for="cr-g">Gebruikt volgens Netlify <span class="opt">(Billing › Credit usage)</span></label><input id="cr-g" name="gebruikt" type="number" min="0" inputmode="numeric" placeholder="${s.gebruikt}"></div>
+        <div class="veld"><label for="cr-d">Periode begint op dag</label><input id="cr-d" name="periodeDag" type="number" min="1" max="28" value="${c.periodeDag}"></div>
+        <button class="knop knop-licht" type="submit">Opslaan</button><button class="knop knop-tekst" type="button" id="cr-spaar">${c.spaarstand ? "Spaarstand uitzetten" : "Spaarstand aanzetten"}</button></form>` : ""}</section>`;
+  }
+
   async function kosten(main) {
-    const d = await api("hq/kosten");
+    const [d, cr] = await Promise.all([api("hq/kosten"), api("hq/credits").catch(() => null)]);
     const mnd = (ym) => { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 15).toLocaleDateString("nl-NL", { month: "short", year: "2-digit" }); };
     const max = Math.max(1, ...d.maanden.map((m) => Math.max(m.omzet, m.kosten)));
     const nu = new Date(), jaar = nu.getFullYear(), kw = Math.floor(nu.getMonth() / 3) + 1;
@@ -1462,6 +1491,7 @@ ${p.body}</div>
         <div class="kpi"><div class="waarde">${euro(d.vasteKostenPerMaand)}</div><div class="naam">vaste kosten per maand (jaarkosten gedeeld door 12)</div></div>
         <div class="kpi ${d.mrr - d.vasteKostenPerMaand < 0 ? "alarm" : ""}"><div class="waarde">${euro(d.mrr - d.vasteKostenPerMaand)}</div><div class="naam">blijft per maand over, excl. btw en vóór belasting</div></div>
       </div>
+      ${creditPaneel(cr)}
       <section class="paneel"><div class="paneel-kop"><h2>Laatste 12 maanden</h2><span class="legenda"><span class="sw omzet"></span>Omzet <span class="sw kosten"></span>Kosten</span></div>
         <div class="staven" role="img" aria-label="Omzet en kosten per maand">${d.maanden.map((m) => html`<div class="staaf-groep" title="${mnd(m.maand)}: omzet ${euro(m.omzet)}, kosten ${euro(m.kosten)}"><div class="staaf-paar"><span class="staaf omzet" data-h="${Math.round((m.omzet / max) * 100)}"></span><span class="staaf kosten" data-h="${Math.round((m.kosten / max) * 100)}"></span></div><span class="klein dempen">${mnd(m.maand)}</span></div>`)}</div>
         <div class="tabel-wrap"><table class="tabel"><thead><tr><th>Maand</th><th class="rechts">Omzet</th><th class="rechts">Kosten</th><th class="rechts">Winst</th></tr></thead><tbody>
@@ -1480,6 +1510,15 @@ ${p.body}</div>
           <div class="veld"><label for="ex-kw">Periode</label><select id="ex-kw" name="kwartaal">${[1, 2, 3, 4].map((k) => html`<option value="${k}" ${k === kw ? raw("selected") : ""}>Kwartaal ${k}</option>`)}<option value="0">Heel het jaar</option></select></div>
           <button class="knop knop-licht" type="submit">${raw(icon.download)}Downloaden</button></form></section>`);
     main.querySelectorAll(".staaf[data-h]").forEach((el) => el.style.setProperty("--h", el.dataset.h + "%"));
+    main.querySelectorAll(".credit-meter [data-w]").forEach((el) => el.style.setProperty("--w", el.dataset.w + "%"));
+    main.querySelector("#credit-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target.elements;
+      try { await api("hq/credits", { method: "POST", body: { gebruikt: f.gebruikt.value, periodeDag: f.periodeDag.value } }); toast("Opgeslagen."); creditBalk(); kosten(main); } catch (err) { toast(err.message, "fout"); }
+    });
+    main.querySelector("#cr-spaar")?.addEventListener("click", async () => {
+      try { await api("hq/credits", { method: "POST", body: { spaarstand: !cr.spaarstand } }); toast(cr.spaarstand ? "Spaarstand staat uit voor deze periode." : "Spaarstand staat aan."); creditBalk(); kosten(main); } catch (err) { toast(err.message, "fout"); }
+    });
     main.querySelector("#export").addEventListener("submit", (e) => { e.preventDefault(); const f = new FormData(e.target); location.href = `/api/hq/kosten/export?jaar=${f.get("jaar")}&kwartaal=${f.get("kwartaal")}`; });
     const dialoog = (k = {}) => {
       const bedrag = (c) => c != null ? (c / 100).toFixed(2).replace(".", ",") : "";

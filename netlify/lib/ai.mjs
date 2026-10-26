@@ -14,6 +14,8 @@ export async function claude({ system, prompt, maxTokens = 8000, timeoutMs = 120
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { const e = new Error(d?.error?.message || `AI: status ${r.status}`); e.status = r.status; throw e; }
+  // Via de Netlify AI Gateway kost dit credits: meetellen voor de credit-bewaker.
+  if (env("ANTHROPIC_BASE_URL") && d.usage) { const { meet, aiCredits } = await import("./credits.mjs"); await meet("ai_credits", aiCredits(d.model || model || env("AI_MODEL", "claude-sonnet-5-5"), d.usage)); }
   return (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
 }
 

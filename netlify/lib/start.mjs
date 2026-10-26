@@ -162,7 +162,9 @@ async function voorinvullen(c) {
     sitePhone: str(b.telefoon, 40), whatsapp: str(b.whatsapp, 40), siteEmail: str(b.email, 200), siteAddress: str(b.adres, 300),
     huidigeSite: str(lead?.website, 300),
     kleuren: [k.kleuren?.primair, k.kleuren?.accent].filter(Boolean).join(", "),
-    hoofdactie: b.telefoon ? "bellen" : b.email ? "mailen" : "",
+    // Online boeken of een offerte-/intakeformulier op hun huidige site? Dan is dat de hoofdactie (en nemen we het over).
+    hoofdactie: con.analysis?.boeken?.length ? "afspraak" : (con.analysis?.formulieren || []).some((f) => /offerte|aanvra|prijs/i.test(f.pagina + " " + f.knop)) ? "offerte" : b.telefoon ? "bellen" : b.email ? "mailen" : "",
+    boekingslink: str(con.analysis?.boeken?.[0]?.url, 300),
     prijzenTonen: (k.diensten?.items || []).some((d) => d.prijs) ? "ja" : "",
     voorIngevuld: "concept",
   };

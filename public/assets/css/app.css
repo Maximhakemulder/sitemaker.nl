@@ -593,3 +593,14 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .opdracht.krap{border-color:#FF5757}
 .opdracht .aftel{margin:0;font-size:15px}.opdracht .aftel.rood b{color:#C62828}
 .opdracht .knoppen{margin-top:4px}
+
+/* Netlify-credits */
+.credit-balk { background: var(--let-zacht); color: var(--let); font-weight: 600; font-size: 14px; padding: 10px 16px; text-align: center; }
+.credit-balk.rood { background: var(--fout-zacht); color: var(--fout); }
+.credit-balk a { color: inherit; }
+.credit-groot { font-size: 28px; }
+.credit-meter { position: relative; height: 12px; border-radius: 6px; background: #E6E9F2; overflow: hidden; margin: 6px 0 12px; }
+.credit-meter span { position: absolute; inset: 0 auto 0 0; width: var(--w, 0%); background: var(--ok); border-radius: 6px; }
+.credit-meter.oranje span { background: #D98200; }
+.credit-meter.rood span { background: var(--fout); }
+.credit-meter i { position: absolute; top: 0; bottom: 0; left: var(--w, 75%); width: 2px; background: #1C0747; opacity: .5; }
