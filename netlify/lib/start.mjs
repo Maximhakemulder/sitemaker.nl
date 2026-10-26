@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { q, one, OFFER, str, fail, audit, escH, publicBase, getSettings, dayKey, addMonths, portalUrl } from "./core.mjs";
 import { putFile, getFile, deleteFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
-import { mollieReady, startFirstPayment } from "./mollie.mjs";
+import { betaalReady, startFirstPayment, ibanOk, ibanNorm } from "./betalen.mjs";
 import { priceParts, createInvoice, generateInvoicePdf, mailInvoice } from "./billing.mjs";
 import { THEMAS } from "./sites.mjs";
 import { normDomain, koppelDomein } from "./domains.mjs";
@@ -54,7 +54,8 @@ export async function startState(c) {
     stage,
     details: { company: c.company, contactName: c.contact_name, phone: c.phone, kvk: c.kvk, vatNumber: c.vat_number, ...splitAddress(c.address) },
     price: { buildCents: build?.gross ?? c.build_cents, monthlyCents: monthly?.gross ?? c.monthly_cents, firstMonthly: addMonths(dayKey(), 1) },
-    payOnline: mollieReady(),
+    payOnline: betaalReady(),
+    iban: c.iban || "", ibanNaam: c.iban_naam || "",
     paymentPending: c.billing_status === "wacht_op_betaling",
     termsAt: c.terms_at,
     intake: c.intake || {},
@@ -105,9 +106,20 @@ export async function startPayment(user, b, ip) {
   if (!c.details_at) fail(400, "Vul eerst je bedrijfsgegevens in.");
   if (c.started_at) fail(400, "Je eerste betaling is al binnen.");
   if (b.akkoord !== true) fail(400, "Vink aan dat je akkoord gaat met de voorwaarden en de automatische afschrijving.", { field: "akkoord" });
+  const online = betaalReady();
+  const ibanNaam = str(b.ibanNaam, 70);
+  if (online) {
+    // IBAN + rekeninghouder voor de maandelijkse incasso (SEPA-machtiging na de eerste betaling).
+    if (!ibanOk(b.iban)) fail(400, "Vul een geldig IBAN in, bijvoorbeeld NL91 ABNA 0417 1643 00.", { field: "iban" });
+    if (ibanNaam.length < 2) fail(400, "Vul de naam van de rekeninghouder in.", { field: "ibanNaam" });
+  }
   await q("UPDATE customers SET terms_at = NOW(), terms_ip = $2, terms_by = $3, updated_at = NOW() WHERE id = $1", [c.id, str(ip, 60), user.email]);
-  await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq, handmatig: !mollieReady() });
-  if (!mollieReady()) return await startHandmatig(c, user);
+  if (!online) {
+    await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq, handmatig: true });
+    return await startHandmatig(c, user);
+  }
+  await q("UPDATE customers SET iban = $2, iban_naam = $3 WHERE id = $1", [c.id, ibanNorm(b.iban), ibanNaam]);
+  await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq });
   const r = await startFirstPayment(c.id, { userId: user.id });
   return { checkoutUrl: r.checkoutUrl };
 }
@@ -128,7 +140,7 @@ async function startHandmatig(c, user) {
   return { ok: true, handmatig: true, factuur: inv.number };
 }
 
-// Door de Mollie-webhook aangeroepen zodra de eerste betaling binnen is.
+// Door de Pay.nl-exchange aangeroepen zodra de eerste betaling binnen is.
 export async function markStarted(customerId, { handmatig = false } = {}) {
   const c = await one("UPDATE customers SET started_at = NOW(), updated_at = NOW() WHERE id = $1 AND started_at IS NULL RETURNING *", [customerId]);
   if (!c) return;

@@ -13,8 +13,8 @@ const cs = await db.start();
 await db.applyMigrations("./netlify/database/migrations");
 Object.assign(process.env, {
   SM_DB_URL: cs, MAIL_TRANSPORT: "capture", SM_LOCAL_FILES: path.resolve(".netlify/dev-files"),
-  MOLLIE_FAKE_CHECKOUT: `http://localhost:${port}/__dev/betaal`, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: process.env.ADMIN_EMAILS || "admin@sitemaker.test",
-  AUTH_SECRET: "lokaal", PUBLIC_BASE_URL: `http://localhost:${port}`, MOLLIE_FAKE: "1", MOLLIE_API_KEY: process.env.MOLLIE_API_KEY || "test_lokaal",
+  PAYNL_FAKE_CHECKOUT: `http://localhost:${port}/__dev/betaal`, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: process.env.ADMIN_EMAILS || "admin@sitemaker.test",
+  AUTH_SECRET: "lokaal", PUBLIC_BASE_URL: `http://localhost:${port}`, PAYNL_FAKE: "1", PAYNL_SERVICE_ID: "SL-0000-0000", PAYNL_SERVICE_SECRET: "lokaal", PAYNL_AT_CODE: "AT-0000-0000", PAYNL_TOKEN: "lokaal",
 });
 const { default: api } = await import("../netlify/functions/api.mjs");
 const { captured } = await import("../netlify/lib/mail.mjs");
@@ -24,12 +24,12 @@ setInterval(() => { while (seen < captured.length) { const m = captured[seen++];
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".webmanifest": "application/manifest+json", ".txt": "text/plain" };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
-  // Nep-betaalpagina (alleen lokaal): zet de nep-Mollie-betaling op betaald en stuurt terug naar het portaal.
+  // Nep-betaalpagina (alleen lokaal): zet de nep-Pay.nl-order op betaald en stuurt terug naar het portaal.
   if (url.pathname === "/__dev/betaal") {
-    const { __fake, handleWebhook } = await import("../netlify/lib/mollie.mjs");
-    const p = __fake.payments[url.searchParams.get("id")];
-    if (p) { Object.assign(p, { status: "paid", paidAt: new Date().toISOString(), mandateId: "mdt_lokaal", method: "ideal" }); await handleWebhook(p.id); }
-    res.writeHead(302, { location: p?.redirectUrl || "/portaal/" }); return res.end();
+    const { __fake, handleExchange } = await import("../netlify/lib/betalen.mjs");
+    const o = __fake.orders[url.searchParams.get("id")];
+    if (o) { o.status = { code: 100, action: "PAID" }; await handleExchange({ action: "new_ppt", order_id: o.orderId }); }
+    res.writeHead(302, { location: o?.returnUrl || "/portaal/" }); return res.end();
   }
   if (url.pathname.startsWith("/api/")) {
     const chunks = []; for await (const c of req) chunks.push(c);

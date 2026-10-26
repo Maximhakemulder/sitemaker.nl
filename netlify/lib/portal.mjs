@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { q, one, tx, OFFER, monthKey, str, fail, audit, euro, escH, publicBase, getSettings, portalUrl } from "./core.mjs";
 import { putFile, getFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
-import { mollieReady } from "./mollie.mjs";
+import { betaalReady } from "./betalen.mjs";
 import { queueChange, autoReady } from "./sites.mjs";
 import { startState } from "./start.mjs";
 
@@ -66,8 +66,8 @@ export async function portalState(user) {
     usage, canSubmit: canSubmit(c),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
-    payOnline: mollieReady(),
-    bank: mollieReady() ? null : await (async () => { const co = (await getSettings()).company || {}; return co.iban ? { iban: co.iban, naam: co.legalName || co.name || "Sitemaker" } : null; })(),
+    payOnline: betaalReady(),
+    bank: betaalReady() ? null : await (async () => { const co = (await getSettings()).company || {}; return co.iban ? { iban: co.iban, naam: co.legalName || co.name || "Sitemaker" } : null; })(),
     start: await startState(c),
     websites: await (await import("./websites.mjs")).listWebsites(user),
     domeinGekozen: !!dom || (!!c.site_url && !/\.netlify\.app/.test(c.site_url)),

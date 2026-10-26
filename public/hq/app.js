@@ -9,7 +9,7 @@
     wijziging: { ontvangen: ["Ontvangen", "s-info"], in_behandeling: ["In behandeling", "s-let"], verwerkt: ["Verwerkt", "s-ok"], afgewezen: ["Niet uitgevoerd", "s-grijs"] },
     factuur: { open: ["Openstaand", "s-let"], betaald: ["Betaald", "s-ok"], vervallen: ["Vervallen", "s-fout"], gecrediteerd: ["Gecrediteerd", "s-grijs"] },
     site: { in_aanbouw: ["In aanbouw", "s-info"], live: ["Live", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] },
-    abo: { geen: ["Niet gestart", "s-grijs"], wacht_op_betaling: ["Wacht op 1e betaling", "s-let"], actief: ["Automatisch (Mollie)", "s-ok"], betaling_mislukt: ["Betaling mislukt", "s-fout"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"], handmatig: ["Handmatig gefactureerd", "s-info"] },
+    abo: { geen: ["Niet gestart", "s-grijs"], wacht_op_betaling: ["Wacht op 1e betaling", "s-let"], actief: ["Automatisch (Pay.nl)", "s-ok"], betaling_mislukt: ["Betaling mislukt", "s-fout"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"], handmatig: ["Handmatig gefactureerd", "s-info"] },
     aanvraag: { nieuw: ["Nieuw", "s-fout"], gepland: ["Gesproken", "s-info"], klant: ["Klant geworden", "s-ok"], geen_interesse: ["Geen interesse", "s-grijs"], niet_bereikbaar: ["Niet bereikbaar", "s-let"], geannuleerd: ["Geannuleerd", "s-grijs"] },
     lead: { kandidaat: ["Te onderzoeken", "s-grijs"], nieuw: ["Klaar om te mailen", "s-info"], goedgekeurd: ["In de wachtrij", "s-let"], verstuurd: ["Verstuurd", "s-info"], opvolging_goedgekeurd: ["Opvolging in wachtrij", "s-let"], opgevolgd: ["Opgevolgd", "s-info"], reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Afgemeld", "s-grijs"], overgeslagen: ["Overgeslagen", "s-grijs"], fout: ["Fout", "s-fout"] },
     betaling: { open: ["Open", "s-let"], pending: ["Bezig", "s-let"], authorized: ["Geautoriseerd", "s-info"], paid: ["Betaald", "s-ok"], failed: ["Mislukt", "s-fout"], canceled: ["Geannuleerd", "s-grijs"], expired: ["Verlopen", "s-grijs"] },
@@ -318,7 +318,7 @@
       </div>
       <div class="veld"><label for="k-adres">Factuuradres <span class="opt">(optioneel)</span></label><textarea id="k-adres" name="address" rows="2">${c.address || ""}</textarea></div>
       <div class="rij2"><div class="veld"><label for="k-btw">Btw-nummer <span class="opt">(optioneel)</span></label><input id="k-btw" name="vatNumber" value="${c.vatNumber || ""}"></div>
-      ${c.id ? html`<div class="veld"><label for="k-bill">Facturatie</label><select id="k-bill" name="billingStatus">${c.billingStatus === "actief" || c.billingStatus === "wacht_op_betaling" || c.billingStatus === "betaling_mislukt" || c.billingStatus === "opgezegd" ? html`<option value="">${L.abo[c.billingStatus][0]} (via Mollie)</option>` : ""}<option value="geen" ${c.billingStatus === "geen" ? raw("selected") : ""}>Niet gestart</option><option value="handmatig" ${c.billingStatus === "handmatig" ? raw("selected") : ""}>Handmatig gefactureerd</option><option value="gepauzeerd" ${c.billingStatus === "gepauzeerd" ? raw("selected") : ""}>Gepauzeerd</option></select></div>` : ""}</div>
+      ${c.id ? html`<div class="veld"><label for="k-bill">Facturatie</label><select id="k-bill" name="billingStatus">${c.billingStatus === "actief" || c.billingStatus === "wacht_op_betaling" || c.billingStatus === "betaling_mislukt" || c.billingStatus === "opgezegd" ? html`<option value="">${L.abo[c.billingStatus][0]} (via Pay.nl)</option>` : ""}<option value="geen" ${c.billingStatus === "geen" ? raw("selected") : ""}>Niet gestart</option><option value="handmatig" ${c.billingStatus === "handmatig" ? raw("selected") : ""}>Handmatig gefactureerd</option><option value="gepauzeerd" ${c.billingStatus === "gepauzeerd" ? raw("selected") : ""}>Gepauzeerd</option></select></div>` : ""}</div>
       <div class="veld"><label for="k-notes">Interne notities <span class="opt">(alleen zichtbaar in HQ)</span></label><textarea id="k-notes" name="notes" rows="3">${c.notes || ""}</textarea></div>`;
   }
 
@@ -366,22 +366,23 @@
           <section class="paneel"><div class="paneel-kop"><h2>Facturen</h2><button class="knop knop-licht knop-klein" id="factuur-nieuw">Factuur toevoegen</button></div>
             ${d.invoices.length ? factuurTabel(d.invoices, false) : html`<p class="dempen">Nog geen facturen. Facturen van automatische betalingen verschijnen hier vanzelf.</p>`}</section>
           <section class="paneel"><h2>Betalingen</h2>
-            ${d.payments.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Datum</th><th>Soort</th><th>Bedrag</th><th>Status</th></tr></thead><tbody>${d.payments.map((p) => html`<tr><td>${tijd(p.createdAt)}</td><td>${L.soort[p.kind] || p.kind}</td><td class="nummers">${euro(p.amountCents)}</td><td>${chip(L.betaling, p.status)}${p.checkoutUrl ? html` <button class="knop knop-tekst knop-klein" data-kopieer="${p.checkoutUrl}">Link kopiëren</button>` : ""}</td></tr>`)}</tbody></table></div>` : html`<p class="dempen">Nog geen betalingen via Mollie.</p>`}</section>
+            ${d.payments.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Datum</th><th>Soort</th><th>Bedrag</th><th>Status</th></tr></thead><tbody>${d.payments.map((p) => html`<tr><td>${tijd(p.createdAt)}</td><td>${L.soort[p.kind] || p.kind}</td><td class="nummers">${euro(p.amountCents)}</td><td>${chip(L.betaling, p.status)}${p.checkoutUrl ? html` <button class="knop knop-tekst knop-klein" data-kopieer="${p.checkoutUrl}">Link kopiëren</button>` : ""}</td></tr>`)}</tbody></table></div>` : html`<p class="dempen">Nog geen online betalingen.</p>`}</section>
         </div>
         <div>
           <section class="paneel"><h2>Abonnement en betalen</h2>
             <dl class="gegevens"><dt>Status</dt><dd>${chip(L.abo, c.billingStatus)}</dd><dt>Bouw</dt><dd class="nummers">${euro(c.buildCents)}</dd><dt>Per maand</dt><dd class="nummers">${euro(c.monthlyCents)}</dd>
               ${c.subscriptionStart ? html`<dt>Eerste termijn</dt><dd>${datumLang(c.subscriptionStart)}</dd>` : ""}
-              ${mollieSub && !mollieSub.error ? html`<dt>Mollie</dt><dd>${mollieSub.status}${mollieSub.nextPaymentDate ? ` · volgende afschrijving ${datum(mollieSub.nextPaymentDate)}` : ""}</dd>` : ""}
-              ${mollieSub?.error ? html`<dt>Mollie</dt><dd class="dempen">${mollieSub.error}</dd>` : ""}</dl>
+              ${mollieSub && !mollieSub.error ? html`<dt>Incasso</dt><dd>${mollieSub.mandaat || ""}${mollieSub.startDate ? ` · vanaf ${datum(mollieSub.startDate)}` : ""}</dd>` : ""}${c.iban ? html`<dt>IBAN</dt><dd>${c.iban}${c.ibanNaam ? ` (${c.ibanNaam})` : ""}</dd>` : ""}
+              ${mollieSub?.error ? html`<dt>Pay.nl</dt><dd class="dempen">${mollieSub.error}</dd>` : ""}</dl>
             <p class="klein dempen">Dit zijn de bedragen die de klant betaalt.</p>
             <div class="knoppen">
               ${["geen", "handmatig", "opgezegd", "wacht_op_betaling"].includes(c.billingStatus) ? html`<button class="knop knop-actie knop-klein" id="mollie-start">${c.billingStatus === "wacht_op_betaling" ? "Nieuwe betaallink" : "Automatisch incasseren"}</button>` : ""}
               ${c.mollieSubscriptionId && c.billingStatus !== "opgezegd" && isAdmin() ? html`<button class="knop knop-gevaar knop-klein" id="mollie-stop">Abonnement opzeggen</button>` : ""}
+              ${c.billingStatus === "handmatig" && c.iban && isAdmin() ? html`<button class="knop knop-licht knop-klein" id="incasso-start">Incasso starten (${c.iban})</button>` : ""}
             </div></section>
           ${d.opzegging && d.opzegging.status !== "ingetrokken" ? html`<section class="paneel opzeg-paneel"><div class="paneel-kop"><h2>Opzegging</h2>${chip(L.opzeg, d.opzegging.status)}</div>
             <dl class="gegevens"><dt>Opgezegd op</dt><dd>${tijd(d.opzegging.at)}</dd><dt>Einddatum</dt><dd>${datumLang(d.opzegging.einde)}</dd><dt>Reden</dt><dd>${L.reden[d.opzegging.reden] || d.opzegging.reden}</dd>${d.opzegging.toelichting ? html`<dt>Toelichting</dt><dd>${d.opzegging.toelichting}</dd>` : ""}</dl>
-            ${d.opzegging.status === "aangevraagd" ? html`<p class="klein dempen">Op de einddatum stopt het Mollie-abonnement vanzelf en krijg je een mail met wat er nog moet (site offline zetten).</p><div class="knoppen"><button class="knop knop-licht knop-klein" id="opzeg-in">Klant blijft: intrekken</button></div>` : ""}</section>` : ""}
+            ${d.opzegging.status === "aangevraagd" ? html`<p class="klein dempen">Op de einddatum stopt de incasso bij Pay.nl vanzelf en krijg je een mail met wat er nog moet (site offline zetten).</p><div class="knoppen"><button class="knop knop-licht knop-klein" id="opzeg-in">Klant blijft: intrekken</button></div>` : ""}</section>` : ""}
           <section class="paneel"><div class="paneel-kop"><h2>${d.websites.length ? `Websites van deze klant (${d.websites.length})` : "Websites"}</h2><button class="knop knop-licht knop-klein" id="extra-site">Extra website</button></div>
             ${d.websites.length ? html`<ul class="lijst">${d.websites.map((w) => html`<li class="factuur-rij"><div>${w.id === c.id ? html`<b>${w.naam}</b> <span class="klein dempen">(deze)</span>` : html`<a href="#klant/${w.id}"><b>${w.naam}</b></a>`}<br><span class="klein dempen">${w.url || "nog geen adres"}</span></div><div>${chip(L.site, w.siteStatus)} ${chip(L.abo, w.billingStatus)}</div></li>`)}</ul>
               <p class="klein dempen">Elke website heeft een eigen abonnement, eigen 4 wijzigingen per maand, facturen en domein. De klant wisselt in het portaal met één inlog.</p>`
@@ -456,8 +457,13 @@
       try { const r = await api(`hq/customers/${id}/users/${b.dataset.gebruikerWeg}`, { method: "DELETE" }); toast(r.losgekoppeld ? "Losgekoppeld van deze klant (heeft nog andere websites)." : "Gebruiker verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelector("#mollie-start")?.addEventListener("click", () => mollieDialoog(c));
+    main.querySelector("#incasso-start")?.addEventListener("click", async (e) => {
+      if (!(await SM.bevestig("Incasso starten?", `Pay.nl schrijft vanaf volgende maand elke maand ${euro(c.monthlyCents)} af van ${c.iban}. De maandfacturen per mail stoppen dan.`, "Starten"))) return;
+      SM.bezig(e.target, true);
+      try { const r = await api(`hq/customers/${c.id}/incasso`, { method: "POST", body: {} }); toast(`Incasso staat aan vanaf ${datum(r.start)}`); herlaad(); } catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); }
+    });
     main.querySelector("#mollie-stop")?.addEventListener("click", async () => {
-      if (!(await SM.bevestig("Abonnement opzeggen?", `Mollie stopt met de maandelijkse afschrijving voor ${c.company}. Dit kun je niet terugdraaien; je kunt later wel een nieuwe incasso starten.`, "Opzeggen"))) return;
+      if (!(await SM.bevestig("Abonnement opzeggen?", `Pay.nl stopt met de maandelijkse afschrijving voor ${c.company}. Dit kun je niet terugdraaien; je kunt later wel een nieuwe incasso starten.`, "Opzeggen"))) return;
       try { await api(`hq/customers/${id}/cancel`, { method: "POST" }); toast("Abonnement opgezegd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     });
     main.querySelector("#factuur-nieuw").onclick = () => factuurDialoog(c.id);
@@ -548,7 +554,9 @@
     const morgen = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const dlg = SM.dialoog("Automatisch incasseren", html`<form novalidate>
       <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-      <p>${c.company} betaalt via een Mollie-link de bouwprijs (${euro(c.buildCents)}). Daarmee geeft de klant ook een machtiging, en daarna schrijft Mollie elke maand ${euro(c.monthlyCents)} af. Van elke betaling maakt HQ automatisch een factuur.</p>
+      <p>${c.company} betaalt via een Pay.nl-link de bouwprijs (${euro(c.buildCents)}). Daarna zet HQ een incasso aan van ${euro(c.monthlyCents)} per maand op het IBAN hieronder. Van elke betaling maakt HQ automatisch een factuur. Zonder IBAN krijgt de klant elke maand een factuur per mail.</p>
+      <div class="rij2"><div class="veld"><label for="m-iban">IBAN van de klant</label><input id="m-iban" name="iban" value="${c.iban || ""}" placeholder="NL00 BANK 0123 4567 89"><div class="fout" data-fout-voor="iban"></div></div>
+        <div class="veld"><label for="m-ibannaam">Naam rekeninghouder</label><input id="m-ibannaam" name="ibanNaam" value="${c.ibanNaam || c.company}"></div></div>
       <div class="veld"><label for="m-start">Eerste maandtermijn op</label><input id="m-start" name="startDate" type="date" value="${morgen}"><div class="hulp">Standaard een maand na de eerste betaling. Kies bijvoorbeeld de dag na oplevering.</div></div>
       <div class="veld"><label class="vinkje"><input type="checkbox" name="sendMail" checked> Stuur de betaallink per mail naar ${c.email}</label></div>
       <button class="knop knop-actie" type="submit">Betaallink maken</button></form>`);
@@ -557,7 +565,7 @@
       e.preventDefault(); SM.wisFouten(form);
       const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Bezig…");
       try {
-        const r = await api(`hq/customers/${c.id}/payment`, { method: "POST", body: { startDate: form.elements.startDate.value, sendMail: form.elements.sendMail.checked } });
+        const r = await api(`hq/customers/${c.id}/payment`, { method: "POST", body: { startDate: form.elements.startDate.value, sendMail: form.elements.sendMail.checked, iban: form.elements.iban.value, ibanNaam: form.elements.ibanNaam.value } });
         render(dlg.querySelector(".d-inhoud"), html`<div class="melding melding-ok">${raw(icon.ok)}<p>Betaallink gemaakt (${euro(r.amountCents)} incl. btw).${r.mailed ? (r.mailed.ok ? " De klant heeft hem per mail ontvangen." : " Mailen lukte niet: " + r.mailed.error) : ""}</p></div>
           <div class="veld"><label for="m-link">Link</label><input id="m-link" readonly value="${r.checkoutUrl}"></div><div class="knoppen"><button class="knop" data-kopieer="${r.checkoutUrl}">Link kopiëren</button></div>`);
         koppelKopieer(dlg);
@@ -937,10 +945,10 @@
   async function betalingen(main) {
     const d = await api("hq/payments");
     render(main, html`
-      <div class="hq-kop"><div><h1>Betalingen</h1><p>Automatische incasso via Mollie: eerste betaling (bouwprijs en machtiging), daarna elke maand het abonnement.</p></div></div>
-      ${!d.mollie.ready ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>Mollie is nog niet gekoppeld.</b> Zet MOLLIE_API_KEY in Netlify (begin met een test-sleutel). Tot die tijd kun je klanten op "Handmatig gefactureerd" zetten en losse facturen toevoegen.</p></div>`
-        : d.mollie.mode === "test" ? html`<div class="melding melding-info">${raw(icon.let)}<p>Mollie draait in <b>testmodus</b>: er wordt niets echt afgeschreven.</p></div>` : ""}
-      ${!d.vatSet ? html`<div class="melding melding-let">${raw(icon.let)}<p>Kies eerst bij <a href="#instellingen">Instellingen</a> of de prijzen inclusief of exclusief btw zijn. Daarvan hangt af wat Mollie afschrijft.</p></div>` : ""}
+      <div class="hq-kop"><div><h1>Betalingen</h1><p>Online betalen via Pay.nl: eerste betaling (bouwprijs), daarna elke maand automatische incasso van het abonnement.</p></div></div>
+      ${!d.mollie.ready ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>Pay.nl is nog niet gekoppeld.</b> Zet PAYNL_SERVICE_ID, PAYNL_SERVICE_SECRET, PAYNL_AT_CODE en PAYNL_TOKEN in Netlify. Tot die tijd kun je klanten op "Handmatig gefactureerd" zetten en losse facturen toevoegen.</p></div>`
+        : d.mollie.mode === "test" ? html`<div class="melding melding-info">${raw(icon.let)}<p>Pay.nl draait in <b>testmodus</b>: er wordt niets echt afgeschreven.</p></div>` : ""}
+      ${!d.vatSet ? html`<div class="melding melding-let">${raw(icon.let)}<p>Kies eerst bij <a href="#instellingen">Instellingen</a> of de prijzen inclusief of exclusief btw zijn. Daarvan hangt af wat Pay.nl afschrijft.</p></div>` : ""}
       <section class="paneel"><h2>Abonnementen</h2>
         ${d.subscriptions.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Klant</th><th>Status</th><th class="rechts">Per maand</th><th class="rechts">Afschrijving incl. btw</th><th>Start</th></tr></thead><tbody>
           ${d.subscriptions.map((s) => html`<tr><td><a href="#klant/${s.id}">${s.company}</a></td><td>${chip(L.abo, s.status)}</td><td class="rechts nummers">${euro(s.monthlyCents)}</td><td class="rechts nummers">${s.grossCents != null ? euro(s.grossCents) : "–"}</td><td>${s.start ? datum(s.start) : "–"}</td></tr>`)}</tbody></table></div>`
@@ -1582,7 +1590,7 @@ ${p.body}</div>
               ${bi.pricesIncludeVat == null ? html`<div class="hulp">Nog niet gekozen. Automatische betalingen starten pas als dit is ingesteld.</div>` : ""}</fieldset>
             <div class="rij3"><div class="veld"><label for="s-vat">Btw-tarief</label><select id="s-vat" name="vatRate">${[21, 9, 0].map((r) => html`<option value="${r}" ${r === bi.vatRate ? raw("selected") : ""}>${r}%</option>`)}</select></div>
               ${v("paymentTermDays", "Betaaltermijn (dagen)", bi.paymentTermDays, { type: "number" })}${v("invoicePrefix", "Factuurprefix", bi.invoicePrefix)}</div>
-            <div class="veld"><label class="vinkje"><input type="checkbox" name="autoInvoices" ${bi.autoInvoices !== false ? raw("checked") : ""}> Van elke Mollie-betaling automatisch een factuur maken en naar de klant mailen</label></div>
+            <div class="veld"><label class="vinkje"><input type="checkbox" name="autoInvoices" ${bi.autoInvoices !== false ? raw("checked") : ""}> Van elke online betaling automatisch een factuur maken en naar de klant mailen</label></div>
             <button class="knop" type="submit">Opslaan</button></form>
           <form class="paneel" id="f-melding" novalidate><h2>Meldingen</h2>
             ${v("email", "Meldingen naar", s.notify.email, { type: "email", hulp: "Nieuwe aanvragen, wijzigingen, mislukte betalingen en sites offline. Leeg = het afzendadres." })}

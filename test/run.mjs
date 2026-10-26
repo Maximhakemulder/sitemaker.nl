@@ -12,7 +12,7 @@ await db.applyMigrations("./netlify/database/migrations");
 const files = await fs.mkdtemp(path.join(os.tmpdir(), "sm-files-"));
 Object.assign(process.env, {
   SM_DB_URL: cs, MAIL_TRANSPORT: "capture", SM_LOCAL_FILES: files, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: "maxim@sitemaker.test",
-  AUTH_SECRET: "test-secret", PUBLIC_BASE_URL: "https://sitemaker.test", MOLLIE_FAKE: "1", MOLLIE_API_KEY: "test_x", B2B_ANY_TIME: "1",
+  AUTH_SECRET: "test-secret", PUBLIC_BASE_URL: "https://sitemaker.test", PAYNL_FAKE: "1", PAYNL_SERVICE_ID: "SL-1111-2222", PAYNL_SERVICE_SECRET: "geheim", PAYNL_AT_CODE: "AT-0000-0000", PAYNL_TOKEN: "token", B2B_ANY_TIME: "1",
   GITHUB_FAKE: "1", GITHUB_TOKEN: "x", GITHUB_ORG: "sitemaker-sites", NETLIFY_FAKE: "1", NETLIFY_API_TOKEN: "x", NETLIFY_ACCOUNT_SLUG: "team", NETLIFY_GITHUB_INSTALLATION_ID: "1",
   AI_FAKE: "1", SM_INLINE_AI: "1",
 });
@@ -29,7 +29,8 @@ globalThis.__aiFake = ({ prompt }) => {
 };
 const { default: api } = await import("../netlify/functions/api.mjs");
 const { captured } = await import("../netlify/lib/mail.mjs");
-const { handleWebhook, __fake } = await import("../netlify/lib/mollie.mjs");
+const { handleExchange, __fake } = await import("../netlify/lib/betalen.mjs");
+const exchange = (velden) => call("POST", "paynl/exchange", { form: new URLSearchParams(velden), csrf: false, headers: { "content-type": "application/x-www-form-urlencoded" }, raw: true });
 const { sendBatch } = await import("../netlify/lib/b2b.mjs");
 const { q, closeDb } = await import("../netlify/lib/core.mjs");
 
@@ -194,26 +195,34 @@ await test("klant downloadt eigen factuur; andere klant niet", async () => {
   assert.equal((await call("GET", "portal/state", { cookie: k2 })).data.invoices.length, 0);
 });
 
-console.log("Automatische betalingen (nep-Mollie)");
-await test("eerste betaling → abonnement → factuur met PDF", async () => {
-  const r = await call("POST", `hq/customers/${c2}/payment`, { cookie: admin, body: { sendMail: true } });
+console.log("Automatische betalingen (nep-Pay.nl)");
+await test("eerste betaling → machtiging (incasso) → factuur met PDF", async () => {
+  const fout = await call("POST", `hq/customers/${c2}/payment`, { cookie: admin, body: { iban: "NL00 FOUT 0000 0000 00" } });
+  assert.equal(fout.status, 400);
+  const r = await call("POST", `hq/customers/${c2}/payment`, { cookie: admin, body: { sendMail: true, iban: "NL91 ABNA 0417 1643 00", ibanNaam: "Klant Twee" } });
   assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.amountCents, 36294); // 299,95 + 21%
-  const p = __fake.payments[r.data.paymentId]; p.status = "paid"; p.paidAt = new Date().toISOString(); p.mandateId = "mdt_test";
-  const w = await call("POST", "mollie/webhook", { form: new URLSearchParams({ id: p.id }), csrf: false, headers: { "content-type": "application/x-www-form-urlencoded" } });
-  assert.equal(w.status, 200);
+  const o = __fake.orders[r.data.paymentId]; assert.ok(o); assert.equal(o.amount.value, 36294);
+  o.status = { code: 100, action: "PAID" };
+  const w = await exchange({ action: "new_ppt", order_id: o.orderId });
+  assert.equal(w.status, 200); assert.match(await w.text(), /^TRUE\|/);
   const [c] = await q("SELECT * FROM customers WHERE id = $1", [c2]);
-  assert.equal(c.billing_status, "actief"); assert.ok(c.mollie_subscription_id);
+  assert.equal(c.billing_status, "actief"); assert.match(c.mollie_subscription_id, /^IO-/);
+  const m = __fake.mandates[c.mollie_subscription_id]; assert.equal(m.type, "RECURRING"); assert.equal(m.customer.bankAccount.iban, "NL91ABNA0417164300"); assert.equal(m.amount.value, 8464);
   const st = await call("GET", "portal/state", { cookie: k2 });
   assert.equal(st.data.invoices.length, 1); assert.equal(st.data.invoices[0].status, "betaald"); assert.equal(st.data.invoices[0].hasPdf, true);
-  await handleWebhook(p.id); // dubbele webhook: geen tweede factuur
+  await handleExchange({ action: "new_ppt", order_id: o.orderId }); // dubbele exchange: geen tweede factuur
   assert.equal((await call("GET", "portal/state", { cookie: k2 })).data.invoices.length, 1);
+  // vervalste exchange voor een onbekende order doet niets
+  assert.match(await (await exchange({ action: "new_ppt", order_id: "999999999X1" })).text(), /^TRUE/);
 });
-await test("maandtermijn betaald → nieuwe factuur; mislukt → status en melding", async () => {
+await test("maandincasso geïnd → nieuwe factuur; storno → status en melding", async () => {
   const [c] = await q("SELECT * FROM customers WHERE id = $1", [c2]);
-  const ok = { id: "tr_subok", status: "paid", paidAt: new Date().toISOString(), amount: { value: "84.64" }, customerId: c.mollie_customer_id, subscriptionId: c.mollie_subscription_id, description: "x" };
-  __fake.payments[ok.id] = ok; await handleWebhook(ok.id);
-  const bad = { id: "tr_subbad", status: "failed", amount: { value: "84.64" }, customerId: c.mollie_customer_id, subscriptionId: c.mollie_subscription_id, description: "x" };
-  __fake.payments[bad.id] = bad; await handleWebhook(bad.id);
+  __fake.debits["IL-1111-2222-3333"] = { status: { code: 100 }, amount: { value: 8464 }, mandate: { code: c.mollie_subscription_id } };
+  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "84.64" });
+  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "84.64" });
+  assert.equal((await q("SELECT COUNT(*)::int n FROM invoices WHERE customer_id = $1", [c2]))[0].n, 2);
+  __fake.debits["IL-4444-5555-6666"] = { status: { code: 106 }, decline: { name: "Onvoldoende saldo" }, amount: { value: 8464 }, mandate: { code: c.mollie_subscription_id } };
+  await exchange({ action: "incassostorno", referenceId: "IL-4444-5555-6666", mandateId: c.mollie_subscription_id });
   assert.equal((await q("SELECT billing_status FROM customers WHERE id = $1", [c2]))[0].billing_status, "betaling_mislukt");
   assert.equal((await q("SELECT COUNT(*)::int n FROM invoices WHERE customer_id = $1", [c2]))[0].n, 2);
 });
@@ -388,7 +397,7 @@ await test("onmogelijk verzoek en ongeldig voorstel gaan naar 'handmatig'", asyn
 
 console.log("Handmatig factureren (zonder online betalen)");
 await test("startflow zonder betaalprovider: factuur per mail, direct door; maandfactuur automatisch", async () => {
-  const sleutel = process.env.MOLLIE_API_KEY; delete process.env.MOLLIE_API_KEY;
+  const sleutel = process.env.PAYNL_SERVICE_ID; delete process.env.PAYNL_SERVICE_ID;
   try {
     const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Hand Werk", email: "hand@werk.test", onboarding: true, sendWelcome: false } });
     const cid = r.data.customer.id;
@@ -413,7 +422,7 @@ await test("startflow zonder betaalprovider: factuur per mail, direct door; maan
     assert.equal(maand.length, 1);
     assert.equal((await one("SELECT billing_status FROM customers WHERE id = $1", [cid])).billing_status, "handmatig");
     await q("UPDATE customers SET site_status = 'opgezegd', billing_status = 'opgezegd' WHERE id = $1", [cid]); // telt verder niet mee
-  } finally { if (sleutel) process.env.MOLLIE_API_KEY = sleutel; }
+  } finally { if (sleutel) process.env.PAYNL_SERVICE_ID = sleutel; }
 });
 
 console.log("Start in het portaal");
@@ -433,16 +442,17 @@ await test("nieuwe klant met startflow: gegevens → akkoord en betalen → meld
   st = (await call("GET", "portal/state", { cookie: kz })).data;
   assert.equal(st.start.stage, "betalen"); assert.equal(st.start.details.postcode, "1234 AB"); assert.equal(st.customer.company, "Bakkerij Zon B.V.");
   assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: {} })).status, 400, "zonder akkoord");
-  const pay = await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true } });
+  assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true, iban: "123" } })).data.field, "iban");
+  const pay = await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true, iban: "NL91ABNA0417164300", ibanNaam: "S. Zon" } });
   assert.equal(pay.status, 200, JSON.stringify(pay.data)); assert.ok(pay.data.checkoutUrl);
   // informatie kan pas na betaling
   assert.equal((await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "x" } })).status, 400);
   // Mollie meldt: betaald
   const { one } = await import("../netlify/lib/core.mjs");
   const pid = (await one("SELECT mollie_payment_id FROM payments WHERE customer_id = $1 AND kind = 'eerste' ORDER BY id DESC LIMIT 1", [cid])).mollie_payment_id;
-  __fake.payments[pid].status = "paid"; __fake.payments[pid].mandateId = "mdt_1"; __fake.payments[pid].paidAt = new Date().toISOString();
+  __fake.orders[pid].status = { code: 100, action: "PAID" };
   const voor = captured.length;
-  assert.equal((await call("POST", "mollie/webhook", { form: new URLSearchParams({ id: pid }), csrf: false, headers: { "content-type": "application/x-www-form-urlencoded" } })).status, 200);
+  assert.equal((await exchange({ action: "new_ppt", order_id: pid })).status, 200);
   assert.ok(captured.slice(voor).some((m) => m.to === "zon@bakkerij.test" && /lever nu je informatie aan/i.test(m.subject)));
   let ov = (await call("GET", "hq/overview", { cookie: admin })).data;
   const sk = ov.starters.find((x) => x.id === cid);

@@ -200,9 +200,11 @@
         <div class="regel"><span>Bouw van je website <small>eenmalig, nu te betalen</small></span><b class="nummers">${euro(p.buildCents)}</b></div>
         <div class="regel"><span>Abonnement <small>hosting en ${state.offer.changesPerMonth} wijzigingen per maand, automatisch vanaf ${datumLang(p.firstMonthly)}</small></span><b class="nummers">${euro(p.monthlyCents)} <small>per maand</small></b></div>
       </div>
-      ${st.payOnline ? html`<p class="klein dempen">Je betaalt online (bijvoorbeeld met iDEAL). Met deze betaling geef je ook toestemming voor de maandelijkse afschrijving.</p>`
+      ${st.payOnline ? html`<p class="klein dempen">Je betaalt de bouw online via Pay.nl (bijvoorbeeld met iDEAL). Het maandbedrag schrijven we daarna automatisch af van de rekening hieronder.</p>`
         : html`<p class="klein dempen">Je krijgt direct een factuur per mail en in je portaal, die je betaalt via een overboeking. Daarna krijg je elke maand een factuur van ${euro(p.monthlyCents)}. Je kunt meteen door met het aanleveren van je informatie.</p>`}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        ${st.payOnline ? html`<div class="rij2"><div class="veld"><label for="s-iban">IBAN voor de maandelijkse afschrijving</label><input id="s-iban" name="iban" autocomplete="off" inputmode="text" placeholder="NL00 BANK 0123 4567 89" value="${st.iban || ""}" required><div class="fout" data-fout-voor="iban"></div></div>
+          <div class="veld"><label for="s-ibannaam">Naam rekeninghouder</label><input id="s-ibannaam" name="ibanNaam" autocomplete="name" value="${st.ibanNaam || ""}" required><div class="fout" data-fout-voor="ibanNaam"></div></div></div>` : ""}
         <div class="veld"><label class="vinkje"><input type="checkbox" name="akkoord" required> <span>${st.payOnline ? html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en geef toestemming om ${euro(p.monthlyCents)} per maand automatisch af te schrijven.` : html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en het abonnement van ${euro(p.monthlyCents)} per maand (maandelijks opzegbaar).`}</span></label><div class="fout" data-fout-voor="akkoord"></div></div>
         <div class="knoppen"><button class="knop knop-actie" type="submit">${st.payOnline ? `${euro(p.buildCents)} betalen en starten` : "Akkoord en starten"}</button><button class="knop knop-tekst" type="button" id="terug">Gegevens aanpassen</button></div></form>`);
     vak.querySelector("#check")?.addEventListener("click", herlaadState);
@@ -212,10 +214,10 @@
       e.preventDefault(); SM.wisFouten(form);
       if (!form.elements.akkoord.checked) return SM.toonFouten(form, { message: "Vink aan dat je akkoord gaat.", data: { field: "akkoord" } });
       const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, st.payOnline ? "Naar betalen…" : "Even geduld…");
-      try { const r = await api("portal/start/betalen", { method: "POST", body: { akkoord: true } }); if (r.checkoutUrl) location.href = r.checkoutUrl; else { toast(`Gestart! Factuur ${r.factuur || ""} staat in je mail en bij Facturen.`); herlaadState(); } }
+      try { const r = await api("portal/start/betalen", { method: "POST", body: { akkoord: true, iban: form.elements.iban?.value || "", ibanNaam: form.elements.ibanNaam?.value || "" } }); if (r.checkoutUrl) location.href = r.checkoutUrl; else { toast(`Gestart! Factuur ${r.factuur || ""} staat in je mail en bij Facturen.`); herlaadState(); } }
       catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
     });
-    // Na terugkomen van Mollie: even automatisch opnieuw kijken.
+    // Na terugkomen van Pay.nl: even automatisch opnieuw kijken.
     if (st.paymentPending && terug) setTimeout(() => { if (state.start?.stage === "betalen") herlaadState(); }, 4000);
   }
 
