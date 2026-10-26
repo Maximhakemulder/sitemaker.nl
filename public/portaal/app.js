@@ -220,7 +220,7 @@
         <div>${raw(icon.ok)}<b>Maandelijks opzegbaar</b><span>geen langlopend contract</span></div>
         <div>${raw(icon.ok)}<b>Alles inbegrepen</b><span>ontwerp, hosting en ${state.offer.changesPerMonth} wijzigingen per maand</span></div>
       </div>
-      ${st.payOnline ? html`<p class="klein dempen">Je betaalt de bouw online via Pay.nl, bijvoorbeeld met iDEAL. Het maandbedrag schrijven we daarna automatisch af van de rekening waarmee je nu betaalt.</p>`
+      ${st.payOnline ? ""
         : html`<p class="klein dempen">Je krijgt direct een factuur per mail en in je portaal, die je betaalt via een overboeking. Daarna krijg je elke maand een factuur van ${euro(p.monthlyCents)}. Je kunt meteen door met het aanleveren van je informatie.</p>`}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <div class="veld"><label class="vinkje"><input type="checkbox" name="akkoord" required> <span>${st.payOnline ? html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en geef toestemming om ${euro(p.monthlyCents)} per maand automatisch af te schrijven.` : html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en het abonnement van ${euro(p.monthlyCents)} per maand (maandelijks opzegbaar).`}</span></label><div class="fout" data-fout-voor="akkoord"></div></div>
