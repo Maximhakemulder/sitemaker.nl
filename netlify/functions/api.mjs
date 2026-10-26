@@ -305,6 +305,7 @@ async function verwerk(req, context) {
         case "POST leads/action": return json(await hq.leadAction(await body(req), user));
         case "PUT leads/:id": return json(await hq.updateLead(id, await body(req)));
         case "GET leads/:id/preview": return json(await hq.leadPreview(id, url.searchParams.get("kind") || "eerste"));
+        case "POST leads/:id/testmail": { const { sendTestMail } = await import("../lib/b2b.mjs"); const b = await body(req); return json(await sendTestMail(id, b.kind, user.email)); }
         case "POST scout": return json(await hq.scoutNow());
         case "GET settings": return json(await hq.getAdminSettings());
         case "PUT settings": requireAdmin(user); return json(await hq.saveAdminSettings(await body(req), user));
