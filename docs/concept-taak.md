@@ -78,6 +78,7 @@ Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
    - Zou de eigenaar zeggen "wauw, dit is mijn bedrijf"? Herkenbaar logo, hun kleuren, hun foto's, hun vak?
    - Is het high-end: rust, witruimte, uitlijning, grote typografie, niets rommeligs of half af?
    - Is er een laadmoment en één pronkstuk met beweging uit hun vak? Werkt het pronkstuk echt (screenshot "midden")?
+   - Navigatie: een horizontale kop bovenaan, ook op desktop. Nooit een verticale menubalk aan de zijkant of gedraaide tekst (besluit Maxim).
    - Mobiel: geen horizontaal scrollen, niets te klein of te groot, knoppen duimvriendelijk, actiebalk onderaan.
    - Desktop: hero niet hoger dan één scherm, geen gigantische beelden, geen lege gaten.
    - Contrast overal goed (geen donker op donker, geen licht op licht), passende foto's, geen verzonnen feiten.
