@@ -749,6 +749,18 @@ console.log("Concept-websites voor leads");
     assert.equal(r.data.status.inbegrepen, 1000); assert.equal(r.data.totaal, 1000);
     await call("POST", "hq/credits", { cookie: admin, body: { inbegrepen: 3000, gebruikt: 0, totaal: "" } });
   });
+  await test("testmail van een concept: naar mij, afmeldlink en meten uit", async () => {
+    const [l] = await q("SELECT l.id FROM leads l JOIN concepts c ON c.lead_id = l.id WHERE c.status = 'klaar' ORDER BY l.id LIMIT 1");
+    assert.ok(l, "er is een lead met klaar concept");
+    const voor = captured.length;
+    const r = await call("POST", `hq/leads/${l.id}/testmail`, { cookie: admin, body: { kind: "eerste" } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    const m = captured.slice(voor).find((x) => /^\[TEST\]/.test(x.subject));
+    assert.ok(m, "testmail verstuurd");
+    assert.ok(!m.text.includes("/api/b2b/afmelden") && /\?hq=1/.test(m.text) && !m.html.includes("/api/t/"), m.text);
+    const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ref = $1", [`test:${l.id}`]);
+    assert.equal(n, 0, "telt niet als B2B-mail");
+  });
   await test("concept afwijzen: geen mail, pagina dicht, uit de lijst", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Afwijs BV", email: "info@afwijs.test", website: "https://afwijs.test/" } });
     const id = r.data.lead.id;

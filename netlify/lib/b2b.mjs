@@ -396,3 +396,21 @@ export function parseCsv(text) {
 }
 
 export function mailPreview(lead, kind, s) { return compose(lead, kind, s); }
+
+// Testmail: precies de mail die de lead zou krijgen, maar naar Maxim. Niets wordt gemeten of bij de lead bijgehouden.
+export async function sendTestMail(leadId, kind, aan) {
+  if (!mailReady()) fail(503, "De mail is nog niet ingesteld.");
+  if (!EMAIL_RE.test(String(aan || ""))) fail(400, "Geen geldig adres om de testmail naar te sturen.");
+  const s = await getSettings();
+  const lead = await one(`${LEAD_SELECT} WHERE l.id = $1`, [leadId]);
+  if (!lead) fail(404, "Lead niet gevonden.");
+  const mail = compose(lead, kind === "opvolging" ? "opvolging" : "eerste", s);
+  // Veilig: de afmeldlink van de lead werkt niet in de test, en het concept openen telt niet als "bekeken".
+  let body = mail.body.split(unsubUrl(lead.id)).join(`${publicBase()}/ (afmeldlink van de lead, uitgeschakeld in de test)`);
+  if (lead.concept_token) body = body.split(conceptUrl(lead.concept_token)).join(`${conceptUrl(lead.concept_token)}?hq=1`);
+  const subject = mail.subject;
+  const res = await sendMail({ to: aan, subject: `[TEST] ${subject}`, text: body, html: textToHtml(body), kind: "test-b2b", ref: `test:${leadId}`, // telt niet mee in daglimiet en statistieken
+    fromName: `${s.b2b.senderName || ""} | Sitemaker`.replace(/^ \| /, "") });
+  if (!res?.ok) fail(502, res?.error || "Versturen lukte niet.");
+  return { ok: true, aan };
+}
