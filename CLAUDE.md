@@ -19,6 +19,7 @@ Eigenaar: Maxim. Communiceer in het Nederlands, kort en concreet.
 
 ## Werkwijze en kosten
 - **Netlify-credits bewaken** (`netlify/lib/credits.mjs`, HQ › Kosten › Netlify-credits, melding bovenaan HQ): bij 100% zet Netlify alle sites op pauze. `tick` schat elke 30 min het verbruik (productiedeploys van alle projecten × 15 via de API, rekentijd van onze functies uit tabel `credit_meter` × 5 per GB-uur, AI Gateway-tokens; Netlify's `capabilities.credits.used` als die > 0 is; ijkpunt dat Maxim invult). Bij 75/90/100%: één mail per drempel + spaarstand (geen scout/research/concepten scannen/briefings, uptime 2× per uur). Maxim kan de spaarstand per periode uitzetten. Periodedag standaard 18. Briefings en de openingszin van B2B-mails draaien op `AI_MODEL_LICHT` (standaard claude-haiku-5-5, ±20× goedkoper); wijzigingen en klantvragen op `AI_MODEL`.
+- Mail (26-10-2026): mailbox hallo@sitemaker.nl bij Hostnet (`MAIL_USER`, `MAIL_PASSWORD`, `ADMIN_EMAILS` in Netlify; SMTP/IMAP-standaard Hostnet). Daarmee sluit de open modus vanzelf; inloggen in HQ met een code per mail. Nieuwe env-variabelen werken pas na een deploy.
 - Werk via een branch + pull request (deploy preview is gratis); Maxim merget.
 - Commits op naam van Maximhakemulder (267295406+Maximhakemulder@users.noreply.github.com).
 - Lokaal: `npm test` (lokale Postgres via @netlify/database-dev, mail in het geheugen, nep-Mollie). Nooit echte mails of betalingen vanuit tests.
