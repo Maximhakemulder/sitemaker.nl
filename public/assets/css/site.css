@@ -649,3 +649,52 @@ p { margin: 0 0 1em; }
 .slot-cta p { color: #E3DDF5; margin-bottom: 26px; font-size: 18px; }
 .slot-knoppen { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 @media (max-width: 900px) { .twee-kol { grid-template-columns: 1fr; gap: 24px; } .slot-knoppen .knop { width: 100%; justify-content: center; } }
+
+/* /interesse: ruimte en ritme (desktop 112px, mobiel 72px tussen secties) */
+.pagina-interesse .interesse-kop { padding: 88px 0 152px; }
+.pagina-interesse .interesse-kop h1 { max-width: 15em; margin-bottom: 18px; }
+.pagina-interesse .interesse-kop .contact-lead { max-width: 36em; font-size: 19px; line-height: 1.6; }
+.pagina-interesse .contact.interesse { padding: 0 0 112px; }
+.pagina-interesse .contact.interesse .opties { gap: 24px; }
+.pagina-interesse .optie { gap: 14px; padding: 32px 28px 28px; }
+.pagina-interesse .optie span { max-width: 22em; }
+.pagina-interesse .sectie { padding: 112px 0; }
+.pagina-interesse .sectie-kop { margin-bottom: 48px; }
+.pagina-interesse .garantieband { padding: 104px 0; }
+.pagina-interesse .garantieband .wrap { max-width: 1040px; gap: 72px; }
+.pagina-interesse .garantie-tekst p { max-width: 36em; line-height: 1.65; margin-bottom: 24px; }
+.pagina-interesse .garantie-punten li { margin-bottom: 10px; }
+.pagina-interesse .twee-kol { gap: 80px; }
+.pagina-interesse .twee-kol h2 { margin-bottom: 20px; }
+.pagina-interesse .twee-kol p { font-size: 18px; line-height: 1.65; max-width: 30em; }
+.pagina-interesse .slot-cta { padding: 112px 0; }
+.pagina-interesse .slot-cta p { margin-bottom: 36px; }
+.pagina-interesse .slot-knoppen { gap: 16px; }
+.pagina-interesse .slot-knoppen .knop { min-height: 56px; padding: 0 28px; font-size: 17px; }
+@media (max-width: 900px) {
+  .pagina-interesse .interesse-kop { padding: 44px 0 104px; }
+  .pagina-interesse .interesse-kop h1 { margin-bottom: 14px; }
+  .pagina-interesse .interesse-kop .contact-lead { font-size: 17px; }
+  .pagina-interesse .contact.interesse { padding: 0 0 72px; }
+  .pagina-interesse .contact.interesse .opties { gap: 16px; }
+  .pagina-interesse .optie { gap: 10px 14px; padding: 22px 20px; }
+  .pagina-interesse .optie-hoofd { margin-top: 12px; }
+  .pagina-interesse .sectie { padding: 72px 0; }
+  .pagina-interesse .sectie-kop { margin-bottom: 32px; }
+  .pagina-interesse .garantieband { padding: 72px 0 64px; }
+  .pagina-interesse .garantieband .wrap { gap: 32px; }
+  .pagina-interesse .twee-kol { gap: 36px; }
+  .pagina-interesse .twee-kol p { font-size: 17px; }
+  .pagina-interesse .slot-cta { padding: 72px 0; }
+  .pagina-interesse .slot-cta p { margin-bottom: 28px; padding: 0 8px; }
+  .pagina-interesse .slot-knoppen { gap: 12px; }
+}
+/* /interesse: knoppen niet meer over de paarse kop heen, maar met ruimte eronder */
+.pagina-interesse .interesse-kop { padding-bottom: 80px; }
+.pagina-interesse .contact.interesse { padding-top: 64px; }
+.pagina-interesse .contact.interesse .opties { margin-top: 0; }
+@media (max-width: 900px) {
+  .pagina-interesse .interesse-kop { padding-bottom: 48px; }
+  .pagina-interesse .contact.interesse { padding-top: 40px; }
+  .pagina-interesse .contact.interesse .opties { margin-top: 0; }
+}
