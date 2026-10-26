@@ -200,19 +200,19 @@
         <div class="regel"><span>Bouw van je website <small>eenmalig, nu te betalen</small></span><b class="nummers">${euro(p.buildCents)}</b></div>
         <div class="regel"><span>Abonnement <small>hosting en ${state.offer.changesPerMonth} wijzigingen per maand, automatisch vanaf ${datumLang(p.firstMonthly)}</small></span><b class="nummers">${euro(p.monthlyCents)} <small>per maand</small></b></div>
       </div>
-      <p class="klein dempen">Je betaalt via Mollie (bijvoorbeeld met iDEAL). Met deze betaling geef je ook toestemming voor de maandelijkse afschrijving.</p>
-      ${!st.payOnline ? html`<div class="melding melding-let">${raw(icon.let)}<p>Online betalen staat nog niet aan. We nemen contact met je op om je abonnement te starten.</p></div>` : ""}
+      ${st.payOnline ? html`<p class="klein dempen">Je betaalt online (bijvoorbeeld met iDEAL). Met deze betaling geef je ook toestemming voor de maandelijkse afschrijving.</p>`
+        : html`<p class="klein dempen">Je krijgt direct een factuur per mail en in je portaal, die je betaalt via een overboeking. Daarna krijg je elke maand een factuur van ${euro(p.monthlyCents)}. Je kunt meteen door met het aanleveren van je informatie.</p>`}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-        <div class="veld"><label class="vinkje"><input type="checkbox" name="akkoord" required> <span>Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en geef toestemming om ${euro(p.monthlyCents)} per maand automatisch af te schrijven.</span></label><div class="fout" data-fout-voor="akkoord"></div></div>
-        <div class="knoppen"><button class="knop knop-actie" type="submit" ${st.payOnline ? "" : raw("disabled")}>${euro(p.buildCents)} betalen en starten</button><button class="knop knop-tekst" type="button" id="terug">Gegevens aanpassen</button></div></form>`);
+        <div class="veld"><label class="vinkje"><input type="checkbox" name="akkoord" required> <span>${st.payOnline ? html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en geef toestemming om ${euro(p.monthlyCents)} per maand automatisch af te schrijven.` : html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en het abonnement van ${euro(p.monthlyCents)} per maand (maandelijks opzegbaar).`}</span></label><div class="fout" data-fout-voor="akkoord"></div></div>
+        <div class="knoppen"><button class="knop knop-actie" type="submit">${st.payOnline ? `${euro(p.buildCents)} betalen en starten` : "Akkoord en starten"}</button><button class="knop knop-tekst" type="button" id="terug">Gegevens aanpassen</button></div></form>`);
     vak.querySelector("#check")?.addEventListener("click", herlaadState);
     vak.querySelector("#terug").onclick = () => { state.start.stage = "gegevens"; stapGegevens(vak); main().querySelectorAll(".start-stappen li").forEach((li, i) => { li.className = i === 0 ? "nu" : ""; }); };
     const form = vak.querySelector("form");
     form.addEventListener("submit", async (e) => {
       e.preventDefault(); SM.wisFouten(form);
       if (!form.elements.akkoord.checked) return SM.toonFouten(form, { message: "Vink aan dat je akkoord gaat.", data: { field: "akkoord" } });
-      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, "Naar betalen…");
-      try { const r = await api("portal/start/betalen", { method: "POST", body: { akkoord: true } }); location.href = r.checkoutUrl; }
+      const knop = form.querySelector("[type=submit]"); SM.bezig(knop, true, st.payOnline ? "Naar betalen…" : "Even geduld…");
+      try { const r = await api("portal/start/betalen", { method: "POST", body: { akkoord: true } }); if (r.checkoutUrl) location.href = r.checkoutUrl; else { toast(`Gestart! Factuur ${r.factuur || ""} staat in je mail en bij Facturen.`); herlaadState(); } }
       catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
     });
     // Na terugkomen van Mollie: even automatisch opnieuw kijken.
@@ -427,7 +427,7 @@
       <div class="acties">
         ${i.hasPdf ? html`<a class="knop knop-licht knop-klein" href="/api/portal/invoices/${i.id}/pdf?inline=1" target="_blank" rel="noopener">${raw(icon.open)}Openen</a><a class="knop knop-licht knop-klein" href="/api/portal/invoices/${i.id}/pdf" download>${raw(icon.download)}Downloaden</a>` : html`<span class="klein dempen">PDF volgt binnenkort</span>`}
         ${(i.status === "open" || i.status === "vervallen") && state.payOnline ? html`<button class="knop knop-actie knop-klein" data-betaal="${i.id}">Betalen</button>` : ""}
-      </div></li>`;
+      </div>${(i.status === "open" || i.status === "vervallen") && !state.payOnline && state.bank ? html`<p class="klein overboeken">Betaal via een overboeking van <b>${euro(i.amountCents)}</b> naar <b>${state.bank.iban}</b> t.n.v. ${state.bank.naam}, onder vermelding van <b>${i.number}</b>.</p>` : ""}</li>`;
   }
   function facturen(main) {
     render(main, html`<div class="hq-kop"><div><h1>Facturen</h1><p>Al je facturen van Sitemaker. Open of download ze als PDF.</p></div></div>

@@ -1,6 +1,6 @@
 // Facturen: nummering, btw, PDF in huisstijl en versturen.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { q, one, getSettings, euro, dayKey, addDays, escH, publicBase, fail, portalUrl } from "./core.mjs";
+import { q, one, getSettings, euro, dayKey, addDays, escH, publicBase, fail, portalUrl, OFFER, audit } from "./core.mjs";
 import { putFile } from "./files.mjs";
 import { sendMail, brandHtml } from "./mail.mjs";
 import { LOGO_PNG_B64 } from "./logo-pdf.mjs";
@@ -158,4 +158,40 @@ export async function mailInvoice(invoiceId) {
   });
   if (res.ok) await q("UPDATE invoices SET sent_at = NOW() WHERE id = $1", [inv.id]);
   return res;
+}
+
+// Handmatig factureren (zolang er geen online betaalprovider is): elke maand op de dag van subscription_start een
+// factuur van het maandbedrag, met PDF en mail. Alleen de lopende periode (geen inhaalfacturen), nooit dubbel.
+export async function runMaandfacturen({ max = 5 } = {}) {
+  const s = await getSettings();
+  const vandaag = dayKey();
+  const rows = await q("SELECT * FROM customers WHERE billing_status = 'handmatig' AND subscription_start IS NOT NULL AND subscription_start <= $1::date ORDER BY id", [vandaag]);
+  let gemaakt = 0;
+  for (const c of rows) {
+    if (gemaakt >= max) break;
+    const start = String(c.subscription_start instanceof Date ? c.subscription_start.toISOString() : c.subscription_start).slice(0, 10);
+    let d = start, k = 0;
+    while (addMonthsKey(start, k + 1) <= vandaag) k++;
+    d = addMonthsKey(start, k);
+    const al = await one("SELECT 1 AS x FROM invoices WHERE customer_id = $1 AND source = 'maand' AND invoice_date = $2::date", [c.id, d]);
+    if (al) continue;
+    const parts = priceParts(c.monthly_cents, s.billing);
+    if (!parts) continue;
+    const tot = addMonthsKey(start, k + 1);
+    const fmt = (x) => new Date(x + "T12:00:00Z").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+    const eind = new Date(Date.parse(tot + "T12:00:00Z") - 86400000).toISOString().slice(0, 10);
+    const inv = await createInvoice({ customerId: c.id, description: `Abonnement Sitemaker (hosting en ${OFFER.changesPerMonth} wijzigingen per maand), ${fmt(d)} t/m ${fmt(eind)}`, parts, source: "maand", date: d });
+    await generateInvoicePdf(inv.id).catch((e) => console.log("[maandfactuur] pdf", e.message));
+    await mailInvoice(inv.id).catch((e) => console.log("[maandfactuur] mail", e.message));
+    await audit(null, c.id, "factuur.aangemaakt", { number: inv.number, maand: d });
+    gemaakt++;
+  }
+  return { gemaakt };
+}
+function addMonthsKey(key, n) {
+  const [y, m, d] = key.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, last));
+  return t.toISOString().slice(0, 10);
 }

@@ -5,7 +5,7 @@ import { q, one, OFFER, str, fail, audit, escH, publicBase, getSettings, dayKey,
 import { putFile, getFile, deleteFile, fileResponse, ALLOWED_UPLOADS, MAX_UPLOAD, sniffOk, safeName } from "./files.mjs";
 import { notifyStaff, sendMail, brandHtml } from "./mail.mjs";
 import { mollieReady, startFirstPayment } from "./mollie.mjs";
-import { priceParts } from "./billing.mjs";
+import { priceParts, createInvoice, generateInvoicePdf, mailInvoice } from "./billing.mjs";
 import { THEMAS } from "./sites.mjs";
 import { normDomain, koppelDomein } from "./domains.mjs";
 import { maakOpdracht } from "./opdrachten.mjs";
@@ -105,15 +105,31 @@ export async function startPayment(user, b, ip) {
   if (!c.details_at) fail(400, "Vul eerst je bedrijfsgegevens in.");
   if (c.started_at) fail(400, "Je eerste betaling is al binnen.");
   if (b.akkoord !== true) fail(400, "Vink aan dat je akkoord gaat met de voorwaarden en de automatische afschrijving.", { field: "akkoord" });
-  if (!mollieReady()) fail(503, "Online betalen staat nog niet aan. We nemen contact met je op om je abonnement te starten.");
   await q("UPDATE customers SET terms_at = NOW(), terms_ip = $2, terms_by = $3, updated_at = NOW() WHERE id = $1", [c.id, str(ip, 60), user.email]);
-  await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq });
+  await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq, handmatig: !mollieReady() });
+  if (!mollieReady()) return await startHandmatig(c, user);
   const r = await startFirstPayment(c.id, { userId: user.id });
   return { checkoutUrl: r.checkoutUrl };
 }
 
+// Zonder online betalen (nog geen betaalprovider): factuur voor de bouw per mail (overboeking), maandfacturen volgen
+// automatisch via tick (runMaandfacturen). De klant kan meteen door naar het aanleveren van de informatie.
+async function startHandmatig(c, user) {
+  const s = await getSettings();
+  const parts = priceParts(c.build_cents, s.billing);
+  if (!parts) fail(400, "De btw-instelling ontbreekt nog. We nemen contact met je op.");
+  const inv = await createInvoice({ customerId: c.id, description: "Bouw van je website (eenmalig)", parts, source: "start" });
+  await generateInvoicePdf(inv.id).catch((e) => console.log("[start] pdf", e.message));
+  await mailInvoice(inv.id).catch((e) => console.log("[start] factuurmail", e.message));
+  await q("UPDATE customers SET billing_status = 'handmatig', subscription_start = COALESCE(subscription_start, $2::date), updated_at = NOW() WHERE id = $1", [c.id, addMonths(dayKey(), 1)]);
+  await audit(user.id, c.id, "factuur.aangemaakt", { number: inv.number, handmatig: true });
+  await notifyStaff(`Nieuwe klant gestart: ${c.company}`, [`${c.company} ging akkoord en kreeg factuur ${inv.number} (bouw) per mail. Betaling via overboeking; zet de factuur op betaald in HQ › Facturen zodra het geld binnen is.`], `/hq/#klanten/${c.id}`).catch(() => {});
+  await markStarted(c.id, { handmatig: true });
+  return { ok: true, handmatig: true, factuur: inv.number };
+}
+
 // Door de Mollie-webhook aangeroepen zodra de eerste betaling binnen is.
-export async function markStarted(customerId) {
+export async function markStarted(customerId, { handmatig = false } = {}) {
   const c = await one("UPDATE customers SET started_at = NOW(), updated_at = NOW() WHERE id = $1 AND started_at IS NULL RETURNING *", [customerId]);
   if (!c) return;
   await audit(null, c.id, "start.betaald", {});
@@ -121,6 +137,19 @@ export async function markStarted(customerId) {
   const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [c.id]);
   if (!u) return;
   const link = `${portalUrl()}`;
+  if (handmatig) {
+    await sendMail({
+      to: u.email, kind: "start-gestart", ref: `customer:${c.id}`, subject: "Welkom! Lever nu je informatie aan",
+      text: `Beste ${c.contact_name || c.company},\n\nBedankt, je abonnement is gestart. De factuur voor de bouw staat in je portaal en heb je per mail gekregen; je betaalt die via een overboeking.\n\nVolgende stap: lever in je portaal de informatie voor je website aan (teksten, logo en foto's): ${link}\n\nZodra we alles hebben, staat je website binnen ${OFFER.deliveryText} online.\n\nMet vriendelijke groet,\nSitemaker`,
+      html: brandHtml({
+        title: "Je abonnement is gestart",
+        intro: [`Beste ${escH(c.contact_name || c.company)},`, "Bedankt! De factuur voor de bouw staat in je portaal en heb je per mail gekregen; je betaalt die via een overboeking.", "Volgende stap: lever in je portaal de informatie voor je website aan: wat je doet, je diensten, je logo en foto's."],
+        button: { label: "Informatie aanleveren", href: link },
+        after: [`Zodra we alles hebben, staat je website binnen <b>${OFFER.deliveryText}</b> online.`],
+      }),
+    }).catch(() => {});
+    return;
+  }
   await sendMail({
     to: u.email, kind: "start-betaald", ref: `customer:${c.id}`, subject: "Je betaling is binnen: lever nu je informatie aan",
     text: `Beste ${c.contact_name || c.company},\n\nBedankt, je betaling is binnen en je abonnement is gestart.\n\nVolgende stap: lever in je portaal de informatie voor je website aan (teksten, logo en foto's): ${link}\n\nZodra we alles hebben, staat je website binnen ${OFFER.deliveryText} online.\n\nMet vriendelijke groet,\nSitemaker`,

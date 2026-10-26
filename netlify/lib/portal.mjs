@@ -67,6 +67,7 @@ export async function portalState(user) {
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: mollieReady(),
+    bank: mollieReady() ? null : await (async () => { const co = (await getSettings()).company || {}; return co.iban ? { iban: co.iban, naam: co.legalName || co.name || "Sitemaker" } : null; })(),
     start: await startState(c),
     websites: await (await import("./websites.mjs")).listWebsites(user),
     domeinGekozen: !!dom || (!!c.site_url && !/\.netlify\.app/.test(c.site_url)),

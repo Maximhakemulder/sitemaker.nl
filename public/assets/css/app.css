@@ -607,3 +607,4 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .soort-chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; vertical-align: 2px; background: var(--ijs, #E7F4FF); color: #1C0747; }
 .soort-video { background: #E3F7FB; color: #0A5F70; }
 .soort-telefoon { background: #FFE9E9; color: #8A1C1C; }
+.factuur-rij .overboeken { grid-column: 1 / -1; margin: 0; background: var(--ijs, #E7F4FF); border-radius: 10px; padding: 10px 12px; }

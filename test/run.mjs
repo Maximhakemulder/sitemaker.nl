@@ -386,6 +386,36 @@ await test("onmogelijk verzoek en ongeldig voorstel gaan naar 'handmatig'", asyn
   assert.equal(ch.find((x) => x.id === b).ai.status, "handmatig"); assert.match(ch.find((x) => x.id === b).ai.reason, /Onbekende afbeelding/);
 });
 
+console.log("Handmatig factureren (zonder online betalen)");
+await test("startflow zonder betaalprovider: factuur per mail, direct door; maandfactuur automatisch", async () => {
+  const sleutel = process.env.MOLLIE_API_KEY; delete process.env.MOLLIE_API_KEY;
+  try {
+    const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Hand Werk", email: "hand@werk.test", onboarding: true, sendWelcome: false } });
+    const cid = r.data.customer.id;
+    const kh = await login("hand@werk.test", "portaal");
+    await call("PUT", "portal/start/gegevens", { cookie: kh, body: { company: "Hand Werk B.V.", contactName: "Han", phone: "0612345678", street: "Laan 2", postcode: "1234ab", city: "Ergens", kvk: "87654321" } });
+    let st = (await call("GET", "portal/state", { cookie: kh })).data;
+    assert.equal(st.payOnline, false);
+    const voor = captured.length;
+    const res = await call("POST", "portal/start/betalen", { cookie: kh, body: { akkoord: true } });
+    assert.equal(res.status, 200, JSON.stringify(res.data)); assert.ok(res.data.handmatig); assert.ok(res.data.factuur);
+    assert.ok(captured.slice(voor).some((m) => m.to === "hand@werk.test" && /Factuur/.test(m.subject)));
+    st = (await call("GET", "portal/state", { cookie: kh })).data;
+    assert.equal(st.start.stage, "informatie");
+    assert.equal(st.invoices.length, 1); assert.equal(st.invoices[0].status, "open");
+    const { q, one } = await import("../netlify/lib/core.mjs");
+    const { runMaandfacturen } = await import("../netlify/lib/billing.mjs");
+    // abonnement liep al anderhalve maand: alleen de lopende periode, en maar één keer
+    const start = new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10);
+    await q("UPDATE customers SET subscription_start = $2 WHERE id = $1", [cid, start]);
+    await runMaandfacturen(); await runMaandfacturen();
+    const maand = await q("SELECT * FROM invoices WHERE customer_id = $1 AND source = 'maand'", [cid]);
+    assert.equal(maand.length, 1);
+    assert.equal((await one("SELECT billing_status FROM customers WHERE id = $1", [cid])).billing_status, "handmatig");
+    await q("UPDATE customers SET site_status = 'opgezegd', billing_status = 'opgezegd' WHERE id = $1", [cid]); // telt verder niet mee
+  } finally { if (sleutel) process.env.MOLLIE_API_KEY = sleutel; }
+});
+
 console.log("Start in het portaal");
 await test("nieuwe klant met startflow: gegevens → akkoord en betalen → melding → informatie", async () => {
   const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Bakkerij Zon", email: "zon@bakkerij.test", onboarding: true, sendWelcome: true } });
