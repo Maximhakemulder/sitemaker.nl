@@ -81,7 +81,7 @@
   if (!sectie) return;
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const sterren = (n, klein) => `<span class="sterren${klein ? " klein" : ""}" role="img" aria-label="${n} van 5 sterren">${[1, 2, 3, 4, 5].map((i) => `<i class="${i <= n ? "" : "uit"}"></i>`).join("")}</span>`;
-  const datum = (d) => new Date(d + "T12:00:00").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
+  const datum = (d) => { const t = new Date(String(d || "").slice(0, 10) + "T12:00:00"); return isNaN(t) ? "" : t.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }); };
   const toon = ({ reviews, count, average }, voorbeeld) => {
     if (!reviews.length) return;
     document.getElementById("rv-voorbeeld").hidden = !voorbeeld;

@@ -24,6 +24,8 @@
   const conceptToken = /^[\w-]{8,40}$/.test(qs.get("concept") || "") ? qs.get("concept") : "";
   const bedrijfNaam = (qs.get("bedrijf") || "").slice(0, 120);
   if (bedrijfNaam) document.querySelectorAll('input[name="company"]').forEach((i) => { if (!i.value) i.value = bedrijfNaam; });
+  // De keuzekaarten nemen het concept mee naar /interesse.
+  if (conceptToken) document.querySelectorAll("[data-keuze-link]").forEach((a) => { const u = new URL(a.href); u.searchParams.set("concept", conceptToken); if (bedrijfNaam) u.searchParams.set("bedrijf", bedrijfNaam); a.href = u.pathname + u.search; });
 
   // ------------------------------------------------ Kennismaking boeken
   const boeken = $("#boeken"), aanvraagForm = $("#aanvraag");

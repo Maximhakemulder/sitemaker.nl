@@ -2,8 +2,10 @@
 // "Geverifieerde klant" alleen als de review aan een bestaande Sitemaker-klant hangt.
 import { q, one, str, normUrl, fail, audit } from "./core.mjs";
 
+// DATE-kolom kan als Date-object terugkomen: altijd als "JJJJ-MM-DD" doorgeven.
+const dagStr = (d) => { if (!d) return null; if (d instanceof Date) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; return String(d).slice(0, 10); };
 const publiek = (r) => ({
-  name: r.name, company: r.company, rating: r.rating, title: r.title, body: r.body, date: r.review_date,
+  name: r.name, company: r.company, rating: r.rating, title: r.title, body: r.body, date: dagStr(r.review_date),
   verified: !!r.customer_id, source: r.source, sourceUrl: r.source_url,
 });
 
