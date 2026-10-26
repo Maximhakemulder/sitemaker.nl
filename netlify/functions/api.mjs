@@ -243,6 +243,7 @@ async function verwerk(req, context) {
         case "PUT customers/:id": return json(await hq.updateCustomer(id, await body(req), user));
         case "POST customers/:id/users": return json(await hq.addPortalUser(id, await body(req), user));
         case "PUT customers/:id/users/:id": return json(await hq.setPortalUser(id, Number(seg[4]), await body(req), user));
+        case "DELETE customers/:id/users/:id": requireAdmin(user); return json(await hq.deletePortalUser(id, Number(seg[4]), user));
         case "POST customers/:id/als-klant": { const r = await viewAsCustomer(user, id); return json({ url: "/portaal/" }, 200, { "set-cookie": r.cookie }); }
         case "POST customers/:id/welcome": return json(await hq.sendWelcome(id, user));
         case "POST customers/:id/payment": return json(await hq.startPayment(id, await body(req), user));
@@ -313,6 +314,7 @@ async function verwerk(req, context) {
         case "POST settings/testmail": return json(await hq.testMail(user));
         case "GET medewerkers": return json({ ...(await hq.listTeam()), me: { id: user.id, email: user.email, role: user.role } });
         case "POST medewerkers": requireAdmin(user); return json(await hq.saveTeamMember(await body(req), user));
+        case "DELETE medewerkers/:id": requireAdmin(user); return json(await hq.deleteTeamMember(id, user));
         case "GET reviews": return json({ reviews: await listReviews() });
         case "POST reviews": return json(await saveReview(null, await body(req), user));
         case "PUT reviews/:id": return json(await saveReview(id, await body(req), user));

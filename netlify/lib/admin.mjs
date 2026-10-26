@@ -206,6 +206,25 @@ export async function setPortalUser(customerId, userId, b, user) {
   return { ok: true };
 }
 
+// Portaalgebruiker helemaal verwijderen. Heeft hij ook andere websites (andere klantregels), dan alleen loskoppelen van deze klant.
+export async function deletePortalUser(customerId, userId, user) {
+  const u = await one("SELECT u.* FROM users u WHERE u.id = $1 AND u.role = 'klant' AND (u.customer_id = $2 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $2))", [userId, customerId]);
+  if (!u) fail(404, "Gebruiker niet gevonden.");
+  const andere = (await q("SELECT customer_id FROM user_sites WHERE user_id = $1 AND customer_id <> $2", [userId, customerId])).map((r) => r.customer_id);
+  if (u.customer_id && u.customer_id !== customerId && !andere.includes(u.customer_id)) andere.push(u.customer_id);
+  if (andere.length) {
+    await q("DELETE FROM user_sites WHERE user_id = $1 AND customer_id = $2", [userId, customerId]);
+    if (u.customer_id === customerId) await q("UPDATE users SET customer_id = $2 WHERE id = $1", [userId, andere[0]]);
+    await q("DELETE FROM sessions WHERE user_id = $1", [userId]);
+    await audit(user.id, customerId, "portaal.gebruiker_verwijderd", { email: u.email, alleenLosgekoppeld: true });
+    return { ok: true, losgekoppeld: true };
+  }
+  await q("DELETE FROM users WHERE id = $1", [userId]);
+  await q("DELETE FROM login_codes WHERE email = $1", [u.email]);
+  await audit(user.id, customerId, "portaal.gebruiker_verwijderd", { email: u.email });
+  return { ok: true };
+}
+
 export async function sendWelcome(customerId, user) {
   const c = await one("SELECT * FROM customers WHERE id = $1", [customerId]);
   const u = await one("SELECT u.email FROM users u WHERE u.active AND u.role = 'klant' AND (u.customer_id = $1 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $1)) ORDER BY u.customer_id = $1 DESC, u.id LIMIT 1", [customerId]);
@@ -558,6 +577,16 @@ export async function listTeam() {
   const admins = env("ADMIN_EMAILS").split(",").map(cleanEmail).filter(Boolean);
   const rows = await q("SELECT id, email, name, role, active, last_login_at FROM users WHERE role <> 'klant' ORDER BY role, email");
   return { team: rows.map((u) => ({ ...u, fromEnv: admins.includes(u.email) })), adminEmails: admins };
+}
+export async function deleteTeamMember(id, user) {
+  const u = await one("SELECT * FROM users WHERE id = $1 AND role <> 'klant'", [id]);
+  if (!u) fail(404, "Medewerker niet gevonden.");
+  if (u.id === user.id) fail(400, "Je kunt jezelf niet verwijderen.");
+  if (env("ADMIN_EMAILS").split(",").map(cleanEmail).includes(u.email)) fail(400, "Dit adres staat in ADMIN_EMAILS in Netlify en komt bij de volgende login terug. Haal het daar eerst weg.");
+  await q("DELETE FROM users WHERE id = $1", [id]);
+  await q("DELETE FROM login_codes WHERE email = $1", [u.email]);
+  await audit(user.id, null, "team.verwijderd", { email: u.email });
+  return { ok: true };
 }
 export async function saveTeamMember(b, user) {
   const email = cleanEmail(b.email);

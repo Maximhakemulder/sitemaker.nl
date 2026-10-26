@@ -403,7 +403,7 @@
             : html`<p class="dempen">Nog geen eigen repo. Maak de site aan vanuit het Sitemaker-sjabloon (eigen GitHub-repo en eigen Netlify-project), of koppel een bestaande repo.</p>
               <div class="knoppen"><button class="knop knop-actie knop-klein" id="site-maak">Website aanmaken</button><button class="knop knop-licht knop-klein" id="site-koppel">Bestaande site koppelen</button></div>`}</section>
           <section class="paneel"><div class="paneel-kop"><h2>Portaaltoegang</h2><button class="knop knop-licht knop-klein" id="gebruiker">Gebruiker toevoegen</button></div>
-            <ul class="lijst">${d.users.map((g) => html`<li class="factuur-rij"><div><b>${g.email}</b>${g.active ? "" : html` <span class="status s-grijs">Geblokkeerd</span>`}<br><span class="klein dempen">${g.lastLoginAt ? "Laatst ingelogd " + geleden(g.lastLoginAt) : "Nog niet ingelogd"}</span></div><div><button class="knop knop-tekst knop-klein" data-toegang="${g.id}" data-actief="${g.active ? "0" : "1"}">${g.active ? "Blokkeren" : "Toegang geven"}</button></div></li>`)}</ul></section>
+            <ul class="lijst">${d.users.map((g) => html`<li class="factuur-rij"><div><b>${g.email}</b>${g.active ? "" : html` <span class="status s-grijs">Geblokkeerd</span>`}<br><span class="klein dempen">${g.lastLoginAt ? "Laatst ingelogd " + geleden(g.lastLoginAt) : "Nog niet ingelogd"}</span></div><div><button class="knop knop-tekst knop-klein" data-toegang="${g.id}" data-actief="${g.active ? "0" : "1"}">${g.active ? "Blokkeren" : "Toegang geven"}</button>${isAdmin() ? html`<button class="knop knop-tekst knop-klein knop-gevaar" data-gebruiker-weg="${g.id}" data-email="${g.email}">Verwijderen</button>` : ""}</div></li>`)}</ul></section>
           <section class="paneel"><h2>Gegevens</h2><dl class="gegevens">
             <dt>Telefoon</dt><dd>${c.phone || "–"}</dd><dt>KvK</dt><dd>${c.kvk || "–"}</dd><dt>Btw</dt><dd>${c.vatNumber || "–"}</dd><dt>Adres</dt><dd>${c.address || "–"}</dd><dt>Klant sinds</dt><dd>${datumLang(c.createdAt)}</dd></dl>
             ${c.notes ? html`<div class="notitie">${c.notes}</div>` : ""}</section>
@@ -450,6 +450,10 @@
       const aan = b.dataset.actief === "1";
       if (!aan && !(await SM.bevestig("Toegang blokkeren?", "Deze gebruiker wordt direct uitgelogd en kan niet meer inloggen op het portaal.", "Blokkeren"))) return;
       try { await api(`hq/customers/${id}/users/${b.dataset.toegang}`, { method: "PUT", body: { active: aan } }); toast(aan ? "Toegang gegeven" : "Toegang geblokkeerd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    }));
+    main.querySelectorAll("[data-gebruiker-weg]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig("Gebruiker verwijderen?", `${b.dataset.email} wordt helemaal verwijderd en uitgelogd. Heeft deze persoon ook andere websites bij ons, dan wordt hij alleen van deze klant losgekoppeld. Facturen en wijzigingen blijven bewaard.`, "Verwijderen"))) return;
+      try { const r = await api(`hq/customers/${id}/users/${b.dataset.gebruikerWeg}`, { method: "DELETE" }); toast(r.losgekoppeld ? "Losgekoppeld van deze klant (heeft nog andere websites)." : "Gebruiker verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelector("#mollie-start")?.addEventListener("click", () => mollieDialoog(c));
     main.querySelector("#mollie-stop")?.addEventListener("click", async () => {
@@ -1649,9 +1653,13 @@ ${p.body}</div>
       <div class="hq-kop"><div><h1>Team</h1><p>Medewerkers kunnen klanten, wijzigingen, facturen en B2B beheren. Beheerders ook instellingen, team en het opzeggen van abonnementen.</p></div>${isAdmin() ? html`<button class="knop knop-actie" id="lid">Teamlid toevoegen</button>` : ""}</div>
       <section class="paneel"><div class="tabel-wrap"><table class="tabel"><thead><tr><th>E-mail</th><th>Rol</th><th>Laatst ingelogd</th><th></th></tr></thead><tbody>
         ${d.team.map((u) => html`<tr><td><b>${u.email}</b>${u.name ? html`<br><span class="klein dempen">${u.name}</span>` : ""}</td><td>${u.role === "admin" ? "Beheerder" : "Medewerker"}${u.fromEnv ? html` <span class="status s-info">ADMIN_EMAILS</span>` : ""}${u.active ? "" : html` <span class="status s-grijs">Geblokkeerd</span>`}</td>
-          <td>${u.last_login_at ? geleden(u.last_login_at) : "–"}</td><td class="acties">${isAdmin() && u.email !== me.email ? html`<button class="knop knop-tekst knop-klein" data-lid='${JSON.stringify({ email: u.email, name: u.name, role: u.role, active: !u.active })}'>${u.active ? "Blokkeren" : "Toegang geven"}</button>` : ""}</td></tr>`)}</tbody></table></div></section>`);
+          <td>${u.last_login_at ? geleden(u.last_login_at) : "–"}</td><td class="acties">${isAdmin() && u.email !== me.email ? html`<button class="knop knop-tekst knop-klein" data-lid='${JSON.stringify({ email: u.email, name: u.name, role: u.role, active: !u.active })}'>${u.active ? "Blokkeren" : "Toegang geven"}</button>${u.fromEnv ? "" : html`<button class="knop knop-tekst knop-klein knop-gevaar" data-lid-weg="${u.id}" data-email="${u.email}">Verwijderen</button>`}` : ""}</td></tr>`)}</tbody></table></div></section>`);
     main.querySelectorAll("[data-lid]").forEach((b) => b.addEventListener("click", async () => {
       try { await api("hq/medewerkers", { method: "POST", body: JSON.parse(b.dataset.lid) }); toast("Bijgewerkt"); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    }));
+    main.querySelectorAll("[data-lid-weg]").forEach((b) => b.addEventListener("click", async () => {
+      if (!(await SM.bevestig("Teamlid verwijderen?", `${b.dataset.email} wordt verwijderd en uitgelogd en kan niet meer inloggen in HQ. Wat deze persoon eerder deed, blijft in het logboek staan.`, "Verwijderen"))) return;
+      try { await api(`hq/medewerkers/${b.dataset.lidWeg}`, { method: "DELETE" }); toast("Teamlid verwijderd"); herlaad(); } catch (err) { toast(err.message, "fout"); }
     }));
     main.querySelector("#lid")?.addEventListener("click", () => {
       const dlg = SM.dialoog("Teamlid toevoegen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
