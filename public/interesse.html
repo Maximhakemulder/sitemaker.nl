@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ik heb interesse – Sitemaker</title>
+<meta name="description" content="Kies hoe je verder wilt: direct starten, een videomeeting of een belafspraak.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#1C0747">
+<link rel="icon" href="/favicon.png" type="image/png">
+
+<link rel="stylesheet" href="/assets/css/fonts.css">
+<link rel="stylesheet" href="/assets/css/site.css">
+<script src="/assets/js/juridisch.js" defer></script>
+<script src="/assets/js/site.js" defer></script>
+<script src="/assets/js/interesse.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#inhoud">Naar de inhoud</a>
+
+<header class="kop">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Sitemaker, naar de startpagina"><img src="/assets/brand/logo-compact-wit.png" alt="Sitemaker" width="194" height="30"></a>
+    <button class="menuknop" type="button" aria-expanded="false" aria-controls="menu" aria-label="Menu openen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <nav id="menu" aria-label="Hoofdmenu">
+      <a href="/#wat-je-krijgt">Prijs</a>
+      <a href="/#hoe-het-werkt">Hoe het werkt</a>
+      <a href="/#portaal">Portaal</a>
+      <a href="/#vragen">Vragen</a>
+      <a href="/contact">Contact</a>
+      <a class="inloggen" href="/portaal/">Inloggen klanten</a>
+      <a class="knop knop-actie" href="/#kennismaking">Plan een kennismaking</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inhoud">
+<section class="contact-kop interesse-kop">
+  <div class="wrap">
+    <h1>Leuk dat je interesse hebt<span id="voor-bedrijf"></span>!</h1>
+    <p class="contact-lead">Kies wat het beste bij je past. Je zit nergens aan vast: maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
+  </div>
+</section>
+<section class="contact interesse">
+  <div class="wrap">
+    <div class="opties" role="list">
+      <button type="button" class="optie" data-keuze="start" role="listitem">
+        <span class="optie-label">Snelste route</span>
+        <b>Direct starten</b>
+        <span>Regel het zelf in een paar minuten: gegevens invullen, betalen en je informatie sturen. Wij maken je website op basis van het voorbeeld en binnen 48 uur (2 werkdagen) staat hij live.</span>
+        <em>Direct starten</em>
+      </button>
+      <button type="button" class="optie" data-keuze="video" role="listitem">
+        <b>Videomeeting</b>
+        <span>Samen het voorbeeld doorlopen en je wensen bespreken. Een half uur, doordeweeks, vaak al binnen een dag.</span>
+        <em>Kies een moment</em>
+      </button>
+      <button type="button" class="optie" data-keuze="telefoon" role="listitem">
+        <b>Bel mij</b>
+        <span>Liever even kort bellen? Kies een moment dat jou uitkomt, dan bellen wij jou.</span>
+        <em>Kies een moment</em>
+      </button>
+    </div>
+
+    <div class="formulier keuze-vak" id="vak-start" hidden>
+      <h2>Direct starten</h2>
+      <p class="dempen">We maken je account aan. Daarna log je in met een code per mail en doorloop je drie stappen: je gegevens, akkoord en betalen (€299,95 eenmalig, daarna €69,95 per maand) en je informatie aanleveren. Veel staat al voor je klaar vanuit het voorbeeld.</p>
+      <form id="start-form" novalidate>
+        <div class="melding melding-fout" id="s-fout" role="alert" tabindex="-1" hidden></div>
+        <div class="rij">
+          <div class="veld"><label for="s-naam">Je naam</label><input id="s-naam" name="naam" autocomplete="name" required aria-describedby="se-naam"><div class="fout" id="se-naam"></div></div>
+          <div class="veld"><label for="s-bedrijf">Bedrijfsnaam</label><input id="s-bedrijf" name="bedrijf" autocomplete="organization" required aria-describedby="se-bedrijf"><div class="fout" id="se-bedrijf"></div></div>
+        </div>
+        <div class="rij">
+          <div class="veld"><label for="s-email">E-mailadres</label><input id="s-email" name="email" type="email" inputmode="email" autocomplete="email" required aria-describedby="se-email"><div class="fout" id="se-email"></div></div>
+          <div class="veld"><label for="s-tel">Telefoonnummer <span class="opt">(optioneel)</span></label><input id="s-tel" name="telefoon" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="se-telefoon"><div class="fout" id="se-telefoon"></div></div>
+        </div>
+        <div class="hp" aria-hidden="true"><label for="s-hp">Laat dit veld leeg</label><input id="s-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
+        <button class="knop knop-actie" type="submit">Account aanmaken en starten</button>
+        <p class="klein">Door te starten ga je nog nergens mee akkoord: dat doe je in de volgende stap, vóór het betalen. Lees de <a href="/voorwaarden.html">voorwaarden</a> en <a href="/privacy.html">privacyverklaring</a>.</p>
+      </form>
+    </div>
+
+    <div class="formulier keuze-vak" id="vak-afspraak" hidden>
+      <h2 id="afspraak-titel">Kies een moment</h2>
+      <p class="dempen" id="afspraak-uitleg"></p>
+      <div id="momenten"><p class="dempen">Momenten laden…</p></div>
+      <form id="afspraak-form" novalidate hidden>
+        <p class="gekozen" id="gekozen"></p>
+        <div class="melding melding-fout" id="a-fout" role="alert" tabindex="-1" hidden></div>
+        <div class="rij">
+          <div class="veld"><label for="a-naam">Je naam</label><input id="a-naam" name="name" autocomplete="name" required aria-describedby="ae-name"><div class="fout" id="ae-name"></div></div>
+          <div class="veld"><label for="a-bedrijf">Bedrijfsnaam</label><input id="a-bedrijf" name="company" autocomplete="organization" required aria-describedby="ae-company"><div class="fout" id="ae-company"></div></div>
+        </div>
+        <div class="rij">
+          <div class="veld"><label for="a-email">E-mailadres</label><input id="a-email" name="email" type="email" inputmode="email" autocomplete="email" required aria-describedby="ae-email"><div class="fout" id="ae-email"></div></div>
+          <div class="veld"><label for="a-tel">Telefoonnummer</label><input id="a-tel" name="phone" type="tel" inputmode="tel" autocomplete="tel" required aria-describedby="ae-phone"><div class="fout" id="ae-phone"></div></div>
+        </div>
+        <div class="veld"><label for="a-bericht">Iets wat we vooraf moeten weten? <span class="opt">(optioneel)</span></label><textarea id="a-bericht" name="message" rows="2"></textarea></div>
+        <div class="hp" aria-hidden="true"><label for="a-hp">Laat dit veld leeg</label><input id="a-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
+        <button class="knop knop-actie" type="submit">Afspraak bevestigen</button>
+      </form>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="voet">
+  <div class="wrap">
+    <div>
+      <img src="/assets/brand/logo-wit.png" alt="Sitemaker – Maak van je website je beste verkoper" width="180" height="34">
+      <p>Professionele websites voor bedrijven. €299,95 eenmalig + €69,95 per maand, online binnen 48 uur (2 werkdagen).</p>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <ul>
+        <li><a href="/contact">Stuur ons een bericht</a></li>
+        <li><a href="mailto:info@sitemaker.nl" data-bedrijf="email">info@sitemaker.nl</a></li>
+        <li><a href="/#kennismaking">Plan een kennismaking</a></li>
+        <li><a href="/portaal/">Klantenportaal</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Informatie</h4>
+      <ul>
+        <li><a href="/privacy.html">Privacyverklaring</a></li>
+        <li><a href="/voorwaarden.html">Algemene voorwaarden</a></li>
+        <li><a href="#" data-cookies>Cookie-instellingen</a></li>
+      </ul>
+    </div>
+    <div class="regel">
+      <span>© <span id="jaar">2026</span> Sitemaker</span>
+      <span>Maak van je website je beste verkoper</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

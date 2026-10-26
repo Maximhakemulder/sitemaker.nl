@@ -606,3 +606,19 @@ p { margin: 0 0 1em; }
 .cookiebanner a { color: var(--paars); }
 .cb-knoppen { display: flex; gap: 10px; flex-wrap: wrap; }
 .cb-knoppen .knop { min-height: 44px; flex: 1; }
+
+/* Ik heb interesse (/interesse) */
+.interesse .wrap { display: block; }
+.opties { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: -96px; position: relative; }
+.optie { text-align: left; display: flex; flex-direction: column; gap: 10px; padding: 26px 24px 22px; border-radius: var(--r-groot); border: 2px solid transparent; background: var(--wit); color: var(--paars); font: inherit; cursor: pointer; box-shadow: 0 18px 50px rgba(28,7,71,.10); transition: border-color .15s, transform .15s; }
+.optie:hover { border-color: var(--paars); transform: translateY(-2px); }
+.optie[aria-pressed="true"] { border-color: var(--knop); }
+.optie b { font-size: 24px; line-height: 1.15; }
+.optie span { color: var(--grijs); font-size: 16px; line-height: 1.5; }
+.optie .optie-label { align-self: flex-start; background: var(--paars); color: var(--cyaan); font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.optie em { margin-top: auto; font-style: normal; font-weight: 700; color: var(--knop); text-decoration: underline; text-underline-offset: 4px; }
+.keuze-vak { margin-top: 28px; max-width: 760px; }
+.keuze-vak h2 { font-size: 26px; margin-bottom: 6px; }
+.keuze-vak .gekozen { background: var(--ijs); border-radius: var(--r-klein); padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+@media (max-width: 900px) { .opties { grid-template-columns: 1fr; margin-top: -72px; } .optie { padding: 20px 18px; } .optie b { font-size: 21px; } }
+.contact.interesse .formulier.keuze-vak { margin-top: 28px; }

@@ -822,7 +822,7 @@
         <div class="veld"><label for="ag-vooruit">Tot … dagen vooruit</label><input id="ag-vooruit" name="dagenVooruit" type="number" min="1" max="90" value="${a.dagenVooruit}"></div>
         <div class="veld"><label for="ag-soort">Soort gesprek</label><select id="ag-soort" name="soort"><option value="telefoon" ${a.soort === "telefoon" ? raw("selected") : ""}>Telefoon (jij belt)</option><option value="video" ${a.soort === "video" ? raw("selected") : ""}>Videogesprek</option></select></div>
       </div>
-      <div class="veld"><label for="ag-video">Link van je videogesprek <span class="opt">(alleen bij videogesprek)</span></label><input id="ag-video" name="videoLink" value="${a.videoLink || ""}" placeholder="https://meet.google.com/…"><div class="fout" data-fout-voor="videoLink"></div></div>
+      <div class="veld"><label for="ag-video">Link voor videomeetings <span class="opt">(Google Meet of Zoom; staat in elke bevestiging)</span></label><input id="ag-video" name="videoLink" value="${a.videoLink || ""}" placeholder="https://meet.google.com/…"><div class="fout" data-fout-voor="videoLink"></div></div>
       <button class="knop knop-actie" type="submit">Opslaan</button></form></section>`);
     const form = vak.querySelector("#ag-form");
     form.addEventListener("submit", async (e) => {
