@@ -18,7 +18,7 @@ import { switchSite, requestCode, verifyCode, loginWithKey, keyLoginOpen, openMo
 import { portalState, submitChange, changeAttachment, invoicePdf } from "../lib/portal.mjs";
 import { saveDetails, startPayment as startPortalPayment, saveIntake, addIntakeFile, deleteIntakeFile, intakeFile } from "../lib/start.mjs";
 import { submitAppointment, submitContact } from "../lib/site.mjs";
-import { handleWebhook, payInvoiceLink } from "../lib/mollie.mjs";
+import { handleExchange, payInvoiceLink } from "../lib/betalen.mjs";
 import { checkUnsub, unsubscribe, checkTrack, recordTrack } from "../lib/b2b.mjs";
 import { generateInvoicePdf, mailInvoice } from "../lib/billing.mjs";
 import { one, q, getSettings } from "../lib/core.mjs";
@@ -58,11 +58,17 @@ async function verwerk(req, context) {
   const m = req.method;
   try {
     // ------------------------------------------------ openbaar, zonder eigen pagina
-    if (path === "mollie/webhook" && m === "POST") {
-      const form = await req.formData().catch(() => null);
-      const id = form?.get("id");
-      try { await handleWebhook(String(id || "")); } catch (e) { console.log("[webhook]", e.message); return new Response("retry", { status: 500 }); }
-      return new Response("ok");
+    // Pay.nl exchange (GET-query, POST-formulier of JSON). We halen de status altijd zelf op; antwoord "TRUE|…".
+    if (path === "paynl/exchange" && (m === "POST" || m === "GET")) {
+      const velden = Object.fromEntries(url.searchParams);
+      if (m === "POST") {
+        const ct = req.headers.get("content-type") || "";
+        const raw = await req.text().catch(() => "");
+        if (/json/.test(ct) || /^\s*\{/.test(raw)) { try { Object.assign(velden, JSON.parse(raw)); } catch {} }
+        else Object.assign(velden, Object.fromEntries(new URLSearchParams(raw)));
+      }
+      try { const r = await handleExchange(velden); return new Response(`TRUE| ${r.status || r.reason || (r.ignored ? "genegeerd" : "ok")}`, { headers: { "content-type": "text/plain" } }); }
+      catch (e) { console.log("[paynl exchange]", e.message); return new Response(`FALSE| ${e.message}`.slice(0, 200), { status: 500, headers: { "content-type": "text/plain" } }); }
     }
     // ------------------------------------------------ online kennismaking boeken (openbaar)
     if (path === "agenda/annuleren") {
@@ -248,6 +254,7 @@ async function verwerk(req, context) {
         case "POST customers/:id/welcome": return json(await hq.sendWelcome(id, user));
         case "POST customers/:id/payment": return json(await hq.startPayment(id, await body(req), user));
         case "POST customers/:id/cancel": requireAdmin(user); return json(await hq.stopSubscription(id, user));
+        case "POST customers/:id/incasso": requireAdmin(user); return json(await hq.incassoStarten(id, await body(req), user));
         case "POST customers/:id/check": return json(await hq.checkSiteNow(id));
         case "GET changes": return json({ changes: await hq.listChanges({ status: url.searchParams.get("status") || "" }) });
         case "PUT changes/:id": return json(await hq.updateChange(id, await body(req), user));

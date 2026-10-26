@@ -6,7 +6,7 @@ import { publicCustomer, publicChange, publicInvoice, changeUsage, mailChangeSta
 import { createInvoice, generateInvoicePdf, mailInvoice, partsFromGross, priceParts, companyComplete, vatModeSet } from "./billing.mjs";
 import { putFile, sniffOk } from "./files.mjs";
 import { sendMail, brandHtml, mailReady } from "./mail.mjs";
-import { mollieReady, mollieMode, startFirstPayment, payInvoiceLink, cancelSubscription, subscriptionInfo, mailPaymentLink } from "./mollie.mjs";
+import { betaalReady as mollieReady, betaalMode as mollieMode, startFirstPayment, payInvoiceLink, cancelSubscription, subscriptionInfo, mailPaymentLink, startIncasso, ibanOk, ibanNorm } from "./betalen.mjs";
 import { checkNow } from "./uptime.mjs";
 import { THEMAS, autoReady, provisionSite, linkSite, approveChange, redoChange, manualChange, queueChange } from "./sites.mjs";
 import { githubReady } from "./github.mjs";
@@ -72,7 +72,7 @@ export function setupStatus(s) {
     { key: "admins", ok: !!env("ADMIN_EMAILS"), label: "Beheerders", hint: "Zet ADMIN_EMAILS (komma-gescheiden) in Netlify." },
     { key: "secret", ok: !!env("AUTH_SECRET"), label: "Beveiligingssleutel", hint: "Zet AUTH_SECRET (lange willekeurige tekst) in Netlify." },
     { key: "company", ok: companyComplete(s.company), label: "Bedrijfsgegevens voor facturen", hint: "Vul ze in bij Instellingen." },
-    { key: "mollie", ok: mollieReady(), label: `Mollie (automatische betalingen)${mollieMode() === "test" ? " · testmodus" : ""}`, hint: "Zet MOLLIE_API_KEY in Netlify." },
+    { key: "mollie", ok: mollieReady(), label: `Pay.nl (online betalen en incasso)${mollieMode() === "test" ? " · testmodus" : ""}`, hint: "Zet PAYNL_SERVICE_ID, PAYNL_SERVICE_SECRET, PAYNL_AT_CODE en PAYNL_TOKEN in Netlify." },
     { key: "github", ok: githubReady(), label: "GitHub (repo per klant)", hint: "Zet GITHUB_TOKEN en GITHUB_ORG in Netlify." },
     { key: "netlify", ok: netlifyLinkReady(), label: "Netlify-projecten per klant", hint: "Zet NETLIFY_API_TOKEN, NETLIFY_ACCOUNT_SLUG en NETLIFY_GITHUB_INSTALLATION_ID." },
     { key: "claude", ok: claudeReady(), label: "Claude verwerkt wijzigingen", hint: "Zet de Netlify AI Gateway aan (of ANTHROPIC_API_KEY)." },
@@ -98,7 +98,7 @@ function adminCustomer(c) {
     startStage: startStage(c), intakeAt: c.intake_at, startDue: deliveryDue(c.intake_at),
     ...publicCustomer(c), phone: c.phone, address: c.address, kvk: c.kvk, vatNumber: c.vat_number, notes: c.notes,
     site: { repo: c.site_repo, netlifyName: c.site_netlify_name, theme: c.site_theme, previewBase: c.site_netlify_name ? `https://${c.site_netlify_name}.netlify.app` : "" },
-    mollieCustomerId: c.mollie_customer_id, mollieSubscriptionId: c.mollie_subscription_id,
+    mollieCustomerId: c.mollie_customer_id, mollieSubscriptionId: c.mollie_subscription_id, iban: c.iban || "", ibanNaam: c.iban_naam || "",
     check: c.check_at ? { at: c.check_at, ok: c.check_ok, code: c.check_code, ms: c.check_ms, fails: c.check_fails, error: c.check_error } : null,
     createdAt: c.created_at,
   };
@@ -389,12 +389,17 @@ export async function listPayments() {
 }
 
 export async function startPayment(customerId, b, user) {
+  if (b.iban) {
+    if (!ibanOk(b.iban)) fail(400, "Dit IBAN klopt niet.", { field: "iban" });
+    await q("UPDATE customers SET iban = $2, iban_naam = $3, updated_at = NOW() WHERE id = $1", [customerId, ibanNorm(b.iban), str(b.ibanNaam, 70)]);
+  }
   const res = await startFirstPayment(customerId, { startDate: dateOrNull(b.startDate), userId: user.id });
   if (b.sendMail) res.mailed = await mailPaymentLink(customerId, res.checkoutUrl, res.amountCents);
   return res;
 }
 export const invoicePayLink = (id, user) => payInvoiceLink(id, user.id);
 export const stopSubscription = (customerId, user) => cancelSubscription(customerId, user.id);
+export const incassoStarten = (customerId, b, user) => startIncasso(customerId, { iban: b.iban || undefined, ibanNaam: b.ibanNaam, startDate: dateOrNull(b.startDate) || undefined }, user.id);
 
 // ---------------------------------------------------------------- sites
 export async function listSites() {

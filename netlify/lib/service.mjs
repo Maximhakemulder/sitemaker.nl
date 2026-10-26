@@ -218,8 +218,8 @@ export async function runCancellations() {
   for (const c of due) {
     let mollie = "";
     if (c.mollie_subscription_id && c.billing_status !== "opgezegd") {
-      try { const { cancelSubscription } = await import("./mollie.mjs"); await cancelSubscription(c.id, null); mollie = "Mollie-abonnement gestopt."; }
-      catch (e) { mollie = `Mollie-abonnement stoppen lukte niet: ${e.message}. Doe dit in HQ.`; }
+      try { const { cancelSubscription } = await import("./betalen.mjs"); const r = await cancelSubscription(c.id, null); mollie = r.gestopt === false ? "Stop de incasso nog in Pay.nl (lukte niet automatisch)." : "Incasso bij Pay.nl gestopt."; }
+      catch (e) { mollie = `Incasso stoppen lukte niet: ${e.message}. Doe dit in Pay.nl.`; }
     }
     await q("UPDATE customers SET opzeg_status = 'afgerond', site_status = 'opgezegd', billing_status = CASE WHEN billing_status IN ('actief','handmatig','betaling_mislukt') THEN 'opgezegd' ELSE billing_status END, updated_at = NOW() WHERE id = $1", [c.id]);
     const dom = await one("SELECT naam, keuze FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' ORDER BY id DESC LIMIT 1", [c.id]).catch(() => null);

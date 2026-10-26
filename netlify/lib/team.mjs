@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { q, one, env, str, fail, euro, getSettings, saveSetting, publicBase, dayKey, hourAms, OFFER } from "./core.mjs";
 import { claude, aiReady } from "./ai.mjs";
 import { mailReady } from "./mail.mjs";
-import { mollieReady } from "./mollie.mjs";
+import { betaalReady } from "./betalen.mjs";
 import { scoutReady } from "./b2b.mjs";
 
 // Managers (zelfde namen als public/hq/org.js).
@@ -162,7 +162,7 @@ async function finance() {
       { label: "MRR min vaste kosten", value: euro(mrr - kosten), href: "#kosten" },
     ],
     people: {
-      controller: { text: !mollieReady() ? "Wacht op de Mollie-koppeling voor automatische betalingen" : mislukt ? `${nl(mislukt, "mislukte betaling", "mislukte betalingen")} om op te volgen` : `MRR ${euro(mrr)} uit ${actief} abonnementen`, busy: false },
+      controller: { text: !betaalReady() ? "Wacht op de Pay.nl-koppeling voor automatische betalingen" : mislukt ? `${nl(mislukt, "mislukte betaling", "mislukte betalingen")} om op te volgen` : `MRR ${euro(mrr)} uit ${actief} abonnementen`, busy: false },
     },
   };
 }

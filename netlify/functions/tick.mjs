@@ -48,7 +48,7 @@ async function ronde(started) {
   if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
 }
 
-// Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Mollie, btw).
+// Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Pay.nl, btw).
 async function startHerinnering() {
   if (!mailReady() || env("MAIL_TRANSPORT") === "capture") return { skip: true };
   if ((await one("SELECT 1 FROM settings WHERE key = 'start_herinnering'"))) return { klaar: true };
@@ -57,7 +57,7 @@ async function startHerinnering() {
     "De mail werkt. HQ is nu niet meer open: inloggen gaat met een code per mail.",
     env("ADMIN_EMAILS") ? `Log in op HQ met ${env("ADMIN_EMAILS").split(",")[0].trim()}.` : "Let op: ADMIN_EMAILS staat nog niet in Netlify. Zet daar je eigen adres in, anders kun je niet inloggen.",
     env("OPEN_MODE") ? "Haal OPEN_MODE weg uit Netlify (Project configuration › Environment variables), zodat HQ nooit per ongeluk weer open gaat." : null,
-    env("MOLLIE_API_KEY") ? null : "Zet de live Mollie-sleutel in Netlify als MOLLIE_API_KEY (begint met live_).",
+    env("PAYNL_SERVICE_ID") && env("PAYNL_SERVICE_SECRET") ? null : "Zet de Pay.nl-gegevens in Netlify: PAYNL_SERVICE_ID, PAYNL_SERVICE_SECRET, PAYNL_AT_CODE en PAYNL_TOKEN.",
     s.billing?.pricesIncludeVat !== false ? "Check de btw: in HQ › Instellingen staan de prijzen nu als inclusief btw. Reken je €299,95 en €69,95 exclusief btw, zet dat dan uit." : null,
     "Na het wijzigen van variabelen is één nieuwe deploy nodig.",
   ].filter(Boolean);
