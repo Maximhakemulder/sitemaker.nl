@@ -444,8 +444,7 @@ await test("nieuwe klant met startflow: gegevens → akkoord en betalen → meld
   st = (await call("GET", "portal/state", { cookie: kz })).data;
   assert.equal(st.start.stage, "betalen"); assert.equal(st.start.details.postcode, "1234 AB"); assert.equal(st.customer.company, "Bakkerij Zon B.V.");
   assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: {} })).status, 400, "zonder akkoord");
-  assert.equal((await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true, iban: "123" } })).data.field, "iban");
-  const pay = await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true, iban: "NL91ABNA0417164300", ibanNaam: "S. Zon" } });
+  const pay = await call("POST", "portal/start/betalen", { cookie: kz, body: { akkoord: true } });
   assert.equal(pay.status, 200, JSON.stringify(pay.data)); assert.ok(pay.data.checkoutUrl);
   // informatie kan pas na betaling
   assert.equal((await call("PUT", "portal/start/informatie", { cookie: kz, body: { omschrijving: "x" } })).status, 400);
@@ -453,8 +452,11 @@ await test("nieuwe klant met startflow: gegevens → akkoord en betalen → meld
   const { one } = await import("../netlify/lib/core.mjs");
   const pid = (await one("SELECT mollie_payment_id FROM payments WHERE customer_id = $1 AND kind = 'eerste' ORDER BY id DESC LIMIT 1", [cid])).mollie_payment_id;
   __fake.orders[pid].status = { code: 100, action: "PAID" };
+  __fake.orders[pid].payments = [{ paymentMethod: { id: 10 }, customerMethod: { type: "iban", data: { iban: "NL91ABNA0417164300", name: "S. Zon", bic: "ABNANL2A" } } }];
   const voor = captured.length;
   assert.equal((await exchange({ action: "new_ppt", order_id: pid })).status, 200);
+  const zc = await one("SELECT iban, billing_status, mollie_subscription_id FROM customers WHERE id = $1", [cid]);
+  assert.equal(zc.iban, "NL91ABNA0417164300"); assert.equal(zc.billing_status, "actief"); assert.match(zc.mollie_subscription_id, /^IO-/);
   assert.ok(captured.slice(voor).some((m) => m.to === "zon@bakkerij.test" && /lever nu je informatie aan/i.test(m.subject)));
   let ov = (await call("GET", "hq/overview", { cookie: admin })).data;
   const sk = ov.starters.find((x) => x.id === cid);
