@@ -96,7 +96,7 @@ ${hoofd.split(/\n\n/).map((p) => {
     const url = regels[knop].trim();
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
     const tekst = regels.filter((_, i) => i !== knop).join("\n");
-    return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#FF5757;color:#1C0747;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:8px">Bekijk jullie nieuwe website</a></p>`;
+    return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#D93636;color:#FFFFFF;font-weight:bold;text-decoration:none;padding:14px 24px;border-radius:8px">Bekijk jullie nieuwe website</a></p>`;
   }).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${linkify(voet).replace(/\n/g, "<br>")}</p>` : ""}${pixel}</body></html>`;
 }
 // Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
@@ -317,6 +317,57 @@ async function claude({ system, prompt }) {
 
 const SITEMAKER = `Sitemaker (sitemaker.nl) bouwt professionele websites voor bedrijven (geen webshops): €299,95 eenmalig + €69,95 per maand, binnen 48 uur (2 werkdagen) online, hosting en 4 wijzigingen per maand inbegrepen via een eigen klantenportaal. Toon: zakelijk, kort, eerlijk, je-vorm. Nooit iets verzinnen.`;
 
+// De persoonlijke openingszin (komt direct na "Hi!" en vóór "We hebben de website van … bekeken").
+export const INTRO_VERSIE = 2;
+export async function schrijfIntro(lead, text) {
+  let intro = "", note = "";
+  const s = await getSettings();
+  if (!aiReady() || s.b2b.ai?.research === false || String(text || "").length < 200) return { intro, note };
+  try {
+    const out = await claude({
+      system: SITEMAKER + "\nJe schrijft de persoonlijke openingszin van een korte verkoopmail van ondernemer tot ondernemer.",
+      prompt: `Bedrijf: ${lead.company} (${lead.category || ""}, ${lead.city || ""}). Website: ${lead.website}
+Tekst van hun site (ingekort):
+"""${String(text).slice(0, 6000)}"""
+
+De mail begint met "Hi!", dan JOUW zin, dan: "We hebben de website van ${lead.company} eens goed bekeken. Er valt volgens ons nog veel meer uit te halen."
+
+Regels voor de zin:
+- Eén korte zin, maximaal 15 woorden, je/jullie (nooit u of uw). Klinkt als iets wat je hardop tegen iemand zegt, warm en menselijk.
+- Algemeen en herkenbaar: zeg iets over hun vak en wat hun klanten belangrijk vinden, eventueel met hun plaats. Hooguit één kenmerk van hen.
+- GEEN opsommingen, GEEN namen van behandelingen, producten of merken, GEEN straatnamen, geen jaartallen of aantallen.
+- Geen clichécomplimenten ("mooi om te zien", "wat leuk", "indrukwekkend"), geen vraag, geen uitroepteken, niet over hun website (dat komt in de volgende zin), niets verzinnen.
+Goed:
+- "Een huidkliniek waar je eerst echt de tijd krijgt voor een goed gesprek, dat voel je meteen."
+- "Een installateur in Den Haag die gewoon doet wat hij belooft, daar zoeken mensen naar."
+- "Een hovenier die alles zelf doet, van ontwerp tot onderhoud, dat kom je niet vaak meer tegen."
+- "Een kapsalon midden in Den Haag, daar lopen elke dag mensen langs die een nieuwe kapper zoeken."
+Fout:
+- "Bij ELA huidkliniek aan de Bergweg begint een behandeling met een gesprek over uw huid en wensen, van Hydra Beauty tot Ice Diode Laserontharing." (u-vorm, straatnaam, opsomming van behandelingen, voelt automatisch)
+- "Mooi om te zien dat jullie al sinds de jaren negentig vanuit Dordrecht de hele regio voorzien van warmte en schoon water." (cliché, te lang, stijf)
+Is er niets concreets en waars te noemen, laat intro leeg.
+Geef ook een notitie (max. 20 woorden): wat voor bedrijf, en is hun huidige site verouderd of ontbreekt er iets (bijv. geen contactformulier, niet mobielvriendelijk)? Alleen wat uit de tekst blijkt.
+Antwoord alleen met JSON: {"intro":"...","notitie":"..."}`,
+    });
+    const j = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1));
+    intro = str(j.intro, 300).replace(/\s*!\s*$/, ".");
+    if (/\b(u|uw)\b/i.test(intro)) intro = ""; // u-vorm mag niet meer
+    note = str(j.notitie, 200);
+  } catch (e) { console.log("[b2b] ai", e.message); }
+  return { intro, note };
+}
+
+// Leads die nog geen mail kregen: openingszin opnieuw schrijven in de nieuwe stijl (één per ronde).
+export async function vernieuwIntros() {
+  const l = await one(`SELECT * FROM leads WHERE status IN ('nieuw','goedgekeurd') AND sent_at IS NULL AND intro_v < $1 AND website <> '' ORDER BY id LIMIT 1`, [INTRO_VERSIE]);
+  if (!l) return { klaar: true };
+  let text = "";
+  try { text = (await fetchText(l.website)).text; } catch {}
+  const { intro, note } = await schrijfIntro(l, text);
+  await q("UPDATE leads SET intro = $2, research_note = COALESCE(NULLIF($3, ''), research_note), intro_v = $4, updated_at = updated_at WHERE id = $1", [l.id, intro, note, INTRO_VERSIE]);
+  return { id: l.id, intro: !!intro };
+}
+
 export async function researchLead(lead) {
   if (!lead.website) {
     // Geen website: dan is ook geen algemeen mailadres te vinden. Handmatig benaderen (telefoon) of overslaan.
@@ -341,20 +392,9 @@ export async function researchLead(lead) {
     await q("UPDATE leads SET status = 'overgeslagen', reject_reason = $2, researched_at = NOW(), updated_at = NOW() WHERE id = $1", [lead.id, reason]);
     return { reason };
   }
-  let intro = "", note = "";
-  const s = await getSettings();
-  if (aiReady() && s.b2b.ai?.research !== false && text.length > 200) {
-    try {
-      const out = await claude({
-        system: SITEMAKER + "\nJe bent researcher bij Sitemaker en bereidt een eerste zakelijke mail voor.",
-        prompt: `Bedrijf: ${lead.company} (${lead.category}, ${lead.city}). Website: ${lead.website}\nTekst van hun site (ingekort):\n"""${text.slice(0, 6000)}"""\n\nSchrijf één openingszin (max. 30 woorden, je-vorm: je/jullie, nooit u) die verwijst naar iets concreets en waars van hun bedrijf. Geen complimenten over hun huidige website en geen kritiek erop. Niets verzinnen; is er niets bruikbaars, laat intro leeg.\nGeef ook een notitie (max. 20 woorden): wat voor bedrijf, en is hun huidige site verouderd, ontbreekt er iets (bijv. geen contactformulier, niet mobielvriendelijk)? Alleen wat uit de tekst blijkt.\nAntwoord alleen met JSON: {"intro":"...","notitie":"..."}`,
-      });
-      const j = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}") + 1));
-      intro = str(j.intro, 300); note = str(j.notitie, 200);
-    } catch (e) { console.log("[b2b] ai", e.message); }
-  }
-  await q("UPDATE leads SET email = $2, status = 'nieuw', intro = $3, research_note = $4, researched_at = NOW(), reject_reason = '', updated_at = NOW() WHERE id = $1",
-    [lead.id, email, intro, note]);
+  const { intro, note } = await schrijfIntro(lead, text);
+  await q("UPDATE leads SET email = $2, status = 'nieuw', intro = $3, research_note = $4, intro_v = $5, researched_at = NOW(), reject_reason = '', updated_at = NOW() WHERE id = $1",
+    [lead.id, email, intro, note, INTRO_VERSIE]);
   return { email };
 }
 

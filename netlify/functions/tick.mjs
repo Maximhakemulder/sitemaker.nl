@@ -2,7 +2,7 @@
 // Netlify kapt geplande functies af na ongeveer 15 seconden; daarom kleine porties.
 import { withLock, one, q, env, getSettings, saveSetting } from "../lib/core.mjs";
 import { mailReady, notifyStaff } from "../lib/mail.mjs";
-import { sendBatch, scanInbox, runScout, runResearch } from "../lib/b2b.mjs";
+import { sendBatch, scanInbox, runScout, runResearch, vernieuwIntros } from "../lib/b2b.mjs";
 import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
@@ -42,6 +42,7 @@ async function ronde(started) {
     await q(`INSERT INTO settings (key, value) VALUES ('inbox_scan', $1::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
       [JSON.stringify({ at: new Date().toISOString(), ...(res || {}) })]).catch(() => {});
   }
+  for (let i = 0; i < 3 && left() > 7000; i++) { const r = await step("intros", () => vernieuwIntros()); if (!r || r.klaar) break; }
   if (!spaar && left() > 6000) await step("scout", () => runScout());
   if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
 }
