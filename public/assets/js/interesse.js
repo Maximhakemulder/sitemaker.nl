@@ -73,7 +73,7 @@
   const af = $("#afspraak-form"), momenten = $("#momenten");
   async function laadMomenten() {
     $("#afspraak-titel").textContent = soort === "video" ? "Kies een moment voor de videomeeting" : "Kies een moment, wij bellen jou";
-    $("#afspraak-uitleg").textContent = soort === "video" ? "Een half uur samen het voorbeeld doorlopen en je wensen bespreken. Je krijgt een bevestiging met de link per mail." : "Wij bellen je op het gekozen moment op het nummer dat je invult.";
+    $("#afspraak-uitleg").textContent = soort === "video" ? "Samen het voorbeeld doorlopen en je wensen bespreken. Je krijgt een bevestiging met de link per mail." : "Wij bellen je op het gekozen moment op het nummer dat je invult.";
     af.hidden = true; gekozen = null;
     momenten.innerHTML = '<p class="dempen">Momenten laden…</p>';
     let d = null;
