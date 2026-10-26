@@ -1474,6 +1474,7 @@ ${p.body}</div>
       <p class="klein dempen">${s.onderdelen.deploysAantal} productiedeploys (${s.onderdelen.deploys} credits) · rekentijd ±${s.onderdelen.compute} · AI ±${s.onderdelen.ai}. ${s.bron === "netlify" ? "Getal van Netlify." : s.bron === "ijkpunt" ? `Vanaf jouw ijkpunt (${c.ijkpunt?.waarde}) bijgeteld.` : "Schatting: bandbreedte en bezoekers tellen we niet mee, vul daarom af en toe het echte getal in."} Bijgewerkt ${geleden(s.at)}.</p>
       <p class="klein">Vanaf 75% krijg je een mail en gaat de spaarstand aan: geen nieuwe leads zoeken, geen concepten scannen en geen AI-briefings. Mail, betalingen, klantvragen en klantsites lopen door. Zeker weten dat niets offline gaat? Zet in Netlify › Billing <b>Auto recharge</b> aan.</p>
       ${isAdmin() ? html`<form class="rij-form" id="credit-form"><div class="veld"><label for="cr-g">Gebruikt volgens Netlify <span class="opt">(Billing › Credit usage)</span></label><input id="cr-g" name="gebruikt" type="number" min="0" inputmode="numeric" placeholder="${s.gebruikt}"></div>
+        <div class="veld"><label for="cr-t">Totaal credits deze periode <span class="opt">(na bijkopen of upgraden)</span></label><input id="cr-t" name="totaal" type="number" min="0" inputmode="numeric" value="${c.totaal || ""}" placeholder="${s.inbegrepen}"></div>
         <div class="veld"><label for="cr-d">Periode begint op dag</label><input id="cr-d" name="periodeDag" type="number" min="1" max="28" value="${c.periodeDag}"></div>
         <button class="knop knop-licht" type="submit">Opslaan</button><button class="knop knop-tekst" type="button" id="cr-spaar">${c.spaarstand ? "Spaarstand uitzetten" : "Spaarstand aanzetten"}</button></form>` : ""}</section>`;
   }
@@ -1514,7 +1515,7 @@ ${p.body}</div>
     main.querySelector("#credit-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = e.target.elements;
-      try { await api("hq/credits", { method: "POST", body: { gebruikt: f.gebruikt.value, periodeDag: f.periodeDag.value } }); toast("Opgeslagen."); creditBalk(); kosten(main); } catch (err) { toast(err.message, "fout"); }
+      try { await api("hq/credits", { method: "POST", body: { gebruikt: f.gebruikt.value, periodeDag: f.periodeDag.value, totaal: f.totaal.value } }); toast("Opgeslagen."); creditBalk(); kosten(main); } catch (err) { toast(err.message, "fout"); }
     });
     main.querySelector("#cr-spaar")?.addEventListener("click", async () => {
       try { await api("hq/credits", { method: "POST", body: { spaarstand: !cr.spaarstand } }); toast(cr.spaarstand ? "Spaarstand staat uit voor deze periode." : "Spaarstand staat aan."); creditBalk(); kosten(main); } catch (err) { toast(err.message, "fout"); }

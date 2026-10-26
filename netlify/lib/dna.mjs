@@ -43,7 +43,6 @@ export const DNA = {
     balk: "Klassieke balk bovenaan, logo links, menu rechts.",
     midden: "Logo in het midden, menu-items links en rechts ervan verdeeld.",
     pil: "Zwevende afgeronde menubalk (pil) die over de hero ligt.",
-    zijkant: "Op desktop een smalle verticale balk aan de linkerkant met logo en knop; op mobiel een normale kop.",
     minimaal: "Alleen logo en één grote knop; het menu als ankerlinks onderaan de hero.",
   },
   beeld: {
@@ -118,7 +117,7 @@ export function maakDNA(recentDNA = [], seed = "") {
   const h = crypto.createHash("sha256").update(String(seed) + Date.now()).digest();
   const rnd = () => h[i++ % h.length] / 256;
   const dna = {};
-  const venster = { richting: 9, hero: 8, navigatie: 3, beeld: 4, extra: 4, diensten: 6, pronkstuk: 5, over: 4, contact: 3, letters: 5, basis: 3, vormen: 4 };
+  const venster = { richting: 9, hero: 8, navigatie: 2, beeld: 4, extra: 4, diensten: 6, pronkstuk: 5, over: 4, contact: 3, letters: 5, basis: 3, vormen: 4 };
   for (const [k, opties] of Object.entries(DNA)) {
     const recent = recentDNA.slice(0, venster[k] || 3).map((d) => d?.[k]).filter(Boolean);
     dna[k] = kies(Object.keys(opties), recent, rnd);
