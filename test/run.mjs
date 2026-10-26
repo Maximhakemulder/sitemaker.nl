@@ -725,6 +725,28 @@ console.log("Concept-websites voor leads");
     assert.ok(f[0].velden[0].verplicht && f[0].velden[2].opties.length === 2 && f[0].velden[3].opties.length === 2, JSON.stringify(f));
     assert.equal(boekingUit([{ url: "https://x.test", html }])[0].url, "https://salonized.com/booking/abc");
   });
+  await test("Netlify-credits: bij 75% melding, mail en spaarstand", async () => {
+    const cr = await import("../netlify/lib/credits.mjs");
+    assert.equal(cr.periodeStart(18, new Date("2026-10-26T08:00:00Z")), "2026-10-18");
+    assert.equal(cr.periodeStart(18, new Date("2026-10-05T08:00:00Z")), "2026-09-18");
+    assert.ok(Math.abs(cr.aiCredits("claude-sonnet-5-5", { input_tokens: 1e6, output_tokens: 1e6 }) - 2160) < 0.01);
+    const { saveSetting } = await import("../netlify/lib/core.mjs"); await saveSetting("notify", { email: "maxim@sitemaker.test" });
+    await cr.meet("compute_ms", 3.6e6); // één GB-uur = 5 credits
+    let r = await call("POST", "hq/credits", { cookie: admin, body: { periodeDag: 1, inbegrepen: 100 } });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.status.pct < 75, true); assert.equal(r.data.spaarstand, false);
+    r = await call("POST", "hq/credits", { cookie: admin, body: { gebruikt: 80 } });
+    assert.equal(r.data.status.bron, "ijkpunt"); assert.ok(r.data.status.pct >= 75, JSON.stringify(r.data.status));
+    const s = await cr.controleer({ force: true });
+    assert.ok(s.gemeld.includes(75), JSON.stringify(s));
+    assert.equal(await cr.spaarstand(), true, "spaarstand automatisch aan");
+    assert.ok(captured.some((m) => /Netlify-credits is op/.test(m.subject)), captured.slice(-3).map((m) => m.subject).join(" / "));
+    const n = captured.length; await cr.controleer({ force: true });
+    assert.equal(captured.filter((m, i) => i >= n && /Netlify-credits/.test(m.subject)).length, 0, "maar één mail per drempel");
+    r = await call("POST", "hq/credits", { cookie: admin, body: { spaarstand: false } });
+    assert.equal(r.data.spaarstand, false);
+    await call("POST", "hq/credits", { cookie: admin, body: { inbegrepen: 3000, gebruikt: 0 } });
+  });
   await test("concept afwijzen: geen mail, pagina dicht, uit de lijst", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Afwijs BV", email: "info@afwijs.test", website: "https://afwijs.test/" } });
     const id = r.data.lead.id;
@@ -936,6 +958,7 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     assert.ok(!/t\/k[^"]*afmelden/.test(html) && /api\/b2b\/afmelden/.test(html), "afmeldlink blijft direct");
     const qs = (m) => m[1].replace(/&amp;/g, "&");
     const lid = Number(new URLSearchParams(qs(pix)).get("l"));
+    await q("UPDATE mail_log SET created_at = NOW() WHERE ref = $1", [`lead:${lid}`]); // net verstuurd (de testrun kan langer dan een minuut duren)
     await call("GET", "t/o?" + qs(pix), { raw: true }); // direct na verzenden: telt niet
     assert.equal((await q("SELECT COUNT(*)::int AS n FROM mail_events WHERE lead_id = $1", [lid]))[0].n, 0);
     await q("UPDATE mail_log SET created_at = NOW() - INTERVAL '10 minutes' WHERE ref = $1", [`lead:${lid}`]);

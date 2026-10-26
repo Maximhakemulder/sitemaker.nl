@@ -8,6 +8,8 @@ import * as opdrachten from "../lib/opdrachten.mjs";
 import * as agenda from "../lib/agenda.mjs";
 import * as service from "../lib/service.mjs";
 import * as kosten from "../lib/kosten.mjs";
+import * as credits from "../lib/credits.mjs";
+import { meetVerzoek } from "../lib/credits.mjs";
 import { b2bDashboard } from "../lib/b2bstats.mjs";
 import * as websites from "../lib/websites.mjs";
 import { json, HttpError, fail, escH, publicBase } from "../lib/core.mjs";
@@ -40,7 +42,14 @@ main{background:#fff;border-radius:16px;padding:28px;max-width:440px}h1{font-siz
 <body><main><h1>${escH(title)}</h1><p>${escH(text)}</p>${form}</main></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex" } });
 }
 
+// Rekentijd meten voor de credit-bewaker (zie credits.mjs).
 export default async (req, context) => {
+  const t0 = Date.now();
+  try { return await verwerk(req, context); }
+  finally { const w = meetVerzoek(Date.now() - t0); if (w) { if (context?.waitUntil) context.waitUntil(w); else await w; } }
+};
+
+async function verwerk(req, context) {
   const url = new URL(req.url);
   // /voorbeeld/<token> (concept-websites) komt rechtstreeks binnen (config.path), net als /api/voorbeeld/<token>.
   const vb = url.pathname.match(/\/voorbeeld\/(.+)$/);
@@ -312,6 +321,8 @@ export default async (req, context) => {
         case "POST service/:id/concept": return json(await service.redraft(id));
         case "POST customers/:id/opzegging/intrekken": return json(await service.withdrawCancel(id, user));
         case "GET kosten": return json({ kosten: await kosten.listCosts(), ...(await kosten.overzicht()) });
+        case "GET credits": return json(await credits.overzicht());
+        case "POST credits": requireAdmin(user); return json(await credits.opslaan(await body(req), user));
         case "POST kosten": requireAdmin(user); return json(await kosten.saveCost(null, await body(req), user));
         case "PUT kosten/:id": requireAdmin(user); return json(await kosten.saveCost(id, await body(req), user));
         case "DELETE kosten/:id": requireAdmin(user); return json(await kosten.deleteCost(id, user));

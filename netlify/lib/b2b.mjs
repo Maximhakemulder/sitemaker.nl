@@ -311,6 +311,7 @@ async function claude({ system, prompt }) {
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d?.error?.message || `status ${r.status}`);
+  if (env("ANTHROPIC_BASE_URL") && d.usage) { const { meet, aiCredits } = await import("./credits.mjs"); await meet("ai_credits", aiCredits(d.model || env("AI_MODEL", "claude-sonnet-5-5"), d.usage)); }
   return (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
 }
 

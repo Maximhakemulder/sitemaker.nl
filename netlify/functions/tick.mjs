@@ -10,20 +10,29 @@ import { runConcepts, vulFormulierenAan } from "../lib/concepts.mjs";
 import { pulse, maybeBriefings } from "../lib/team.mjs";
 import { runDomainChecks } from "../lib/domains.mjs";
 import { runCancellations, retryDrafts } from "../lib/service.mjs";
+import { controleer as controleerCredits, spaarstand, meet } from "../lib/credits.mjs";
 
 export default async () => {
   const started = Date.now();
+  try { await ronde(started); } finally { await meet("compute_ms", Date.now() - started).catch(() => {}); }
+};
+
+async function ronde(started) {
   const left = () => 13000 - (Date.now() - started);
   const step = async (name, fn, ttl = 20000) => { try { const r = await withLock(name, fn, ttl); await pulse(name, r).catch(() => {}); return r; } catch (e) { console.log(`[tick] ${name}:`, e.message); } };
 
-  await step("uptime", () => runChecks({ max: 8 }));
+  // Netlify-credits: elke 30 minuten bijwerken; vanaf 75% spaarstand (zie credits.mjs).
+  await step("credits", () => controleerCredits({ budgetMs: Math.min(6000, left() - 5000) }), 40000);
+  const spaar = await spaarstand().catch(() => false);
+  const minuut = new Date().getMinutes();
+  if (!spaar || minuut < 5 || (minuut >= 30 && minuut < 35)) await step("uptime", () => runChecks({ max: 8 }));
   await step("agenda-herinnering", () => sendReminders());
   await step("domeinen", () => runDomainChecks({ max: 4 }));
   await step("opzeggingen", () => runCancellations());
   await step("klantvragen", () => retryDrafts());
-  await step("concepten", () => runConcepts({ max: 2 }));
-  if (left() > 9000) await step("concept-formulieren", () => vulFormulierenAan());
-  await step("briefings", () => maybeBriefings());
+  if (!spaar) await step("concepten", () => runConcepts({ max: 2 }));
+  if (!spaar && left() > 9000) await step("concept-formulieren", () => vulFormulierenAan());
+  if (!spaar) await step("briefings", () => maybeBriefings());
   await step("start-herinnering", () => startHerinnering());
   if (autoReady()) await step("ai-retry", () => retryStuck());
   if (left() > 9000) await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(8000, left() - 3000) }));
@@ -33,9 +42,9 @@ export default async () => {
     await q(`INSERT INTO settings (key, value) VALUES ('inbox_scan', $1::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
       [JSON.stringify({ at: new Date().toISOString(), ...(res || {}) })]).catch(() => {});
   }
-  if (left() > 6000) await step("scout", () => runScout());
-  if (left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
-};
+  if (!spaar && left() > 6000) await step("scout", () => runScout());
+  if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
+}
 
 // Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Mollie, btw).
 async function startHerinnering() {
