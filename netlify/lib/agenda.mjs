@@ -30,7 +30,7 @@ export const dagLabel = (ms) => new Date(ms).toLocaleDateString("nl-NL", { timeZ
 export const momentLabel = (ms, duur) => `${dagLabel(ms)}, ${hmStr(ms)} – ${hmStr(ms + duur * MIN)}`;
 
 // ---------------------------------------------------------------- instellingen
-// Videogesprek: doordeweeks 13:00–15:00 en 17:00–18:00, 30 minuten, het eerste moment ligt nooit ver weg (1 uur vooruit boeken).
+// Videogesprek: doordeweeks 13:00–15:00 en 17:00–18:00, slots van 30 minuten in de agenda (naar de klant noemen we geen duur), het eerste moment ligt nooit ver weg (1 uur vooruit boeken).
 // De link stel je in bij HQ › Agenda (videoLink); zolang die leeg is, sturen we hem apart.
 export const VIDEO_STANDAARD = { actief: true, duur: 30, interval: 30, minUren: 1, dagenVooruit: 14, maxPerDag: 0,
   week: { 0: [], 1: [["13:00", "15:00"], ["17:00", "18:00"]], 2: [["13:00", "15:00"], ["17:00", "18:00"]], 3: [["13:00", "15:00"], ["17:00", "18:00"]], 4: [["13:00", "15:00"], ["17:00", "18:00"]], 5: [["13:00", "15:00"], ["17:00", "18:00"]], 6: [] } };
@@ -136,7 +136,7 @@ function vevent(a, cfg, forStaff) {
   const waar = (a.soort || cfg.soort) === "video" ? (cfg.videoLink || "Videogesprek (link volgt)") : forStaff ? `Bellen: ${a.phone}` : `Telefonisch: we bellen je op ${a.phone}`;
   const besch = forStaff
     ? [`${a.name} (${a.company})`, `Telefoon: ${a.phone}`, `E-mail: ${a.email}`, a.message ? `Bericht: ${a.message}` : ""].filter(Boolean).join("\n")
-    : `Kennismaking met Sitemaker (${Math.round((e - s) / MIN)} minuten). We bespreken wat je website moet doen en wat het kost.\n${waar}\n\nAnnuleren: ${publicBase()}/api/agenda/annuleren?t=${a.token}`;
+    : `${(a.soort || cfg.soort) === "video" ? "Videomeeting met Sitemaker." : `Belafspraak met Sitemaker (${Math.round((e - s) / MIN)} minuten).`} We bespreken wat je website moet doen en wat het kost.\n${waar}\n\nAnnuleren: ${publicBase()}/api/agenda/annuleren?t=${a.token}`;
   return [
     "BEGIN:VEVENT", `UID:afspraak-${a.id}@sitemaker.nl`, `DTSTAMP:${icsDate(Date.now())}`, `DTSTART:${icsDate(s)}`, `DTEND:${icsDate(e)}`,
     fold(`SUMMARY:${icsText(forStaff ? `${soortNaam(a.soort || cfg.soort)} ${a.company} (${a.name})` : `${soortNaam(a.soort || cfg.soort)} met Sitemaker`)}`),
@@ -190,11 +190,11 @@ export async function book(b, ip) {
   await Promise.allSettled([
     sendMail({
       to: email, kind: "afspraak-bevestiging", ref: `appointment:${appt.id}`, subject: `Je ${soortNaam(a.soort).toLowerCase()} met Sitemaker: ${wanneer}`,
-      text: `Hoi ${name},\n\nJe ${soortNaam(a.soort).toLowerCase()} staat vast: ${wanneer}, ${hoe}.\n\nIn ${a.duur} minuten bespreken we wat je website moet doen en wat het kost. Ter info: €299,95 eenmalig + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
+      text: `Hoi ${name},\n\nJe ${soortNaam(a.soort).toLowerCase()} staat vast: ${wanneer}, ${hoe}.\n\n${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: €299,95 eenmalig + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
       html: brandHtml({
         title: `Je ${soortNaam(a.soort).toLowerCase()} staat vast`,
         intro: [`Hoi ${escH(name)},`, `<b>${escH(wanneer)}</b><br>${escH(hoe.charAt(0).toUpperCase() + hoe.slice(1))}.`,
-          `In ${a.duur} minuten bespreken we wat je website moet doen en wat het kost. Ter info: <b>€299,95 eenmalig + €69,95 per maand</b>, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.`],
+          `${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: <b>€299,95 eenmalig + €69,95 per maand</b>, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.`],
         after: [`Kun je toch niet? <a href="${annuleer}">Annuleer je afspraak</a> en kies gerust een nieuw moment.`],
       }),
       attachments: [{ filename: "kennismaking-sitemaker.ics", content: calendar([vevent(appt, a, false)]), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],

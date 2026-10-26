@@ -49,7 +49,7 @@
       data = await r.json();
       if (!r.ok || !data.actief || !data.days.length) { toonAanvraag(false); return false; }
       if (!houdDag || !data.days.some((d) => d.date === dag)) dag = data.days[0].date;
-      if (data.soort === "video") $("#b-sub").textContent = `Videogesprek van ${data.duur} minuten.`;
+      if (data.soort === "video") $("#b-sub").textContent = "Videogesprek: samen online je website bespreken.";
       else $("#b-sub").textContent = `Telefonisch, ${data.duur} minuten. Wij bellen jou.`;
       toonDagen(); toonTijden();
       boeken.hidden = false; aanvraagForm.hidden = true;
