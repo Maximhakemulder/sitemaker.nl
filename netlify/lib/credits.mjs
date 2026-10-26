@@ -80,7 +80,8 @@ export async function controleer({ force = false, budgetMs = 6000 } = {}) {
   const vorige = (await one("SELECT value FROM settings WHERE key = 'credits_status'"))?.value;
   if (!force && vorige?.at && Date.now() - Date.parse(vorige.at) < 30 * 60000) return { skip: true };
   const start = periodeStart(inst.periodeDag);
-  let inbegrepen = Number(inst.inbegrepen) || 3000, apiGebruikt = 0;
+  // Totaal: wat Maxim invult (na bijkopen of upgraden ziet de Netlify-API dat vaak niet), anders Netlify, anders 3000.
+  let inbegrepen = Number(inst.totaalHandmatig) || Number(inst.inbegrepen) || 3000, apiGebruikt = 0;
   const onderdelen = { deploys: null, compute: 0, ai: 0 };
   let deploys = { n: vorige?.periode === start ? vorige.onderdelen?.deploysAantal || 0 : 0, compleet: false };
   if (env("NETLIFY_API_TOKEN") && env("NETLIFY_ACCOUNT_SLUG") && !env("NETLIFY_FAKE")) {
@@ -88,7 +89,7 @@ export async function controleer({ force = false, budgetMs = 6000 } = {}) {
       const accounts = await netlify("/accounts");
       const acc = accounts.find((a) => a.slug === env("NETLIFY_ACCOUNT_SLUG")) || accounts[0];
       const c = acc?.capabilities?.credits;
-      if (c?.included) inbegrepen = Number(c.included);
+      if (c?.included && !inst.totaalHandmatig) inbegrepen = Number(c.included);
       apiGebruikt = Number(c?.used) || 0;
     } catch (e) { console.log("[credits] accounts", e.message); }
     try { deploys = await telDeploys(start, Math.max(1500, budgetMs)); } catch (e) { console.log("[credits] deploys", e.message); }
@@ -148,7 +149,7 @@ export async function spaarstand() {
 export async function overzicht() {
   const inst = await instellingen();
   const status = (await one("SELECT value FROM settings WHERE key = 'credits_status'"))?.value || null;
-  return { status, spaarstand: await spaarstand(), periodeDag: inst.periodeDag, ijkpunt: inst.ijkpunt || null, kosten: CREDIT_KOSTEN };
+  return { status, spaarstand: await spaarstand(), periodeDag: inst.periodeDag, totaal: inst.totaalHandmatig || null, ijkpunt: inst.ijkpunt || null, kosten: CREDIT_KOSTEN };
 }
 
 // Maxim vult in wat Netlify zegt (Billing › Credit usage) en/of zet de spaarstand aan/uit.
@@ -156,6 +157,7 @@ export async function opslaan(b, user) {
   const inst = await instellingen();
   if (b.periodeDag !== undefined) inst.periodeDag = Math.min(28, Math.max(1, Number(b.periodeDag) || inst.periodeDag));
   if (b.inbegrepen !== undefined && Number(b.inbegrepen) > 0) inst.inbegrepen = Number(b.inbegrepen);
+  if (b.totaal !== undefined) inst.totaalHandmatig = Number(b.totaal) > 0 ? Number(b.totaal) : null;
   await saveSetting("credits", inst);
   if (b.gebruikt !== undefined && b.gebruikt !== "") {
     const s = await controleer({ force: true });

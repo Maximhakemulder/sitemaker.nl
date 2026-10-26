@@ -745,7 +745,9 @@ console.log("Concept-websites voor leads");
     assert.equal(captured.filter((m, i) => i >= n && /Netlify-credits/.test(m.subject)).length, 0, "maar één mail per drempel");
     r = await call("POST", "hq/credits", { cookie: admin, body: { spaarstand: false } });
     assert.equal(r.data.spaarstand, false);
-    await call("POST", "hq/credits", { cookie: admin, body: { inbegrepen: 3000, gebruikt: 0 } });
+    r = await call("POST", "hq/credits", { cookie: admin, body: { totaal: 1000 } });
+    assert.equal(r.data.status.inbegrepen, 1000); assert.equal(r.data.totaal, 1000);
+    await call("POST", "hq/credits", { cookie: admin, body: { inbegrepen: 3000, gebruikt: 0, totaal: "" } });
   });
   await test("concept afwijzen: geen mail, pagina dicht, uit de lijst", async () => {
     const r = await call("POST", "hq/leads", { cookie: admin, body: { company: "Afwijs BV", email: "info@afwijs.test", website: "https://afwijs.test/" } });
