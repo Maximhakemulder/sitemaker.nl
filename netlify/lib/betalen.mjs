@@ -159,16 +159,33 @@ export async function startIncasso(customerId, { iban, ibanNaam, startDate } = {
 // ---------------------------------------------------------------- exchange (Pay.nl → ons)
 // Pay.nl stuurt order_id/action (form of query) of JSON {id, object}. We vertrouwen de inhoud niet: we halen de status
 // altijd zelf op bij Pay.nl. Antwoord altijd "TRUE|…" met 200, anders blijft Pay.nl het opnieuw proberen.
+// Pay.nl stuurt geneste velden plat als object[orderId], object[status][code] (query of formulier): weer nesten.
+export function nest(plat) {
+  const uit = {};
+  for (const [k, val] of Object.entries(plat || {})) {
+    if (val && typeof val === "object") { uit[k] = val; continue; }
+    const delen = k.replace(/\]/g, "").split("[");
+    let o = uit;
+    delen.forEach((d, i) => { if (i === delen.length - 1) o[d] = val; else o = o[d] && typeof o[d] === "object" ? o[d] : (o[d] = {}); });
+  }
+  return uit;
+}
+
 export async function handleExchange(velden) {
-  const v = velden || {};
+  const v = nest(velden || {});
   const action = String(v.action || v.event || "").toLowerCase();
   if (/^incasso/.test(action) || v.referenceId || v.mandateId) return incassoExchange(v, action);
-  const orderId = String(v.order_id || v.orderId || v.object?.orderId || v.id || "").trim();
-  if (!/^[A-Za-z0-9-]{6,64}$/.test(orderId)) return { ignored: true };
-  let local = await one("SELECT * FROM payments WHERE mollie_payment_id = $1", [orderId]);
-  if (!local && v.object?.id) local = await one("SELECT * FROM payments WHERE mollie_payment_id = $1", [String(v.object.id)]);
+  const kandidaten = [v.order_id, v.orderId, v.object?.orderId, v.object?.id, v.id].map((x) => String(x || "").trim()).filter((x) => /^[A-Za-z0-9-]{6,64}$/.test(x));
+  if (!kandidaten.length) return { ignored: true };
+  let local = null;
+  for (const k of kandidaten) { local = await one("SELECT * FROM payments WHERE mollie_payment_id = $1", [k]); if (local) break; }
   if (!local) return { ignored: true, reason: "onbekende order" };
-  const o = await haalOrder(local.mollie_payment_id);
+  const orderId = local.mollie_payment_id;
+  // Status altijd zelf ophalen; Pay.nl kent de order onder zijn uuid (id) en onder het orderId.
+  const uuid = String(v.object?.id || v.id || "").trim();
+  let o = null;
+  for (const k of [...new Set([uuid, orderId].filter((x) => /^[A-Za-z0-9-]{6,64}$/.test(x)))]) { try { o = await haalOrder(k); if (o && (o.status || o.orderId)) break; } catch (e) { o = null; console.log("[paynl] status", k, e.message); } }
+  if (!o) throw new Error("Status van de order kon niet worden opgehaald.");
   const status = orderStatus(o);
   if (status === local.status) return { ok: true, status };
   const methode = o.payments?.[0]?.paymentMethod?.id ? String(o.payments[0].paymentMethod.id) : null;
@@ -184,7 +201,12 @@ export async function handleExchange(velden) {
     }
     if (local.kind === "eerste") {
       await markStarted(c.id).catch((e) => console.log("[start]", e.message));
-      if (!(c.mollie_subscription_id && c.billing_status === "actief")) await naEerste(c);
+      if (!(c.mollie_subscription_id && c.billing_status === "actief")) {
+        // Geen IBAN ingevuld? Neem het rekeningnummer van de iDEAL-betaling.
+        const cm = o.payments?.find((x) => x.customerMethod?.data?.iban)?.customerMethod?.data;
+        if (!c.iban && cm?.iban && ibanOk(cm.iban)) { await q("UPDATE customers SET iban = $2, iban_naam = $3 WHERE id = $1", [c.id, ibanNorm(cm.iban), String(cm.name || "").slice(0, 70)]); c.iban = ibanNorm(cm.iban); c.iban_naam = cm.name || ""; }
+        await naEerste(c);
+      }
     }
   } else if (["failed", "expired", "canceled"].includes(status) && local.kind === "eerste" && status === "failed") {
     await notifyStaff(`Betaling mislukt: ${c.company}`, [`De eerste betaling van ${euro(local.amount_cents)} is mislukt.`], `/hq/#klant/${c.id}`).catch(() => {});

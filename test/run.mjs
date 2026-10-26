@@ -203,7 +203,9 @@ await test("eerste betaling → machtiging (incasso) → factuur met PDF", async
   assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.amountCents, 36294); // 299,95 + 21%
   const o = __fake.orders[r.data.paymentId]; assert.ok(o); assert.equal(o.amount.value, 36294);
   o.status = { code: 100, action: "PAID" };
-  const w = await exchange({ action: "new_ppt", order_id: o.orderId });
+  // Zoals Pay.nl het echt stuurt: GET met platte object[...]-velden en de uuid als id.
+  const qs = new URLSearchParams({ event: "status_changed", type: "order", id: o.id, "object[id]": o.id, "object[orderId]": o.orderId, "object[status][code]": "100", "object[status][action]": "PAID" });
+  const w = await call("GET", `paynl/exchange?${qs}`, { raw: true });
   assert.equal(w.status, 200); assert.match(await w.text(), /^TRUE\|/);
   const [c] = await q("SELECT * FROM customers WHERE id = $1", [c2]);
   assert.equal(c.billing_status, "actief"); assert.match(c.mollie_subscription_id, /^IO-/);
