@@ -608,3 +608,7 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .soort-video { background: #E3F7FB; color: #0A5F70; }
 .soort-telefoon { background: #FFE9E9; color: #8A1C1C; }
 .factuur-rij .overboeken { grid-column: 1 / -1; margin: 0; background: var(--ijs, #E7F4FF); border-radius: 10px; padding: 10px 12px; }
+/* Betaalknop: donkergroen = veilig betalen (wit op #146C43: contrast 6,6:1) */
+.knop-betaal { background: #146C43; color: #fff; gap: 8px; box-shadow: 0 4px 0 #0E4F31; }
+.knop-betaal:hover { background: #0F5A37; }
+.knop-betaal svg { flex: none; }

@@ -108,17 +108,14 @@ export async function startPayment(user, b, ip) {
   if (b.akkoord !== true) fail(400, "Vink aan dat je akkoord gaat met de voorwaarden en de automatische afschrijving.", { field: "akkoord" });
   const online = betaalReady();
   const ibanNaam = str(b.ibanNaam, 70);
-  if (online) {
-    // IBAN + rekeninghouder voor de maandelijkse incasso (SEPA-machtiging na de eerste betaling).
-    if (!ibanOk(b.iban)) fail(400, "Vul een geldig IBAN in, bijvoorbeeld NL91 ABNA 0417 1643 00.", { field: "iban" });
-    if (ibanNaam.length < 2) fail(400, "Vul de naam van de rekeninghouder in.", { field: "ibanNaam" });
-  }
+  // IBAN is optioneel: zonder IBAN nemen we het rekeningnummer van de iDEAL-betaling (Pay.nl geeft dat mee).
+  if (online && b.iban && !ibanOk(b.iban)) fail(400, "Dit IBAN klopt niet.", { field: "iban" });
   await q("UPDATE customers SET terms_at = NOW(), terms_ip = $2, terms_by = $3, updated_at = NOW() WHERE id = $1", [c.id, str(ip, 60), user.email]);
   if (!online) {
     await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq, handmatig: true });
     return await startHandmatig(c, user);
   }
-  await q("UPDATE customers SET iban = $2, iban_naam = $3 WHERE id = $1", [c.id, ibanNorm(b.iban), ibanNaam]);
+  if (b.iban) await q("UPDATE customers SET iban = $2, iban_naam = $3 WHERE id = $1", [c.id, ibanNorm(b.iban), ibanNaam]);
   await audit(user.id, c.id, "start.akkoord", { ip: str(ip, 60), viaHq: !!user.viaHq });
   const r = await startFirstPayment(c.id, { userId: user.id });
   return { checkoutUrl: r.checkoutUrl };
