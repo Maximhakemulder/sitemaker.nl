@@ -563,7 +563,8 @@ function beter(a) {
 
 export async function conceptPage(token, { hq = false } = {}) {
   const c = await conceptByToken(token);
-  const kennis = `${publicBase()}/?concept=${encodeURIComponent(token)}${c?.company ? `&bedrijf=${encodeURIComponent(c.content?.bedrijf?.naam || c.company)}` : ""}#kennismaking`;
+  // "Ik heb interesse": kiezen tussen direct starten, videomeeting of belafspraak.
+  const kennis = `${publicBase()}/interesse?concept=${encodeURIComponent(token)}${c?.company ? `&bedrijf=${encodeURIComponent(c.content?.bedrijf?.naam || c.company)}` : ""}`;
   if (!c || c.status !== "klaar" || c.lead_status === "afgemeld") return page("Voorbeeld niet beschikbaar", `<h1>Dit voorbeeld is niet (meer) beschikbaar</h1><p>Benieuwd hoe jouw nieuwe website eruit kan zien? Plan een kennismaking van 15 minuten.</p><a class="k" href="${publicBase()}/#kennismaking">Plan een kennismaking</a>`);
   if (c.expires_at && new Date(c.expires_at) < new Date() && !hq) return page("Voorbeeld verlopen", `<h1>Dit voorbeeld is verlopen</h1><p>We maken graag een nieuw voorbeeld voor ${escH(c.company)}. Plan een kennismaking van 15 minuten.</p><a class="k" href="${kennis}">Plan een kennismaking</a>`);
   const naam = c.content?.bedrijf?.naam || c.company;
@@ -574,10 +575,10 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-beter{list-style:none;padding:0;margin:0 auto 26px;max-width:560px;text-align:left;display:grid;gap:8px}.sm-beter li{background:rgba(255,255,255,.07);border-radius:10px;padding:10px 14px 10px 40px;position:relative;color:#fff}.sm-beter li::before{content:"✓";position:absolute;left:14px;color:#0CC0DF;font-weight:700}.sm-beter small{display:block;margin:2px 0 0;color:#B8AEDB}
 .sm-eind h3{font-size:18px;margin:6px 0 12px;color:#fff}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
-<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Binnen 48 uur live</a></div>`;
+<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Ik heb interesse</a></div>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit is een eerste voorbeeld, automatisch gemaakt op basis van jullie huidige website. De echte website maken we samen helemaal naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
-${beter(c.analysis)}<a href="${kennis}">Plan een kennismaking</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
+${beter(c.analysis)}<a href="${kennis}">Ik heb interesse</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   // Versie in het pad: bij een nieuw concept met dezelfde bestandsnamen geen oude foto's uit de cache.
   const imgBase = `/api/voorbeeld/${token}/a${c.ready_at ? new Date(c.ready_at).getTime().toString(36) : "0"}/`;

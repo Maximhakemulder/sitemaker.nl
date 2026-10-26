@@ -30,12 +30,22 @@ export const dagLabel = (ms) => new Date(ms).toLocaleDateString("nl-NL", { timeZ
 export const momentLabel = (ms, duur) => `${dagLabel(ms)}, ${hmStr(ms)} – ${hmStr(ms + duur * MIN)}`;
 
 // ---------------------------------------------------------------- instellingen
-export async function agendaConfig() {
+// Videogesprek: doordeweeks 13:00–15:00 en 17:00–18:00, 30 minuten, het eerste moment ligt nooit ver weg (1 uur vooruit boeken).
+// De link stel je in bij HQ › Agenda (videoLink); zolang die leeg is, sturen we hem apart.
+export const VIDEO_STANDAARD = { actief: true, duur: 30, interval: 30, minUren: 1, dagenVooruit: 14, maxPerDag: 0,
+  week: { 0: [], 1: [["13:00", "15:00"], ["17:00", "18:00"]], 2: [["13:00", "15:00"], ["17:00", "18:00"]], 3: [["13:00", "15:00"], ["17:00", "18:00"]], 4: [["13:00", "15:00"], ["17:00", "18:00"]], 5: [["13:00", "15:00"], ["17:00", "18:00"]], 6: [] } };
+export async function agendaConfig(soort) {
   const s = await getSettings();
   const a = { ...DEFAULT_SETTINGS.agenda, ...(s.agenda || {}) };
   a.week = { ...DEFAULT_SETTINGS.agenda.week, ...(a.week || {}) };
+  if (soort === "video") {
+    const v = { ...VIDEO_STANDAARD, ...(s.agenda_video || {}) };
+    return { ...v, week: { ...VIDEO_STANDAARD.week, ...(v.week || {}) }, soort: "video", videoLink: a.videoLink || "" };
+  }
+  if (soort === "telefoon") return { ...a, soort: "telefoon" };
   return a;
 }
+const hoeTekst = (soort, link, phone) => (soort === "video" ? (link ? `via een videogesprek: ${link}` : "via een videogesprek (de link sturen we je vooraf per mail)") : `telefonisch: we bellen je op ${phone}`);
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export async function saveAgendaConfig(b, user) {
   const cur = await agendaConfig();
@@ -72,8 +82,8 @@ async function load(fromMs, toMs) {
 }
 
 // Alle mogelijke momenten per dag met hun status: vrij | geboekt | dicht | voorbij.
-export async function grid({ days, from } = {}) {
-  const a = await agendaConfig();
+export async function grid({ days, from, soort } = {}) {
+  const a = await agendaConfig(soort);
   const start = from || dayStr(Date.now());
   const n = days || a.dagenVooruit;
   const fromMs = amsToUtc(start), toMs = amsToUtc(addDay(start, n + 1));
@@ -104,10 +114,10 @@ export async function grid({ days, from } = {}) {
 }
 
 // Wat een bezoeker kan kiezen.
-export async function publicSlots() {
-  const a = await agendaConfig();
+export async function publicSlots(soort) {
+  const a = await agendaConfig(soort);
   if (!a.actief) return { actief: false, days: [] };
-  const g = await grid({});
+  const g = await grid({ soort });
   const days = g.days.map((d) => {
     const vrij = d.slots.filter((s) => s.status === "vrij" && !s.te_vroeg);
     const vol = a.maxPerDag > 0 && d.geboekt >= a.maxPerDag;
@@ -122,10 +132,10 @@ const icsText = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\
 const fold = (line) => line.match(/.{1,73}/g).join("\r\n ");
 function vevent(a, cfg, forStaff) {
   const s = new Date(a.starts_at).getTime(), e = new Date(a.ends_at).getTime();
-  const waar = cfg.soort === "video" ? cfg.videoLink : forStaff ? `Bellen: ${a.phone}` : `Telefonisch: we bellen je op ${a.phone}`;
+  const waar = (a.soort || cfg.soort) === "video" ? (cfg.videoLink || "Videogesprek (link volgt)") : forStaff ? `Bellen: ${a.phone}` : `Telefonisch: we bellen je op ${a.phone}`;
   const besch = forStaff
     ? [`${a.name} (${a.company})`, `Telefoon: ${a.phone}`, `E-mail: ${a.email}`, a.message ? `Bericht: ${a.message}` : ""].filter(Boolean).join("\n")
-    : `Kennismaking met Sitemaker (${cfg.duur} minuten). We bespreken wat je website moet doen en wat het kost.\n${waar}\n\nAnnuleren: ${publicBase()}/api/agenda/annuleren?t=${a.token}`;
+    : `Kennismaking met Sitemaker (${Math.round((e - s) / MIN)} minuten). We bespreken wat je website moet doen en wat het kost.\n${waar}\n\nAnnuleren: ${publicBase()}/api/agenda/annuleren?t=${a.token}`;
   return [
     "BEGIN:VEVENT", `UID:afspraak-${a.id}@sitemaker.nl`, `DTSTAMP:${icsDate(Date.now())}`, `DTSTART:${icsDate(s)}`, `DTEND:${icsDate(e)}`,
     fold(`SUMMARY:${icsText(forStaff ? `Kennismaking ${a.company} (${a.name})` : "Kennismaking Sitemaker")}`),
@@ -139,7 +149,8 @@ const calendar = (events, name) => ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-/
 export async function book(b, ip) {
   if (str(b.website_url)) return { ok: true, spam: true };
   if (b.t && Date.now() - Number(b.t) < 2000) return { ok: true, spam: true };
-  const a = await agendaConfig();
+  const soort = b.soort === "video" ? "video" : (b.soort === "telefoon" ? "telefoon" : undefined);
+  const a = await agendaConfig(soort);
   if (!a.actief) fail(400, "Online een afspraak maken kan op dit moment niet. Laat je gegevens achter, dan bellen we je.");
   const errors = {};
   const name = str(b.name, 120), company = str(b.company, 160), email = cleanEmail(b.email), phone = str(b.phone, 30), message = str(b.message, 2000);
@@ -150,7 +161,7 @@ export async function book(b, ip) {
   if (Object.keys(errors).length) fail(400, "Controleer de gemarkeerde velden.", { errors });
 
   const startMs = Date.parse(b.start || "");
-  const slots = await publicSlots();
+  const slots = await publicSlots(soort);
   const ok = Number.isFinite(startMs) && slots.days.some((d) => d.times.some((t) => Date.parse(t.start) === startMs));
   if (!ok) fail(409, "Dit moment is niet (meer) beschikbaar. Kies een ander tijdstip.", { slotGone: true });
 
@@ -161,9 +172,9 @@ export async function book(b, ip) {
   const token = crypto.randomBytes(18).toString("base64url");
   let appt;
   try {
-    appt = await one(`INSERT INTO appointments (name, company, email, phone, message, ip_hash, starts_at, ends_at, token, source, preference)
-                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'agenda','') RETURNING *`,
-      [name, company, email, phone, message, ipHash, new Date(startMs).toISOString(), new Date(startMs + a.duur * MIN).toISOString(), token]);
+    appt = await one(`INSERT INTO appointments (name, company, email, phone, message, ip_hash, starts_at, ends_at, token, source, preference, soort)
+                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'agenda','',$10) RETURNING *`,
+      [name, company, email, phone, message, ipHash, new Date(startMs).toISOString(), new Date(startMs + a.duur * MIN).toISOString(), token, a.soort === "video" ? "video" : "telefoon"]);
   } catch (e) {
     if (e.code === "23505") fail(409, "Iemand was je net voor: dit moment is zojuist geboekt. Kies een ander tijdstip.", { slotGone: true });
     throw e;
@@ -173,7 +184,7 @@ export async function book(b, ip) {
   const viaConcept = await linkConcept(b.concept, appt.id);
 
   const wanneer = momentLabel(startMs, a.duur);
-  const hoe = a.soort === "video" ? `via een videogesprek: ${a.videoLink}` : `telefonisch: we bellen je op ${phone}`;
+  const hoe = hoeTekst(a.soort, a.videoLink, phone);
   const annuleer = `${publicBase()}/api/agenda/annuleren?t=${token}`;
   await Promise.allSettled([
     sendMail({
@@ -187,7 +198,7 @@ export async function book(b, ip) {
       }),
       attachments: [{ filename: "kennismaking-sitemaker.ics", content: calendar([vevent(appt, a, false)]), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
     }),
-    notifyStaff(`Nieuwe afspraak: ${company}, ${wanneer}`, [`${name} van ${company} heeft een kennismaking geboekt.`, `Wanneer: ${wanneer}`, `Telefoon: ${phone} · E-mail: ${email}`,
+    notifyStaff(`Nieuwe ${a.soort === "video" ? "videomeeting" : "belafspraak"}: ${company}, ${wanneer}`, [`${name} van ${company} heeft een ${a.soort === "video" ? "videomeeting" : "belafspraak"} geboekt.`, a.soort === "video" && !a.videoLink ? "Let op: er staat nog geen videolink in HQ › Agenda. Stuur de klant zelf een link." : "", `Wanneer: ${wanneer}`, `Telefoon: ${phone} · E-mail: ${email}`,
       message ? `Bericht: ${message}` : "", viaConcept ? `Geboekt vanuit het concept van ${viaConcept}.` : lead ? "Dit bedrijf staat ook in je B2B-leads (status nu: afspraak)." : ""].filter(Boolean), `/hq/#aanvragen`),
   ]);
   return { ok: true, start: new Date(startMs).toISOString(), wanneer, hoe, token };
@@ -252,7 +263,7 @@ export async function sendReminders() {
   for (const r of rows) {
     await q("UPDATE appointments SET reminder_at = NOW() WHERE id = $1", [r.id]);
     const s = new Date(r.starts_at).getTime();
-    const hoe = a.soort === "video" ? `Je kunt deelnemen via ${a.videoLink}` : `We bellen je op ${r.phone}`;
+    const hoe = r.soort === "video" ? (a.videoLink ? `Je kunt deelnemen via ${a.videoLink}` : "Je ontvangt de link voor het videogesprek van ons") : `We bellen je op ${r.phone}`;
     await sendMail({
       to: r.email, kind: "afspraak-herinnering", ref: `appointment:${r.id}`, subject: `Vandaag om ${hmStr(s)}: je kennismaking met Sitemaker`,
       text: `Hoi ${r.name},\n\nEven ter herinnering: vandaag om ${hmStr(s)} hebben we onze kennismaking. ${hoe}.\n\nKun je toch niet? Annuleer via ${publicBase()}/api/agenda/annuleren?t=${r.token}\n\nTot straks!\nSitemaker`,

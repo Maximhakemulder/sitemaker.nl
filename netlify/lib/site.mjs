@@ -71,3 +71,31 @@ export async function submitContact(b, ip) {
     onderwerp: `Bericht via de website${bedrijf ? `: ${bedrijf}` : ""}`, tekst: bericht + (extra ? `\n\n${extra}` : ""), bron: "website" });
   return { ok: true };
 }
+
+// "Direct starten" vanaf een concept (/interesse): klant maakt zelf een account, start in het portaal (gegevens → akkoord + betalen →
+// informatie aanleveren, vooraf ingevuld uit het concept) en de website wordt daarna automatisch gemaakt.
+export async function zelfStarten(b, ip) {
+  if (str(b.website_url)) return { ok: true };
+  if (b.t && Date.now() - Number(b.t) < 2000) return { ok: true };
+  const errors = {};
+  const naam = str(b.naam, 120), bedrijf = str(b.bedrijf, 160), email = cleanEmail(b.email), telefoon = str(b.telefoon, 30);
+  if (naam.length < 2) errors.naam = "Vul je naam in.";
+  if (bedrijf.length < 2) errors.bedrijf = "Vul de naam van je bedrijf in.";
+  if (!EMAIL_RE.test(email)) errors.email = "Vul een geldig e-mailadres in, bijvoorbeeld naam@bedrijf.nl.";
+  if (telefoon && !/^[+()\d\s-]{8,20}$/.test(telefoon)) errors.telefoon = "Dit telefoonnummer klopt niet.";
+  if (Object.keys(errors).length) fail(400, "Controleer de gemarkeerde velden.", { errors });
+  const ipHash = sha256(`${env("AUTH_SECRET", "x")}:${ip}`).slice(0, 32);
+  const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM audit_log WHERE action = 'klant.zelfstart' AND detail->>'ip' = $1 AND created_at > NOW() - INTERVAL '1 hour'", [ipHash]);
+  if (n >= 3) fail(429, "Je hebt net al een account aangemaakt. Kijk in je mail voor de inlogcode.");
+  const { portalUrl } = await import("./core.mjs");
+  const bestaat = await one("SELECT role FROM users WHERE email = $1", [email]);
+  if (bestaat) return { ok: true, bestaat: true, portaal: portalUrl(), email };
+  let leadId = null;
+  if (/^[\w-]{8,40}$/.test(b.concept || "")) leadId = (await one("SELECT lead_id FROM concepts WHERE token = $1", [b.concept]))?.lead_id || null;
+  if (!leadId) leadId = (await one("SELECT id FROM leads WHERE lower(email) = $1 AND status NOT IN ('klant','afgemeld')", [email]))?.id || null;
+  const { createCustomer } = await import("./admin.mjs");
+  const r = await createCustomer({ company: bedrijf, contactName: naam, email, phone: telefoon, onboarding: true, leadId, sendWelcome: true }, { id: null });
+  await q("INSERT INTO audit_log (action, customer_id, detail) VALUES ('klant.zelfstart', $1, $2::jsonb)", [r.customer.id, JSON.stringify({ ip: ipHash, lead: leadId })]).catch(() => {});
+  await notifyStaff(`${bedrijf} start zelf in het portaal`, [`${naam} van ${bedrijf} heeft via ${leadId ? "het concept" : "de website"} een account aangemaakt en start zelf: gegevens invullen, betalen en informatie aanleveren.`, `E-mail: ${email}${telefoon ? ` · Telefoon: ${telefoon}` : ""}`], `/hq/#klant/${r.customer.id}`).catch(() => {});
+  return { ok: true, portaal: portalUrl(), email };
+}

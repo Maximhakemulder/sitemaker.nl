@@ -97,7 +97,7 @@ async function verwerk(req, context) {
       return json({ naam: co.name || "Sitemaker", rechtsvorm: co.legalName || "", kvk: co.kvk || "", btw: co.vat || "", adres, email: co.email || "", telefoon: co.phone || "",
         pricesIncludeVat: s.billing.pricesIncludeVat, conceptDagen: s.b2b.concepten?.geldigDagen || 30, metaPixelId: s.tracking?.metaPixelId || "" }, 200, { "cache-control": "public, max-age=300" });
     }
-    if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(), 200, { "cache-control": "no-store" });
+    if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(url.searchParams.get("soort") || undefined), 200, { "cache-control": "no-store" });
     // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.
     if (path === "t/o" && m === "GET") {
       const p = Object.fromEntries(url.searchParams);
@@ -154,6 +154,7 @@ async function verwerk(req, context) {
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
     if (path === "contact" && m === "POST") return json(await submitContact(await body(req), ipOf(req, context)));
+    if (path === "start/aanmelden" && m === "POST") { const { zelfStarten } = await import("../lib/site.mjs"); return json(await zelfStarten(await body(req), ipOf(req, context))); }
 
     // ------------------------------------------------ inloggen
     if (path === "auth/code" && m === "POST") {
