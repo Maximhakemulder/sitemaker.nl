@@ -211,26 +211,28 @@ export async function sendWelcome(customerId, user) {
   const u = await one("SELECT u.email FROM users u WHERE u.active AND u.role = 'klant' AND (u.customer_id = $1 OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = u.id AND us.customer_id = $1)) ORDER BY u.customer_id = $1 DESC, u.id LIMIT 1", [customerId]);
   if (!u) fail(400, "Deze klant heeft geen actieve portaalgebruiker.");
   const link = `${portalUrl()}`;
+  const hulp = (await getSettings()).company?.email || env("MAIL_FROM") || env("MAIL_USER") || "hallo@sitemaker.nl";
+  const hulpRegel = `Kom je er niet uit? Mail ons op ${hulp}, dan helpen we je verder.`;
   const st = startStage(c);
   const res = st && st !== "klaar" && st !== "bouwen" ? await sendMail({
     to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: start je website in je portaal",
-    text: `Beste ${c.contact_name || c.company},\n\nLeuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen: ${link}\n\n1. Vul je bedrijfsgegevens aan\n2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch\n3. Lever de informatie voor je website aan (teksten, logo en foto's)\n\nDaarna staat je website binnen ${OFFER.deliveryText} online.\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Beste ${c.contact_name || c.company},\n\nLeuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen: ${link}\n\n1. Vul je bedrijfsgegevens aan\n2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch\n3. Lever de informatie voor je website aan (teksten, logo en foto's)\n\nDaarna staat je website binnen ${OFFER.deliveryText} online.\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\n${hulpRegel}\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Welkom bij Sitemaker",
       intro: [`Beste ${escH(c.contact_name || c.company)},`, "Leuk dat je met Sitemaker aan de slag gaat! In je klantenportaal start je je website in drie korte stappen:",
         `1. Vul je bedrijfsgegevens aan<br>2. Ga akkoord en betaal de bouw (${euro(c.build_cents)}); daarna ${euro(c.monthly_cents)} per maand automatisch<br>3. Lever de informatie voor je website aan`],
       button: { label: "Start in je portaal", href: link },
-      after: [`Daarna staat je website binnen <b>${OFFER.deliveryText}</b> online.`, `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`],
+      after: [`Daarna staat je website binnen <b>${OFFER.deliveryText}</b> online.`, `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`, `Kom je er niet uit? Mail ons op <a href="mailto:${escH(hulp)}">${escH(hulp)}</a>, dan helpen we je verder.`],
     }),
   }) : await sendMail({
     to: u.email, kind: "welkom", ref: `customer:${c.id}`, subject: "Welkom bij Sitemaker: je klantenportaal staat klaar",
-    text: `Beste ${c.contact_name || c.company},\n\nWelkom bij Sitemaker! Je klantenportaal staat klaar: ${link}\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\nIn het portaal:\n- geef je elke maand tot ${OFFER.changesPerMonth} wijzigingen door (wij verwerken ze binnen ${OFFER.changeHours} uur)\n- volg je de status van je wijzigingen\n- vind je al je facturen\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Beste ${c.contact_name || c.company},\n\nWelkom bij Sitemaker! Je klantenportaal staat klaar: ${link}\n\nInloggen gaat zonder wachtwoord: vul ${u.email} in en je krijgt een code per mail.\n\n${hulpRegel}\n\nIn het portaal:\n- geef je elke maand tot ${OFFER.changesPerMonth} wijzigingen door (wij verwerken ze binnen ${OFFER.changeHours} uur)\n- volg je de status van je wijzigingen\n- vind je al je facturen\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Welkom bij Sitemaker",
       intro: [`Beste ${escH(c.contact_name || c.company)},`, "Je klantenportaal staat klaar. Daar geef je wijzigingen aan je website door, volg je de status en vind je je facturen.",
-        `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`],
+        `Inloggen gaat zonder wachtwoord: vul <b>${escH(u.email)}</b> in en je krijgt een code per mail.`, `Kom je er niet uit? Mail ons op <a href="mailto:${escH(hulp)}">${escH(hulp)}</a>, dan helpen we je verder.`],
       button: { label: "Naar je klantenportaal", href: link },
-      after: [`Elke maand kun je <b>${OFFER.changesPerMonth} wijzigingen</b> doorgeven. We verwerken ze binnen <b>${OFFER.changeHours} uur</b>.`],
+      after: [`Elke maand kun je <b>${OFFER.changesPerMonth} wijzigingen</b> doorgeven. We verwerken ze binnen <b>${OFFER.changeHours} uur</b>.`, `Kom je er niet uit? Mail ons op <a href="mailto:${escH(hulp)}">${escH(hulp)}</a>, dan helpen we je verder.`],
     }),
   });
   await audit(user.id, c.id, "klant.welkomstmail", { ok: res.ok });

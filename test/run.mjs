@@ -774,6 +774,7 @@ console.log("Concept-websites voor leads");
     assert.equal(s.status, 200, JSON.stringify(s.data)); assert.ok(s.data.portaal);
     const [k] = await q("SELECT c.onboarding, u.role FROM customers c JOIN users u ON u.customer_id = c.id WHERE u.email = 'nick2@nickoot.test'");
     assert.ok(k && k.onboarding && k.role === "klant", JSON.stringify(k));
+    assert.ok(captured.some((m) => m.to === "nick2@nickoot.test" && /Welkom/.test(m.subject) && /Kom je er niet uit\? Mail ons op/.test(m.text)), "welkomstmail met hulpadres");
     const nog = await call("POST", "start/aanmelden", { body: { naam: "Nick Koot", bedrijf: "Nickoot BV", email: "nick2@nickoot.test", t: Date.now() - 10000 } });
     assert.equal(nog.data.bestaat, true);
   });
