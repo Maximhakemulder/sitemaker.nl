@@ -715,3 +715,9 @@ p { margin: 0 0 1em; }
   .jason { display: none; }
   .jason-regel { font-size: 16px; margin-top: 18px; }
 }
+/* Jason zegt iets (tekstballon) */
+.jason figcaption { left: -64px; bottom: 150px; max-width: 250px; padding: 16px 18px 14px; border-radius: 20px 20px 20px 6px; }
+.jason .ballon { display: block; font-size: 19px; font-weight: 700; line-height: 1.25; }
+.jason figcaption small { display: block; margin-top: 8px; font-size: 14px; color: var(--grijs); }
+.jason figcaption small b { display: inline; font-size: inherit; color: var(--paars); }
+@media (min-width: 901px) { .jason-regel { display: none; } }

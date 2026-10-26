@@ -8,6 +8,7 @@
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   if (bedrijf) { $("#voor-bedrijf").textContent = ` in een nieuwe website voor ${bedrijf}`; $("#s-bedrijf").value = bedrijf; $("#a-bedrijf").value = bedrijf; }
 
+  if (!concept) document.querySelectorAll(".jason-zin").forEach((el) => (el.textContent = "Zullen we samen jouw nieuwe website maken?"));
   const vakken = { start: $("#vak-start"), afspraak: $("#vak-afspraak") };
   let soort = "video", gekozen = null;
   document.querySelectorAll(".optie").forEach((b) => b.addEventListener("click", () => {
