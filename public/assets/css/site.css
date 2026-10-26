@@ -698,3 +698,20 @@ p { margin: 0 0 1em; }
   .pagina-interesse .contact.interesse { padding-top: 40px; }
   .pagina-interesse .contact.interesse .opties { margin-top: 0; }
 }
+/* /interesse: Jason in de kop */
+.pagina-interesse .interesse-kop { overflow: hidden; }
+.kop-met-jason { display: grid !important; grid-template-columns: 1fr 340px; gap: 48px; align-items: end; }
+.kop-met-jason .kop-tekst { padding-bottom: 8px; }
+.jason { position: relative; margin: 0 0 -80px; align-self: end; }
+.jason img { display: block; width: 100%; height: auto; }
+.jason figcaption { position: absolute; left: -24px; bottom: 120px; background: var(--wit); color: var(--paars); border-radius: 16px; padding: 12px 18px; font-size: 15px; line-height: 1.3; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+.jason figcaption b { display: block; font-size: 18px; }
+.jason-regel { display: flex; align-items: center; gap: 14px; margin-top: 22px; color: #E3DDF5; font-size: 18px; }
+.jason-regel b { color: var(--wit); }
+.jason-regel img { width: 56px; height: 56px; object-fit: cover; object-position: top; border-radius: 50%; background: var(--cyaan); flex: none; }
+@media (min-width: 901px) { .jason-regel img { display: none; } }
+@media (max-width: 900px) {
+  .kop-met-jason { grid-template-columns: 1fr; gap: 0; }
+  .jason { display: none; }
+  .jason-regel { font-size: 16px; margin-top: 18px; }
+}
