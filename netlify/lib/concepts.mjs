@@ -576,6 +576,16 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-eind h3{font-size:18px;margin:6px 0 12px;color:#fff}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
 <div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Ik heb interesse</a></div>`;
+  // De balk staat vast bovenaan; vaste/plakkende koppen van het ontwerp schuiven eronder (nooit eroverheen).
+  const balkScript = `<script>(function(){var b=document.querySelector(".sm-balk");if(!b)return;var r=document.createElement("div");r.className="sm-balk-ruimte";b.after(r);var H=0,lijst=[];
+function hoog(){H=b.offsetHeight;r.style.height=H+"px";document.documentElement.style.setProperty("--sm-balk",H+"px")}
+function zet(el){if(el===b||b.contains(el)||el.closest(".sm-actiebalk"))return;var cs=getComputedStyle(el);if(cs.position!=="fixed"&&cs.position!=="sticky")return;if(cs.top==="auto"){return}
+var o=el.dataset.smTop;if(o===undefined){o=String(parseFloat(cs.top)||0);if(parseFloat(o)>H+40)return;el.dataset.smTop=o;if(lijst.indexOf(el)<0)lijst.push(el)}el.style.setProperty("top",(parseFloat(o)+H)+"px","important")}
+function alles(){hoog();var a=document.body.getElementsByTagName("*");for(var i=0;i<a.length;i++)zet(a[i]);var m=0;lijst.forEach(function(e){if(getComputedStyle(e).position!=="static")m=Math.max(m,e.offsetHeight)});document.documentElement.style.scrollPaddingTop=(H+Math.min(m,140)+12)+"px"}
+var kop=[];function koppen(){kop=Array.prototype.slice.call(document.querySelectorAll("header,nav,[class*=header],[class*=kop],[class*=nav],[class*=menu],[class*=balk]"))}
+var t=0;addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame(function(){t=0;kop.forEach(zet)})},{passive:true});
+addEventListener("resize",function(){lijst.forEach(function(e){delete e.dataset.smTop;e.style.removeProperty("top")});lijst=[];alles()});
+koppen();alles();addEventListener("load",function(){koppen();alles()});setTimeout(alles,1200)})()</script>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit is een eerste voorbeeld, automatisch gemaakt op basis van jullie huidige website. De echte website maken we samen helemaal naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
 ${beter(c.analysis)}<a href="${kennis}">Ik heb interesse</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small></section>
@@ -586,11 +596,11 @@ ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voor
     // Eigen ontwerp: zonder scripts van de agent; alleen ons eigen script (met nonce) mag draaien.
     const nonce = crypto.randomBytes(16).toString("base64");
     const eigen = `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>`;
-    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`).replace("position:sticky;top:0;", "position:relative;"), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
+    const html = toonOntwerp(c.html, { imgBase, bodyStart: balk.replace("<style>", `<style nonce="${nonce}">`).replace("position:sticky;top:0;", "position:fixed;top:0;left:0;right:0;").replace("z-index:99;", "z-index:2147483000;") + balkScript.replace("<script>", `<script nonce="${nonce}">`), bodyEnd: eind.replace(/<script>/g, `<script nonce="${nonce}">`).replace(/<style>/g, `<style nonce="${nonce}">`) + eigen });
     return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
       "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
   }
-  const html = render(c.content, { imgBase, robots: "noindex,nofollow", bodyStart: balk, bodyEnd: eind });
+  const html = render(c.content, { imgBase, robots: "noindex,nofollow", bodyStart: balk.replace("position:sticky;top:0;", "position:fixed;top:0;left:0;right:0;").replace("z-index:99;", "z-index:2147483000;") + balkScript, bodyEnd: eind });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer" } });
 }
 
