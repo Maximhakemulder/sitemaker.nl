@@ -56,7 +56,7 @@ export function compose(lead, kind, s) {
   const co = s.company;
   const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : "", [co.address, co.postcode, co.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
   const footer = `\n\n--\nJe ontvangt deze mail omdat je adres openbaar op je website staat. Geen berichten meer van ons? Meld je af: ${unsubUrl(lead.id)}\n${legal}`;
-  let body = fillTemplate(t.body, lead, s);
+  let body = fillTemplate(t.body, lead, s).replace(/^- /gm, "• "); // opsommingen als bolletjes
   // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
   if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
     const [aanhef, ...rest] = body.split(/\n\n/);
