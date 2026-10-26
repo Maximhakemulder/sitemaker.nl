@@ -306,16 +306,16 @@ async function claude({ system, prompt }) {
   const base = (env("ANTHROPIC_BASE_URL") || "https://api.anthropic.com").replace(/\/+$/, "");
   const r = await fetch(base + "/v1/messages", {
     method: "POST", headers: { "x-api-key": env("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: env("AI_MODEL", "claude-sonnet-5-5"), max_tokens: 3000, system, messages: [{ role: "user", content: prompt }] }),
+    body: JSON.stringify({ model: env("AI_MODEL_LICHT", "claude-haiku-5-5"), max_tokens: 3000, system, messages: [{ role: "user", content: prompt }] }),
     signal: AbortSignal.timeout(20000),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d?.error?.message || `status ${r.status}`);
-  if (env("ANTHROPIC_BASE_URL") && d.usage) { const { meet, aiCredits } = await import("./credits.mjs"); await meet("ai_credits", aiCredits(d.model || env("AI_MODEL", "claude-sonnet-5-5"), d.usage)); }
+  if (env("ANTHROPIC_BASE_URL") && d.usage) { const { meet, aiCredits } = await import("./credits.mjs"); await meet("ai_credits", aiCredits(d.model || env("AI_MODEL_LICHT", "claude-haiku-5-5"), d.usage)); }
   return (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
 }
 
-const SITEMAKER = `Sitemaker (sitemaker.nl) bouwt professionele websites voor bedrijven (geen webshops): €299,95 eenmalig + €69,95 per maand, binnen 48 uur (2 werkdagen) online, hosting en 4 wijzigingen per maand inbegrepen via een eigen klantenportaal. Toon: zakelijk, kort, eerlijk, u-vorm. Nooit iets verzinnen.`;
+const SITEMAKER = `Sitemaker (sitemaker.nl) bouwt professionele websites voor bedrijven (geen webshops): €299,95 eenmalig + €69,95 per maand, binnen 48 uur (2 werkdagen) online, hosting en 4 wijzigingen per maand inbegrepen via een eigen klantenportaal. Toon: zakelijk, kort, eerlijk, je-vorm. Nooit iets verzinnen.`;
 
 export async function researchLead(lead) {
   if (!lead.website) {

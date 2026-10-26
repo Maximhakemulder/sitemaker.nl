@@ -313,7 +313,7 @@ async function managerBriefing(key, d) {
   const text = await claude({
     system: `${STIJL}\nJij bent ${info.manager}, ${info.role} van de afdeling ${info.name}.`,
     prompt: `Schrijf je ochtendbriefing voor Maxim over jouw afdeling (max. 6 korte regels): hoe staat het ervoor, wat ging er goed, wat vraagt aandacht. Eindig met "Voor jou:" en de concrete acties die alleen Maxim kan doen (of "niets"). Gegevens:\n${JSON.stringify(data)}`,
-    maxTokens: 1500, timeoutMs: 90000,
+    maxTokens: 1500, timeoutMs: 90000, model: env("AI_MODEL_LICHT", "claude-haiku-5-5"), // eenvoudige samenvatting: goedkoop model
   });
   return { text: str(text, 3000), ai: true };
 }
@@ -340,7 +340,7 @@ export async function runBriefings({ force = false } = {}) {
       text = str(await claude({
         system: `${STIJL}\nJij bent Victor, algemeen directeur van Sitemaker.`,
         prompt: `Lees de briefings van je managers en schrijf de directiebriefing voor Maxim (max. 8 korte regels). Begin met één zin over hoe het bedrijf ervoor staat. Dan "Vandaag voor jou:" met maximaal 3 beslissingen of acties, belangrijkste eerst. Dan eventueel "Let op:" voor risico's.\nOpenstaande beslissingen volgens HQ: ${JSON.stringify(st.beslissingen.map((b) => b.text))}\n\nBriefings:\n${alle.map((b) => `## ${DEPTS[b.dept]?.name || b.dept}\n${b.text}`).join("\n\n")}`,
-        maxTokens: 1500, timeoutMs: 90000,
+        maxTokens: 1500, timeoutMs: 90000, model: env("AI_MODEL_LICHT", "claude-haiku-5-5"),
       }), 3000);
       ai = true;
     } catch (e) { console.log("[team] directeur", e.message); }
