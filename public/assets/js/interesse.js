@@ -21,6 +21,10 @@
     (k === "start" ? vakken.start : vakken.afspraak).scrollIntoView({ behavior: "smooth", block: "start" });
   }));
 
+  // Vanaf de homepage: ?keuze=start|video|telefoon opent die keuze meteen.
+  const voorkeuze = qs.get("keuze");
+  if (["start", "video", "telefoon"].includes(voorkeuze)) setTimeout(() => document.querySelector(`.optie[data-keuze="${voorkeuze}"]`)?.click(), 150);
+
   // Knoppen verderop op de pagina openen dezelfde keuze bovenaan.
   document.querySelectorAll("[data-naar]").forEach((b) => b.addEventListener("click", () => document.querySelector(`.optie[data-keuze="${b.dataset.naar}"]`)?.click()));
 

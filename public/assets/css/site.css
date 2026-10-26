@@ -752,3 +752,10 @@ p { margin: 0 0 1em; }
   .start-voordelen { padding: 22px 20px; }
   .mini-stappen { gap: 8px 16px; }
 }
+
+/* Homepage: de 3 manieren om verder te gaan */
+.keuzes-home .home-opties { margin-top: 0; }
+.home-opties .optie { text-decoration: none; }
+.home-opties .optie:hover em { background: var(--paars); color: var(--wit); }
+.home-opties .optie-hoofd:hover em { background: var(--knop-hover); }
+@media (max-width: 900px) { .keuzes-home .home-opties { margin-top: 0; } .home-opties .optie-hoofd { margin-top: 12px; } }
