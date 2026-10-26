@@ -19,6 +19,9 @@
     (k === "start" ? vakken.start : vakken.afspraak).scrollIntoView({ behavior: "smooth", block: "start" });
   }));
 
+  // Knoppen verderop op de pagina openen dezelfde keuze bovenaan.
+  document.querySelectorAll("[data-naar]").forEach((b) => b.addEventListener("click", () => document.querySelector(`.optie[data-keuze="${b.dataset.naar}"]`)?.click()));
+
   // Foutmeldingen bij velden
   const zetFouten = (form, prefix, errors) => {
     form.querySelectorAll(".fout").forEach((el) => (el.textContent = ""));
