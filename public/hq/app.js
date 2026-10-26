@@ -259,7 +259,7 @@
           ${d.todo.length ? html`<ul class="lijst">${d.todo.map(todoRij)}</ul>` : html`<p class="dempen">Niets open. Alle wijzigingen zijn verwerkt.</p>`}</section>
         <div>
           <section class="paneel"><div class="paneel-kop"><h2>Komende afspraken</h2><a href="#aanvragen">Agenda</a></div>
-            ${d.appointments.length ? html`<ul class="lijst">${d.appointments.map((a) => html`<li><a href="#aanvragen"><b>${a.company}</b></a> · ${a.name}<br><span class="klein dempen">${a.startsAt ? afspraakTijd(a.startsAt) : `Terugbelverzoek · ${geleden(a.createdAt)}`}</span></li>`)}</ul>` : html`<p class="dempen">Geen afspraken de komende week.</p>`}</section>
+            ${d.appointments.length ? html`<ul class="lijst">${d.appointments.map((a) => html`<li><a href="#aanvragen"><b>${a.company}</b></a> · ${a.name}<br><span class="klein dempen">${a.startsAt ? `${AFSPRAAK_SOORT[a.soort] || "Kennismaking"} · ${afspraakTijd(a.startsAt)}` : `Terugbelverzoek · ${geleden(a.createdAt)}`}</span></li>`)}</ul>` : html`<p class="dempen">Geen afspraken de komende week.</p>`}</section>
           <section class="paneel"><h2>B2B deze maand</h2><p class="dempen">${c.leads_verstuurd_30d} mails verstuurd in 30 dagen · ${c.leads_klaar} leads klaar om te mailen · ${c.leads_reactie} reacties te beantwoorden</p><a class="knop knop-licht knop-klein" href="#b2b">Naar B2B</a></section>
           ${nogTeDoen.length ? html`<section class="paneel"><h2>Nog in te stellen</h2><ul class="checklijst">${nogTeDoen.map((s) => html`<li><span class="ic nee">!</span><div>${s.label}<small>${s.hint}</small></div></li>`)}</ul></section>` : ""}
         </div>
@@ -689,6 +689,8 @@
     return zelfde(d, nu) ? `Vandaag, ${t}` : zelfde(d, morgen) ? `Morgen, ${t}` : t.charAt(0).toUpperCase() + t.slice(1);
   };
   const hm = (iso) => new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  const AFSPRAAK_SOORT = { video: "Videomeeting", telefoon: "Belafspraak" };
+  const soortChip = (a) => (a.startsAt ? html`<span class="soort-chip soort-${a.soort || "kennis"}">${AFSPRAAK_SOORT[a.soort] || "Kennismaking"}</span>` : "");
   const afspraakTijd = (iso) => `${dagKop(iso)} · ${hm(iso)}`;
   let agendaTab = "afspraken";
   async function aanvragen(main) {
@@ -744,7 +746,7 @@
   function afspraakItem(a) {
     const geweest = a.startsAt && Date.parse(a.startsAt) < Date.now();
     return html`<li data-aanvraag="${a.id}">
-      <div class="wijziging-kop"><div>${a.startsAt ? html`<b class="afspraak-tijd">${hm(a.startsAt)}</b> ` : ""}<b>${a.company}</b> · ${a.name}</div>${chip(L.aanvraag, a.status)}</div>
+      <div class="wijziging-kop"><div>${a.startsAt ? html`<b class="afspraak-tijd">${hm(a.startsAt)}</b> ` : ""}${soortChip(a)} <b>${a.company}</b> · ${a.name}</div>${chip(L.aanvraag, a.status)}</div>
       <div class="wijziging-meta">${a.phone ? html`<a href="tel:${a.phone.replace(/\s/g, "")}">${raw(icon.tel || "")}${a.phone}</a>` : ""}<a href="mailto:${a.email}">${a.email}</a>${!a.startsAt ? html`<span>${L.voorkeur[a.preference] || ""}</span>` : ""}<span>${a.startsAt && a.status === "geannuleerd" ? `Was ${afspraakTijd(a.startsAt)} · geannuleerd door ${a.canceledBy === "klant" ? "de klant" : "Sitemaker"}` : a.startsAt && geweest ? afspraakTijd(a.startsAt) : `Geboekt ${geleden(a.createdAt)}`}</span></div>
       ${a.message ? html`<p class="wijziging-tekst">${a.message}</p>` : ""}
       ${a.status !== "geannuleerd" ? html`<form novalidate><div class="rij2"><div class="veld"><label for="as-${a.id}">Hoe ging het?</label><select id="as-${a.id}" name="status">${Object.entries(L.aanvraag).filter(([k]) => k !== "geannuleerd").map(([k, [t]]) => html`<option value="${k}" ${k === a.status ? raw("selected") : ""}>${t}</option>`)}</select></div>

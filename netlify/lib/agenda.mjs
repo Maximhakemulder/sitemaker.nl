@@ -45,6 +45,7 @@ export async function agendaConfig(soort) {
   if (soort === "telefoon") return { ...a, soort: "telefoon" };
   return a;
 }
+export const soortNaam = (soort) => (soort === "video" ? "Videomeeting" : soort === "telefoon" ? "Belafspraak" : "Kennismaking");
 const hoeTekst = (soort, link, phone) => (soort === "video" ? (link ? `via een videogesprek: ${link}` : "via een videogesprek (de link sturen we je vooraf per mail)") : `telefonisch: we bellen je op ${phone}`);
 const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
 export async function saveAgendaConfig(b, user) {
@@ -138,7 +139,7 @@ function vevent(a, cfg, forStaff) {
     : `Kennismaking met Sitemaker (${Math.round((e - s) / MIN)} minuten). We bespreken wat je website moet doen en wat het kost.\n${waar}\n\nAnnuleren: ${publicBase()}/api/agenda/annuleren?t=${a.token}`;
   return [
     "BEGIN:VEVENT", `UID:afspraak-${a.id}@sitemaker.nl`, `DTSTAMP:${icsDate(Date.now())}`, `DTSTART:${icsDate(s)}`, `DTEND:${icsDate(e)}`,
-    fold(`SUMMARY:${icsText(forStaff ? `Kennismaking ${a.company} (${a.name})` : "Kennismaking Sitemaker")}`),
+    fold(`SUMMARY:${icsText(forStaff ? `${soortNaam(a.soort || cfg.soort)} ${a.company} (${a.name})` : `${soortNaam(a.soort || cfg.soort)} met Sitemaker`)}`),
     fold(`DESCRIPTION:${icsText(besch)}`), fold(`LOCATION:${icsText(waar)}`),
     a.status === "geannuleerd" ? "STATUS:CANCELLED" : "STATUS:CONFIRMED", "END:VEVENT",
   ].join("\r\n");
@@ -188,10 +189,10 @@ export async function book(b, ip) {
   const annuleer = `${publicBase()}/api/agenda/annuleren?t=${token}`;
   await Promise.allSettled([
     sendMail({
-      to: email, kind: "afspraak-bevestiging", ref: `appointment:${appt.id}`, subject: `Je kennismaking met Sitemaker: ${wanneer}`,
-      text: `Hoi ${name},\n\nJe kennismaking staat vast: ${wanneer}, ${hoe}.\n\nIn ${a.duur} minuten bespreken we wat je website moet doen en wat het kost. Ter info: €299,95 eenmalig + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
+      to: email, kind: "afspraak-bevestiging", ref: `appointment:${appt.id}`, subject: `Je ${soortNaam(a.soort).toLowerCase()} met Sitemaker: ${wanneer}`,
+      text: `Hoi ${name},\n\nJe ${soortNaam(a.soort).toLowerCase()} staat vast: ${wanneer}, ${hoe}.\n\nIn ${a.duur} minuten bespreken we wat je website moet doen en wat het kost. Ter info: €299,95 eenmalig + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
       html: brandHtml({
-        title: "Je kennismaking staat vast",
+        title: `Je ${soortNaam(a.soort).toLowerCase()} staat vast`,
         intro: [`Hoi ${escH(name)},`, `<b>${escH(wanneer)}</b><br>${escH(hoe.charAt(0).toUpperCase() + hoe.slice(1))}.`,
           `In ${a.duur} minuten bespreken we wat je website moet doen en wat het kost. Ter info: <b>€299,95 eenmalig + €69,95 per maand</b>, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.`],
         after: [`Kun je toch niet? <a href="${annuleer}">Annuleer je afspraak</a> en kies gerust een nieuw moment.`],
@@ -227,7 +228,7 @@ export async function cancel(appt, by, user = null) {
   const a = await agendaConfig();
   const wanneer = appt.starts_at ? momentLabel(new Date(appt.starts_at).getTime(), a.duur) : "";
   if (by === "klant") {
-    await notifyStaff(`Afspraak geannuleerd: ${appt.company}`, [`${appt.name} van ${appt.company} heeft de kennismaking van ${wanneer} geannuleerd. Het moment is weer vrij.`], `/hq/#aanvragen`).catch(() => {});
+    await notifyStaff(`${soortNaam(appt.soort)} geannuleerd: ${appt.company}`, [`${appt.name} van ${appt.company} heeft de ${soortNaam(appt.soort).toLowerCase()} van ${wanneer} geannuleerd. Het moment is weer vrij.`], `/hq/#aanvragen`).catch(() => {});
   } else {
     if (user) await audit(user.id, null, "agenda.geannuleerd", { id: appt.id });
     await sendMail({
@@ -265,7 +266,7 @@ export async function sendReminders() {
     const s = new Date(r.starts_at).getTime();
     const hoe = r.soort === "video" ? (a.videoLink ? `Je kunt deelnemen via ${a.videoLink}` : "Je ontvangt de link voor het videogesprek van ons") : `We bellen je op ${r.phone}`;
     await sendMail({
-      to: r.email, kind: "afspraak-herinnering", ref: `appointment:${r.id}`, subject: `Vandaag om ${hmStr(s)}: je kennismaking met Sitemaker`,
+      to: r.email, kind: "afspraak-herinnering", ref: `appointment:${r.id}`, subject: `Vandaag om ${hmStr(s)}: je ${soortNaam(r.soort).toLowerCase()} met Sitemaker`,
       text: `Hoi ${r.name},\n\nEven ter herinnering: vandaag om ${hmStr(s)} hebben we onze kennismaking. ${hoe}.\n\nKun je toch niet? Annuleer via ${publicBase()}/api/agenda/annuleren?t=${r.token}\n\nTot straks!\nSitemaker`,
       html: brandHtml({ title: `Vandaag om ${hmStr(s)}`, intro: [`Hoi ${escH(r.name)},`, `Even ter herinnering: vandaag om <b>${hmStr(s)}</b> hebben we onze kennismaking. ${escH(hoe)}.`],
         after: [`Kun je toch niet? <a href="${publicBase()}/api/agenda/annuleren?t=${r.token}">Annuleer je afspraak</a>.`] }),

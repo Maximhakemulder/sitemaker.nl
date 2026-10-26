@@ -379,7 +379,7 @@ export async function listSites() {
 export const checkSiteNow = (id) => checkNow(id);
 
 // ---------------------------------------------------------------- aanvragen via de website
-const publicAppointment = (a) => ({ startsAt: a.starts_at, endsAt: a.ends_at, canceledAt: a.canceled_at, canceledBy: a.canceled_by, id: a.id, name: a.name, company: a.company, email: a.email, phone: a.phone, preference: a.preference, message: a.message, status: a.status, staffNote: a.staff_note, customerId: a.customer_id, createdAt: a.created_at, source: a.source });
+const publicAppointment = (a) => ({ startsAt: a.starts_at, endsAt: a.ends_at, canceledAt: a.canceled_at, canceledBy: a.canceled_by, id: a.id, name: a.name, company: a.company, email: a.email, phone: a.phone, preference: a.preference, message: a.message, status: a.status, staffNote: a.staff_note, customerId: a.customer_id, createdAt: a.created_at, source: a.source, soort: a.soort || "" });
 export async function listAppointments() {
   // Komende afspraken op tijd, daarna terugbelverzoeken zonder tijd, daarna de rest (nieuwste eerst).
   return (await q(`SELECT * FROM appointments ORDER BY

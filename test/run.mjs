@@ -484,7 +484,7 @@ console.log("Agenda (kennismaking boeken)");
     const r = await call("POST", "agenda/boek", { body: { start: slotA, name: "Eva de Boer", company: "Kapsalon Eva", email: "eva@kapsalon.test", phone: "06 1234 5678", message: "Heb nog geen site" } });
     assert.equal(r.status, 200, JSON.stringify(r.data)); tok = r.data.token;
     const m = captured.slice(voor).find((x) => x.to === "eva@kapsalon.test");
-    assert.ok(m && /Je kennismaking met Sitemaker/.test(m.subject));
+    assert.ok(m && /Je (kennismaking|belafspraak|videomeeting) met Sitemaker/.test(m.subject));
     assert.ok(m.attachments?.[0]?.content.includes("BEGIN:VEVENT") && m.attachments[0].content.includes("DTSTART:"));
     assert.ok(m.text.includes("/api/agenda/annuleren?t=" + tok));
     const dubbel = await call("POST", "agenda/boek", { body: { start: slotA, name: "Piet", company: "Piet BV", email: "piet@bv.test", phone: "0612345678" } });
@@ -498,7 +498,7 @@ console.log("Agenda (kennismaking boeken)");
   });
   await test("klant annuleert via de link; moment komt weer vrij", async () => {
     const ics = await call("GET", "agenda/ics?t=" + tok);
-    assert.equal(ics.status, 200); assert.ok(String(ics.data).includes("Kennismaking Sitemaker"));
+    assert.equal(ics.status, 200); assert.ok(/(Kennismaking|Belafspraak|Videomeeting) met Sitemaker/.test(String(ics.data)));
     const pagina = await call("GET", "agenda/annuleren?t=" + tok);
     assert.ok(String(pagina.data).includes("Ja, annuleer"));
     const r = await call("POST", "agenda/annuleren?t=" + tok, { csrf: false, form: new URLSearchParams({}), headers: { "content-type": "application/x-www-form-urlencoded" } });
