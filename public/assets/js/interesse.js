@@ -9,6 +9,7 @@
   if (bedrijf) { $("#voor-bedrijf").textContent = ` in een nieuwe website voor ${bedrijf}`; $("#s-bedrijf").value = bedrijf; $("#a-bedrijf").value = bedrijf; }
 
   if (!concept) document.querySelectorAll(".jason-zin").forEach((el) => (el.textContent = "Zullen we samen jouw nieuwe website maken?"));
+  if (concept) document.querySelectorAll("[data-met-concept]").forEach((el) => (el.hidden = false));
   const vakken = { start: $("#vak-start"), afspraak: $("#vak-afspraak") };
   let soort = "video", gekozen = null;
   document.querySelectorAll(".optie").forEach((b) => b.addEventListener("click", () => {
@@ -61,7 +62,7 @@
       if (res.bestaat) bedankt(vakken.start, "Je hebt al een account", `Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail.`, naar);
       else bedankt(vakken.start, "Je account staat klaar", `We hebben je een mail gestuurd. Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail. Daarna loop je de drie stappen door en gaan wij aan de slag.`, naar);
     } catch { fout.textContent = "Er is geen verbinding. Controleer je internet en probeer het opnieuw."; fout.hidden = false; }
-    finally { knop.disabled = false; knop.textContent = "Account aanmaken en starten"; }
+    finally { knop.disabled = false; knop.textContent = "Account aanmaken"; }
   });
 
   // ---------------- Videomeeting of bellen

@@ -721,3 +721,34 @@ p { margin: 0 0 1em; }
 .jason figcaption small { display: block; margin-top: 8px; font-size: 14px; color: var(--grijs); }
 .jason figcaption small b { display: inline; font-size: inherit; color: var(--paars); }
 @media (min-width: 901px) { .jason-regel { display: none; } }
+
+/* Direct starten: overzichtelijk, voordelen ernaast */
+.contact.interesse .formulier.start-vak { max-width: 1040px; padding: clamp(24px, 4vw, 44px); }
+.start-kop h2 { font-size: clamp(26px, 3vw, 34px); margin-bottom: 6px; }
+.start-kop > p { color: var(--grijs); font-size: 17px; margin: 0 0 18px; }
+.mini-stappen { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 0 0 22px; margin: 0 0 26px; border-bottom: 1px solid var(--lijn); }
+.mini-stappen li { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--grijs); font-size: 15px; }
+.mini-stappen b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ijs); color: var(--paars); font-size: 13px; }
+.mini-stappen li.nu { color: var(--paars); }
+.mini-stappen li.nu b { background: var(--paars); color: var(--wit); }
+.start-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: clamp(24px, 4vw, 48px); align-items: start; }
+.start-grid form .veld { margin-bottom: 14px; }
+.start-grid form .knop { width: 100%; margin-top: 6px; }
+.gerust { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 6px; font-weight: 600; color: var(--paars); font-size: 15px; }
+.gerust svg { width: 18px; height: 18px; flex: none; color: #146C43; margin-top: 2px; }
+.start-voordelen { background: var(--paars); color: var(--wit); border-radius: 20px; padding: 26px 24px; }
+.sv-prijs { margin: 0 0 18px; font-size: 16px; color: #E3DDF5; }
+.sv-prijs b { font-size: 34px; color: var(--wit); letter-spacing: -0.02em; }
+.sv-prijs span { color: #B8AEDB; }
+.start-voordelen ul { list-style: none; padding: 0; margin: 0 0 20px; display: grid; gap: 12px; }
+.start-voordelen li { position: relative; padding-left: 30px; line-height: 1.45; }
+.start-voordelen li::before { content: ""; position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--cyaan); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12'/%3E%3C/svg%3E"); }
+.start-voordelen li::after { content: ""; position: absolute; left: 6px; top: 7px; width: 8px; height: 5px; border-left: 2.5px solid var(--paars); border-bottom: 2.5px solid var(--paars); transform: rotate(-45deg); }
+.sv-garantie { background: rgba(255,255,255,.08); border-radius: 14px; padding: 14px 16px; display: grid; gap: 2px; }
+.sv-garantie b { color: var(--cyaan); font-size: 17px; }
+.sv-garantie span { color: #E3DDF5; font-size: 15px; }
+@media (max-width: 900px) {
+  .start-grid { grid-template-columns: 1fr; }
+  .start-voordelen { padding: 22px 20px; }
+  .mini-stappen { gap: 8px 16px; }
+}

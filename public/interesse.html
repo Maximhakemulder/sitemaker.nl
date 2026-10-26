@@ -72,23 +72,39 @@
       </button>
     </div>
 
-    <div class="formulier keuze-vak" id="vak-start" hidden>
-      <h2>Direct starten</h2>
-      <p class="dempen">We maken je account aan. Daarna log je in met een code per mail en doorloop je drie stappen: je gegevens, akkoord en betalen (€299,95 eenmalig, daarna €69,95 per maand) en je informatie aanleveren. Veel staat al voor je klaar vanuit het voorbeeld.</p>
-      <form id="start-form" novalidate>
-        <div class="melding melding-fout" id="s-fout" role="alert" tabindex="-1" hidden></div>
-        <div class="rij">
+    <div class="formulier keuze-vak start-vak" id="vak-start" hidden>
+      <div class="start-kop">
+        <h2>Direct starten</h2>
+        <p>In drie korte stappen naar je nieuwe website. Het kost je ongeveer vijf minuten.</p>
+        <ol class="mini-stappen" aria-label="De stappen">
+          <li class="nu"><b>1</b>Account</li>
+          <li><b>2</b>Gegevens en betalen</li>
+          <li><b>3</b>Informatie aanleveren</li>
+        </ol>
+      </div>
+      <div class="start-grid">
+        <form id="start-form" novalidate>
+          <div class="melding melding-fout" id="s-fout" role="alert" tabindex="-1" hidden></div>
           <div class="veld"><label for="s-naam">Je naam</label><input id="s-naam" name="naam" autocomplete="name" required aria-describedby="se-naam"><div class="fout" id="se-naam"></div></div>
           <div class="veld"><label for="s-bedrijf">Bedrijfsnaam</label><input id="s-bedrijf" name="bedrijf" autocomplete="organization" required aria-describedby="se-bedrijf"><div class="fout" id="se-bedrijf"></div></div>
-        </div>
-        <div class="rij">
           <div class="veld"><label for="s-email">E-mailadres</label><input id="s-email" name="email" type="email" inputmode="email" autocomplete="email" required aria-describedby="se-email"><div class="fout" id="se-email"></div></div>
           <div class="veld"><label for="s-tel">Telefoonnummer <span class="opt">(optioneel)</span></label><input id="s-tel" name="telefoon" type="tel" inputmode="tel" autocomplete="tel" aria-describedby="se-telefoon"><div class="fout" id="se-telefoon"></div></div>
-        </div>
-        <div class="hp" aria-hidden="true"><label for="s-hp">Laat dit veld leeg</label><input id="s-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
-        <button class="knop knop-actie" type="submit">Account aanmaken en starten</button>
-        <p class="klein">Door te starten ga je nog nergens mee akkoord: dat doe je in de volgende stap, vóór het betalen. Lees de <a href="/voorwaarden.html">voorwaarden</a> en <a href="/privacy.html">privacyverklaring</a>.</p>
-      </form>
+          <div class="hp" aria-hidden="true"><label for="s-hp">Laat dit veld leeg</label><input id="s-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
+          <button class="knop knop-actie" type="submit">Account aanmaken</button>
+          <p class="gerust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>In deze stap betaal je nog niets en ga je nergens mee akkoord.</p>
+          <p class="klein dempen">Lees gerust de <a href="/voorwaarden.html">voorwaarden</a> en <a href="/privacy.html">privacyverklaring</a>.</p>
+        </form>
+        <aside class="start-voordelen" aria-label="Wat je krijgt">
+          <p class="sv-prijs"><b>€299,95</b>&nbsp; eenmalig<br><span>daarna €69,95 per maand</span></p>
+          <ul>
+            <li>Je website binnen 48 uur (2 werkdagen) online</li>
+            <li>Hosting en 4 wijzigingen per maand inbegrepen</li>
+            <li>Maandelijks opzegbaar, geen langlopend contract</li>
+            <li data-met-concept hidden>Je voorbeeld staat al klaar als basis</li>
+          </ul>
+          <div class="sv-garantie"><b>30 dagen geld terug</b><span>Niet tevreden na livegang? Dan krijg je alles terug.</span></div>
+        </aside>
+      </div>
     </div>
 
     <div class="formulier keuze-vak" id="vak-afspraak" hidden>

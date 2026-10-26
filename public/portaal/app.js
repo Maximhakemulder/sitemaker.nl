@@ -191,20 +191,43 @@
     });
   }
 
+  // Echte, gepubliceerde reviews (HQ › Reviews); zonder reviews blijft het blok verborgen.
+  async function laadReviews(el) {
+    if (!el) return;
+    let d = null;
+    try { d = await (await fetch("/api/reviews", { headers: { accept: "application/json" } })).json(); } catch {}
+    const lijst = (d?.reviews || []).filter((r) => r.body).slice(0, 8);
+    if (!lijst.length) return;
+    const sterren = (n) => "★★★★★".slice(0, Math.max(0, Math.min(5, Math.round(n || 0)))) + "☆☆☆☆☆".slice(0, 5 - Math.max(0, Math.min(5, Math.round(n || 0))));
+    render(el, html`<h3>Wat klanten zeggen${d.count > 1 ? html` <span class="klein dempen">${String(d.average).replace(".", ",")} uit 5 · ${d.count} reviews</span>` : ""}</h3>
+      <div class="review-rij">${lijst.map((r) => html`<figure class="review-kaart"><div class="sterren" aria-label="${r.rating} van 5 sterren">${sterren(r.rating)}</div><blockquote>${r.body.length > 260 ? r.body.slice(0, 257) + "…" : r.body}</blockquote><figcaption><b>${r.name}</b>${r.company ? html`, ${r.company}` : ""}</figcaption></figure>`)}</div>`);
+    el.hidden = false;
+  }
+
   function stapBetalen(vak) {
     const st = state.start, p = st.price;
     const terug = new URLSearchParams(location.search).get("betaling");
-    render(vak, html`<h2>Akkoord en betalen</h2>
+    render(vak, html`<h2>Bijna klaar: akkoord en betalen</h2>
+      <p class="dempen">Na deze stap gaan we voor je aan de slag. Je website staat binnen ${state.offer.deliveryText} online zodra je je informatie hebt aangeleverd.</p>
       ${st.paymentPending && terug ? html`<div class="melding melding-info" role="status">${raw(icon.let)}<div><p><b>We wachten op de bevestiging van je betaling.</b> Dat duurt meestal een paar seconden.</p><button class="knop knop-licht knop-klein" type="button" id="check">Opnieuw controleren</button></div></div>` : ""}
       <div class="prijs-blok">
         <div class="regel"><span>Bouw van je website <small>eenmalig, nu te betalen</small></span><b class="nummers">${euro(p.buildCents)}</b></div>
         <div class="regel"><span>Abonnement <small>hosting en ${state.offer.changesPerMonth} wijzigingen per maand, automatisch vanaf ${datumLang(p.firstMonthly)}</small></span><b class="nummers">${euro(p.monthlyCents)} <small>per maand</small></b></div>
       </div>
+      <div class="zekerheden">
+        <div>${raw(icon.ok)}<b>Binnen 48 uur live</b><span>na het aanleveren van je informatie</span></div>
+        <div>${raw(icon.ok)}<b>30 dagen 100% geld terug</b><span>niet tevreden na livegang? Alles terug</span></div>
+        <div>${raw(icon.ok)}<b>Maandelijks opzegbaar</b><span>geen langlopend contract</span></div>
+        <div>${raw(icon.ok)}<b>Alles inbegrepen</b><span>ontwerp, hosting en ${state.offer.changesPerMonth} wijzigingen per maand</span></div>
+      </div>
       ${st.payOnline ? html`<p class="klein dempen">Je betaalt de bouw online via Pay.nl, bijvoorbeeld met iDEAL. Het maandbedrag schrijven we daarna automatisch af van de rekening waarmee je nu betaalt.</p>`
         : html`<p class="klein dempen">Je krijgt direct een factuur per mail en in je portaal, die je betaalt via een overboeking. Daarna krijg je elke maand een factuur van ${euro(p.monthlyCents)}. Je kunt meteen door met het aanleveren van je informatie.</p>`}
       <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
         <div class="veld"><label class="vinkje"><input type="checkbox" name="akkoord" required> <span>${st.payOnline ? html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en geef toestemming om ${euro(p.monthlyCents)} per maand automatisch af te schrijven.` : html`Ik ga akkoord met de <a href="/voorwaarden.html" target="_blank" rel="noopener">algemene voorwaarden</a> en het abonnement van ${euro(p.monthlyCents)} per maand (maandelijks opzegbaar).`}</span></label><div class="fout" data-fout-voor="akkoord"></div></div>
-        <div class="knoppen">${st.payOnline ? html`<button class="knop knop-betaal" type="submit">${raw('<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>')}${euro(p.buildCents)} veilig betalen en starten</button>` : html`<button class="knop knop-actie" type="submit">Akkoord en starten</button>`}<button class="knop knop-tekst" type="button" id="terug">Gegevens aanpassen</button></div></form>`);
+        <div class="knoppen">${st.payOnline ? html`<button class="knop knop-betaal" type="submit">${raw('<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>')}${euro(p.buildCents)} veilig betalen en starten</button>` : html`<button class="knop knop-actie" type="submit">Akkoord en starten</button>`}<button class="knop knop-tekst" type="button" id="terug">Gegevens aanpassen</button></div>
+        ${st.payOnline ? html`<p class="betaal-veilig">${raw('<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>')}Veilig betalen met iDEAL via Pay.nl</p>` : ""}</form>
+      <section class="betaal-reviews" id="betaal-reviews" hidden aria-label="Ervaringen van klanten"></section>`);
+    laadReviews(vak.querySelector("#betaal-reviews"));
     vak.querySelector("#check")?.addEventListener("click", herlaadState);
     vak.querySelector("#terug").onclick = () => { state.start.stage = "gegevens"; stapGegevens(vak); main().querySelectorAll(".start-stappen li").forEach((li, i) => { li.className = i === 0 ? "nu" : ""; }); };
     const form = vak.querySelector("form");
