@@ -612,3 +612,18 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .knop-betaal { background: #146C43; color: #fff; gap: 8px; box-shadow: 0 4px 0 #0E4F31; }
 .knop-betaal:hover { background: #0F5A37; }
 .knop-betaal svg { flex: none; }
+.zekerheden { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 18px; }
+.zekerheden > div { display: grid; grid-template-columns: 22px 1fr; column-gap: 10px; align-items: start; background: #EAF6EF; border-radius: 12px; padding: 12px 14px; }
+.zekerheden svg { width: 20px; height: 20px; color: #146C43; grid-row: span 2; margin-top: 1px; }
+.zekerheden b { font-size: 15px; line-height: 1.3; }
+.zekerheden span { font-size: 13.5px; color: var(--grijs); line-height: 1.4; }
+@media (max-width: 560px) { .zekerheden { grid-template-columns: 1fr; } }
+.betaal-reviews { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--lijn); }
+.betaal-reviews h3 { font-size: 18px; margin: 0 0 12px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.review-rij { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(240px, 300px); gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+.review-kaart { margin: 0; scroll-snap-align: start; background: var(--ijs); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.review-kaart .sterren { color: #E8A317; letter-spacing: 2px; }
+.review-kaart blockquote { margin: 0; font-size: 15px; line-height: 1.5; }
+.review-kaart figcaption { font-size: 14px; color: var(--grijs); }
+.betaal-veilig { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 14px; color: var(--grijs); }
+.betaal-veilig svg { color: #146C43; flex: none; }
