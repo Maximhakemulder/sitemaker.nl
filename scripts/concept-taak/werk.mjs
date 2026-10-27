@@ -96,6 +96,15 @@ try {
     schrijf(dir(id, "bron.json"), JSON.stringify(bron, null, 1));
     fs.rmSync(dir(id, "kandidaten"), { recursive: true, force: true });
     console.log(d.toegevoegd.map((t) => `+ ${t.naam} (${t.w}x${t.h}) ${t.alt}`).join("\n") || "Niets toegevoegd.");
+  } else if (cmd === "eigen") {
+    // node werk.mjs eigen <id> <url> [logo] — logo of foto van hun eigen site/CDN ophalen (bijv. Wix-sites)
+    const [id, url, soort] = args;
+    const t = await api("POST", `concepten/${id}/eigen-afbeelding`, { url, logo: soort === "logo" });
+    schrijf(dir(id, "afbeeldingen", t.naam), await api("GET", `concepten/${id}/afbeeldingen/${t.naam}`, null, { raw: true }));
+    const bron = JSON.parse(fs.readFileSync(dir(id, "bron.json"), "utf8"));
+    bron.afbeeldingen = (bron.afbeeldingen || []).filter((a) => !(t.logo && a.logo)); bron.afbeeldingen.push({ naam: t.naam, w: t.w, h: t.h, logo: t.logo, alt: "", sfeerbeeld: false });
+    schrijf(dir(id, "bron.json"), JSON.stringify(bron, null, 1));
+    console.log(`+ ${t.naam} (${t.w}x${t.h})${t.logo ? " logo" : ""}`);
   } else if (cmd === "opslaan") {
     const [id] = args;
     const content = JSON.parse(fs.readFileSync(dir(id, "content.json"), "utf8"));
