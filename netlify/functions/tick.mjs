@@ -25,6 +25,8 @@ async function ronde(started) {
   // Netlify-credits: elke 30 minuten bijwerken; vanaf 75% spaarstand (zie credits.mjs).
   await step("credits", () => controleerCredits({ budgetMs: Math.min(6000, left() - 5000) }), 40000);
   const spaar = await spaarstand().catch(() => false);
+  // Mails eerst: anders is de ronde (max ±13 s) al op door het scannen van websites en gaan er geen mails uit.
+  await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(7000, left() - 4000) }));
   const minuut = new Date().getMinutes();
   if (!spaar || minuut < 5 || (minuut >= 30 && minuut < 35)) await step("uptime", () => runChecks({ max: 8 }));
   await step("agenda-herinnering", () => sendReminders());
@@ -37,7 +39,6 @@ async function ronde(started) {
   if (!spaar) await step("briefings", () => maybeBriefings());
   await step("start-herinnering", () => startHerinnering());
   if (autoReady()) await step("ai-retry", () => retryStuck());
-  if (left() > 9000) await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(8000, left() - 3000) }));
   const last = (await one("SELECT value FROM settings WHERE key = 'inbox_scan'"))?.value;
   if (left() > 8000 && (!last || Date.now() - Date.parse(last.at) > 30 * 60000)) {
     const res = await step("inbox", () => scanInbox({ days: 14, max: 120 }), 25000);
