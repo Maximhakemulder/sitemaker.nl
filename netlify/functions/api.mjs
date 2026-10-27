@@ -149,6 +149,7 @@ async function verwerk(req, context) {
       if (seg[1] === "concepten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await taak.afbeelding(tid, seg[4]);
       if (seg[1] === "concepten" && tid && seg[3] === "stock" && m === "POST") return json(await taak.stockZoeken(tid, (await body(req)).termen));
       if (seg[1] === "concepten" && tid && seg[3] === "kies" && m === "POST") return json(await taak.stockKiezen(tid, (await body(req)).nummers));
+      if (seg[1] === "concepten" && tid && seg[3] === "eigen-afbeelding" && m === "POST") return json(await taak.eigenAfbeelding(tid, await body(req)));
       if (seg[1] === "concepten" && tid && !seg[3] && m === "PUT") return json(await taak.opslaan(tid, await body(req)));
       if (seg[1] === "concepten" && tid && seg[3] === "afmelden" && m === "POST") return json(await taak.afmelden(tid, await body(req)));
       fail(404, "Onbekend.");

@@ -114,6 +114,30 @@ export async function stockKiezen(id, nummers) {
   return { toegevoegd };
 }
 
+// Eigen beeld van de lead ophalen (logo of foto) van hun eigen domein of de CDN van hun websitebouwer (Wix, Squarespace, …),
+// voor sites waar de scan geen foto's vond (bijv. Wix laadt ze via script).
+const CDN = /(^|\.)(wixstatic\.com|squarespace-cdn\.com|squarespace\.com|jimdocdn\.com|jimstatic\.com|webnode\.page|wp\.com|shopify\.com|cdn\.website-editor\.net|strikinglycdn\.com)$/i;
+export async function eigenAfbeelding(id, { url, logo = false, alt = "" } = {}) {
+  const c = await eigen(id);
+  const lead = await one("SELECT website FROM leads WHERE id = $1", [c.lead_id]);
+  let u; try { u = new URL(String(url)); } catch { fail(400, "Ongeldige URL."); }
+  const host = u.hostname.replace(/^www\./, "");
+  let eigenHost = ""; try { eigenHost = new URL(/^https?:/.test(lead?.website || "") ? lead.website : `https://${lead?.website}`).hostname.replace(/^www\./, ""); } catch {}
+  if (u.protocol !== "https:" || !(host === eigenHost || host.endsWith("." + eigenHost) || CDN.test(host))) fail(400, `Alleen afbeeldingen van ${eigenHost || "hun eigen site"} of de CDN van hun websitebouwer.`);
+  const r = await haal(u.href, { binary: true, max: 4000000, timeout: 8000 });
+  const size = r?.buf && imageSize(r.buf);
+  if (!size) fail(400, "Geen geldige afbeelding (jpg, png, webp, svg).");
+  const images = c.images || [];
+  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/svg+xml": "svg", "image/gif": "gif" }[size.type] || "jpg";
+  const name = logo ? `logo.${ext}` : `foto-${images.filter((i) => !i.logo).length + 1}.${ext}`;
+  const key = `concepts/${id}/${name}`;
+  await putFile(key, r.buf, { type: size.type, name });
+  const rest = logo ? images.filter((i) => !i.logo) : images;
+  rest.push({ name, key, type: size.type, w: size.w, h: size.h, size: r.buf.length, alt: str(alt, 120), logo: !!logo, bron: u.href });
+  await q("UPDATE concepts SET images = $2, updated_at = NOW() WHERE id = $1", [id, JSON.stringify(rest)]);
+  return { naam: name, w: size.w, h: size.h, logo: !!logo };
+}
+
 // Resultaat opslaan: content.json (zelfde eerlijkheidscontrole als altijd) + ontwerp-HTML (zelfde veiligheidsfilter).
 export async function opslaan(id, { content, html }) {
   const c = await eigen(id);
