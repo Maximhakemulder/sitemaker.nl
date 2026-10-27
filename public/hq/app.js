@@ -1641,7 +1641,7 @@ ${p.body}</div>
             <button class="knop" type="submit">Opslaan</button></form>
         </div>
         <div>
-          <section class="paneel"><div class="paneel-kop"><h2>Koppelingen</h2><button class="knop knop-licht knop-klein" id="testmail">Testmail naar mij</button></div>
+          <section class="paneel"><div class="paneel-kop"><h2>Koppelingen</h2><div class="knoppen"><button class="knop knop-licht knop-klein" id="koppeltest">Koppelingen testen</button><button class="knop knop-licht knop-klein" id="testmail">Testmail naar mij</button></div></div>
             <ul class="checklijst">${d.setup.map((x) => html`<li><span class="ic ${x.ok ? "ja" : "nee"}">${x.ok ? "✓" : "!"}</span><div>${x.label}${x.ok ? "" : html`<small>${x.hint}</small>`}</div></li>`)}</ul></section>
           <form class="paneel" id="f-b2b" novalidate><h2>B2B-mail</h2>
             <div class="rij3">${v("senderName", "Je naam als afzender", b.senderName)}${v("dailyMax", "Max. mails per dag", b.dailyMax, { type: "number" })}${v("perUur", "Max. per uur (0 = automatisch)", b.perUur || 0, { type: "number" })}</div>
@@ -1686,6 +1686,15 @@ ${p.body}</div>
       const t = d.defaults.templates, el = main.querySelector("#f-b2b").elements;
       el.t1s.value = t.eerste.subject; el.t1b.value = t.eerste.body; el.t2s.value = t.opvolging.subject; el.t2b.value = t.opvolging.body;
       toast("Standaardteksten ingevuld; klik op Opslaan om ze te bewaren.");
+    });
+    main.querySelector("#koppeltest")?.addEventListener("click", async (e) => {
+      SM.bezig(e.target, true, "Testen… (± 1 minuut)");
+      try {
+        const r = await api("hq/koppelingen/test", { method: "POST" });
+        const regels = (r.stappen || []).map((x) => `${x.ok ? "✓" : "✗"} ${x.naam}${x.info ? ` (${x.info})` : ""}`).join("\n");
+        SM.dialoog(r.ok ? "Koppelingen werken" : "Er gaat iets mis", html`<pre class="klein">${regels}</pre>`);
+      } catch (err) { toast(err.message, "fout"); }
+      SM.bezig(e.target, false);
     });
     main.querySelector("#testmail").addEventListener("click", async (e) => {
       e.target.disabled = false; SM.bezig(e.target, true, "Versturen…");

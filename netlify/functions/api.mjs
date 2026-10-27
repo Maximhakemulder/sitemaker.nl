@@ -144,6 +144,7 @@ async function verwerk(req, context) {
       if (path === "taak/status" && m === "GET") return json(await taak.status());
       if (path === "taak/leads/afmelden" && m === "POST") return json(await taak.leadAfmelden(await body(req)));
       if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
+      if (path === "taak/koppelingen/test" && m === "POST") { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest({ id: null })); }
       if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
       if (path === "taak/opdrachten/heropen" && m === "POST") { const b = await body(req); return json(await opdrachten.taakHeropen(Number(b.klant), b.feedback)); }
       if (seg[1] === "opdrachten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await opdrachten.afbeelding(tid, decodeURIComponent(seg[4]));
