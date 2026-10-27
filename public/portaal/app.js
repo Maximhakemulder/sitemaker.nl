@@ -128,9 +128,9 @@
             ${teller(u)}
             <div class="teller-rij">
               <p class="teller-tekst">${u.left > 0 ? `Nog ${u.left} van ${u.limit} over` : `Alle ${u.limit} gebruikt`}<small>${u.left > 0 ? `Verwerkt binnen ${state.offer.changeHours} uur` : `Vanaf 1 ${nextMonth(u.month)} weer ${u.limit} nieuwe`}</small></p>
-              ${state.canSubmit.ok && (u.left > 0 || state.opleverronde) ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}
+              ${state.canSubmit.ok && (u.left > 0 || state.feedbackRondes) ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}
             </div>
-            ${state.opleverronde ? html`<div class="melding melding-ok">${raw(icon.ok)}<p><b>Opleverronde tot ${datumLang(state.opleverronde)}.</b> Geef gerust al je feedback op je nieuwe website door: wijzigingen in deze periode tellen niet mee voor je ${u.limit} per maand.</p></div>` : ""}
+            ${state.feedbackRondes ? html`<div class="melding melding-ok">${raw(icon.ok)}<p><b>Nog ${state.feedbackRondes === 1 ? "1 gratis feedbackronde" : `${state.feedbackRondes} gratis feedbackrondes`}.</b> Je eerste feedback op je nieuwe website telt niet mee voor je ${u.limit} wijzigingen per maand. Zet gerust alles in één bericht.</p></div>` : ""}
             ${!state.canSubmit.ok ? html`<div class="melding melding-let">${raw(icon.let)}<p>${state.canSubmit.reason}</p></div>` : ""}
             ${open.length ? html`<h3 class="sub-kop">Lopend</h3><ul class="lijst">${open.map(wijzigingKort)}</ul>` : ""}
             ${!open.length && recentKlaar.length ? html`<h3 class="sub-kop">Laatst verwerkt</h3><ul class="lijst">${recentKlaar.map(wijzigingKort)}</ul>` : ""}
@@ -350,7 +350,7 @@
     const u = state.usage;
     render(main, html`
       <div class="hq-kop"><div><h1>Wijzigingen</h1></div>
-        <div class="knoppen"><span class="status ${u.left > 0 ? "s-info" : "s-grijs"}">${u.left} van ${u.limit} over</span>${state.canSubmit.ok && (u.left > 0 || state.opleverronde) ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div></div>
+        <div class="knoppen"><span class="status ${u.left > 0 ? "s-info" : "s-grijs"}">${u.left} van ${u.limit} over</span>${state.canSubmit.ok && (u.left > 0 || state.feedbackRondes) ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div></div>
       <section class="paneel">
         ${state.changes.length ? html`<ul class="lijst">${state.changes.map(wijzigingLang)}</ul>`
           : html`<div class="leeg"><h3>Nog geen wijzigingen</h3><p>Wil je iets aanpassen op je website? Geef het door, dan verwerken we het binnen ${state.offer.changeHours} uur.</p>${state.canSubmit.ok ? html`<a class="knop knop-actie" href="#nieuw">Wijziging doorgeven</a>` : ""}</div>`}
@@ -375,9 +375,9 @@
   // ------------------------------------------------ nieuwe wijziging
   function nieuw(main) {
     const u = state.usage;
-    if (!state.canSubmit.ok || (u.left <= 0 && !state.opleverronde)) { location.hash = "#wijzigingen"; return; }
+    if (!state.canSubmit.ok || (u.left <= 0 && !state.feedbackRondes)) { location.hash = "#wijzigingen"; return; }
     render(main, html`
-      <div class="hq-kop"><div><h1>Wijziging doorgeven</h1><p>We verwerken hem binnen ${state.offer.changeHours} uur. ${state.opleverronde ? `Opleverronde: deze wijziging telt niet mee voor je ${u.limit} per maand.` : `Daarna heb je deze maand nog ${u.left - 1} over.`}</p></div></div>
+      <div class="hq-kop"><div><h1>Wijziging doorgeven</h1><p>We verwerken hem binnen ${state.offer.changeHours} uur. ${state.feedbackRondes ? `Gratis feedbackronde: deze telt niet mee voor je ${u.limit} per maand.` : `Daarna heb je deze maand nog ${u.left - 1} over.`}</p></div></div>
       <section class="paneel">
         <form id="w-form" novalidate>
           <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
