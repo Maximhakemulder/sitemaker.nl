@@ -7,7 +7,7 @@ import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
 import { runConcepts, vulFormulierenAan } from "../lib/concepts.mjs";
-import { pulse, maybeBriefings } from "../lib/team.mjs";
+import { pulse, maybeBriefings, trigger as teamTrigger } from "../lib/team.mjs";
 import { runDomainChecks } from "../lib/domains.mjs";
 import { runCancellations, retryDrafts } from "../lib/service.mjs";
 import { controleer as controleerCredits, spaarstand, meet } from "../lib/credits.mjs";
@@ -47,6 +47,17 @@ async function ronde(started) {
   }
   if (!spaar && left() > 6000) await step("scout", () => runScout());
   if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
+  // Nachtelijke back-up (na 3:00 Amsterdamse tijd, één keer per dag), in de achtergrondfunctie.
+  if (left() > 4000) await step("backup", async () => {
+    const { hourAms, dayKey } = await import("../lib/core.mjs");
+    if (hourAms() < 3) return { wacht: true };
+    const st = (await one("SELECT value FROM settings WHERE key = 'backup_status'"))?.value;
+    const gestart = (await one("SELECT value FROM settings WHERE key = 'backup_gestart'"))?.value;
+    if ((st?.ok && String(st.at).slice(0, 10) === new Date().toISOString().slice(0, 10)) || gestart?.dag === dayKey()) return { klaar: true };
+    await q(`INSERT INTO settings (key, value) VALUES ('backup_gestart', $1::jsonb) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [JSON.stringify({ dag: dayKey(), at: new Date().toISOString() })]);
+    await teamTrigger({ kind: "backup" });
+    return { gestart: true };
+  });
   if (left() > 5000) await step("webbureau", () => controleerBureaus({ max: 3, budgetMs: left() - 3000 }));
 }
 

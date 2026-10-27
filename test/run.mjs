@@ -167,6 +167,16 @@ await test("gelijktijdig indienen: er tellen nooit meer dan 4 mee", async () => 
   const [{ n }] = await q("SELECT COUNT(*)::int n FROM change_requests WHERE customer_id = $1 AND counts", [c1]);
   assert.ok(n <= 4, `er tellen ${n} wijzigingen mee`);
 });
+await test("back-up: database versleuteld naar GitHub en weer leesbaar", async () => {
+  const b = await import("../netlify/lib/backup.mjs");
+  const zlib = (await import("node:zlib")).default;
+  const enc = b.versleutel(zlib.gzipSync(Buffer.from('{"a":1}')));
+  assert.equal(b.ontsleutel(enc).toString(), '{"a":1}');
+  const st = await b.maakBackup();
+  assert.equal(st.ok, true, st.fout);
+  assert.ok(st.tabellen > 5 && st.rijen > 0);
+  assert.equal((await b.backupStatus()).ok, true);
+});
 await test("feedbackrondes: 2 gratis na livegang", async () => {
   const { feedbackRondes } = await import("../netlify/lib/portal.mjs");
   assert.equal(await feedbackRondes({ id: 999999, delivered_at: null }), 0);

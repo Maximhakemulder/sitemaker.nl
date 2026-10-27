@@ -1644,6 +1644,7 @@ ${p.body}</div>
         <div>
           <section class="paneel"><div class="paneel-kop"><h2>Koppelingen</h2><div class="knoppen"><button class="knop knop-licht knop-klein" id="koppeltest">Koppelingen testen</button><button class="knop knop-licht knop-klein" id="testmail">Testmail naar mij</button></div></div>
             <ul class="checklijst">${d.setup.map((x) => html`<li><span class="ic ${x.ok ? "ja" : "nee"}">${x.ok ? "✓" : "!"}</span><div>${x.label}${x.ok ? "" : html`<small>${x.hint}</small>`}</div></li>`)}</ul></section>
+          <section class="paneel" id="backup-paneel"><div class="paneel-kop"><h2>Back-ups</h2><button class="knop knop-licht knop-klein" id="backup-nu">Nu back-up maken</button></div><p class="dempen klein" id="backup-tekst">Laden…</p></section>
           <form class="paneel" id="f-b2b" novalidate><h2>B2B-mail</h2>
             <div class="rij3">${v("senderName", "Je naam als afzender", b.senderName)}${v("dailyMax", "Max. mails per dag", b.dailyMax, { type: "number" })}${v("perUur", "Max. per uur (0 = automatisch)", b.perUur || 0, { type: "number" })}</div>
             <div class="rij3">${v("from", "Versturen vanaf (uur)", b.sendHours[0], { type: "number" })}${v("to", "tot (uur)", b.sendHours[1], { type: "number" })}${v("followupDays", "Opvolgen na (dagen)", b.followupDays, { type: "number" })}</div>
@@ -1687,6 +1688,21 @@ ${p.body}</div>
       const t = d.defaults.templates, el = main.querySelector("#f-b2b").elements;
       el.t1s.value = t.eerste.subject; el.t1b.value = t.eerste.body; el.t2s.value = t.opvolging.subject; el.t2b.value = t.opvolging.body;
       toast("Standaardteksten ingevuld; klik op Opslaan om ze te bewaren.");
+    });
+    const toonBackup = async () => {
+      const el = main.querySelector("#backup-tekst"); if (!el) return;
+      try {
+        const r = await api("hq/backup"), st = r.status;
+        el.textContent = !st ? `Nog geen back-up. Elke nacht na 3:00 wordt er automatisch een versleutelde back-up van de database gemaakt in GitHub (${r.repo}).`
+          : st.ok ? `Laatste back-up: ${tijd(st.at)} · ${(st.bytes / 1024).toFixed(0)} kB · ${st.rijen} regels uit ${st.tabellen} tabellen · in GitHub ${st.repo} (${st.bestand}). Elke nacht automatisch, de laatste 30 dagen blijven bewaard.`
+          : `Laatste poging mislukt (${tijd(st.at)}): ${st.fout}`;
+      } catch (e) { el.textContent = e.message; }
+    };
+    toonBackup();
+    main.querySelector("#backup-nu")?.addEventListener("click", async (e) => {
+      SM.bezig(e.target, true, "Bezig…");
+      try { await api("hq/backup", { method: "POST" }); toast("Back-up gestart. Over een minuut zie je hem hier."); setTimeout(() => { toonBackup(); SM.bezig(e.target, false); }, 45000); }
+      catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); }
     });
     main.querySelector("#koppeltest")?.addEventListener("click", async (e) => {
       SM.bezig(e.target, true, "Testen… (± 1 minuut)");

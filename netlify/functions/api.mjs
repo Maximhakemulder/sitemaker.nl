@@ -145,6 +145,8 @@ async function verwerk(req, context) {
       if (path === "taak/leads/afmelden" && m === "POST") return json(await taak.leadAfmelden(await body(req)));
       if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
       if (seg[1] === "klanten" && seg[2] && seg[3] === "voorbeeldadres" && m === "POST") { const { previewAlias } = await import("../lib/sites.mjs"); return json(await previewAlias(Number(seg[2]))); }
+      if (path === "taak/backup" && m === "POST") { const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
+      if (path === "taak/backup" && m === "GET") { const { backupStatus } = await import("../lib/backup.mjs"); return json(await backupStatus()); }
       if (path === "taak/koppelingen/test" && m === "POST") { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest({ id: null })); }
       if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
       if (path === "taak/opdrachten/heropen" && m === "POST") { const b = await body(req); return json(await opdrachten.taakHeropen(Number(b.klant), b.feedback)); }
@@ -305,6 +307,8 @@ async function verwerk(req, context) {
         case "GET team/vragen": return json({ vragen: await team.listQuestions(url.searchParams.get("dept") || "") });
         case "GET concepten": return json(await concepts.listConcepts({ filter: url.searchParams.get("filter") || "" }));
         case "GET opdrachten": return json(await opdrachten.lijst());
+        case "GET backup": { const { backupStatus, backupRepo } = await import("../lib/backup.mjs"); return json({ status: await backupStatus(), repo: backupRepo() }); }
+        case "POST backup": { if (user.role !== "admin") fail(403, "Alleen voor beheerders."); const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
         case "POST koppelingen/test": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest(user)); }
         case "POST opdrachten/:id/live": return json(await opdrachten.liveZetten(id, user));
         case "POST opdrachten/:id/opnieuw": return json(await opdrachten.opnieuw(id, (await body(req)).feedback, user));
