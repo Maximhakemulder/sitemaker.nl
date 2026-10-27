@@ -1082,7 +1082,7 @@
         <div class="veld"><label class="vinkje"><input type="checkbox" name="active" ${sc.actief ? raw("checked") : ""}> Scout aan: elke werkdag automatisch zoeken</label></div>
         <div class="veld"><label for="z-cat">Branches (één per regel)</label><textarea id="z-cat" name="categories" rows="6">${sc.categorieen.join("\n")}</textarea><div class="hulp">Zoals mensen ze in Google Maps zoeken, bijvoorbeeld kapper of loodgieter.</div></div>
         <div class="veld"><label for="z-pl">Plaatsen (één per regel)</label><textarea id="z-pl" name="places" rows="6">${sc.plaatsen.join("\n")}</textarea></div>
-        <div class="veld"><label for="z-pd">Ongeveer hoeveel bedrijven per dag</label><input id="z-pd" name="perDay" type="number" min="5" max="100" value="${sc.perDag}"></div>
+        <div class="veld"><label for="z-pd">Ongeveer hoeveel bedrijven per dag</label><input id="z-pd" name="perDay" type="number" min="5" max="300" value="${sc.perDag}"></div>
         <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
       const form = dlg.querySelector("form");
       form.addEventListener("submit", async (e) => {
@@ -1620,7 +1620,7 @@ ${p.body}</div>
             <div class="rij3">${v("from", "Versturen vanaf (uur)", b.sendHours[0], { type: "number" })}${v("to", "tot (uur)", b.sendHours[1], { type: "number" })}${v("followupDays", "Opvolgen na (dagen)", b.followupDays, { type: "number" })}</div>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="aiResearch" ${b.ai.research ? raw("checked") : ""}> Openingszin laten schrijven op basis van de website van het bedrijf (AI)</label></div>
             <h3>Concept-websites</h3>
-            <div class="veld"><label class="vinkje"><input type="checkbox" name="cAuto" ${b.concepten?.auto !== false ? raw("checked") : ""}> <span>Automatisch een concept maken voor nieuwe leads met een website<small class="hulp">De link komt in de eerste mail. Elk concept is één Claude-aanroep.</small></span></label></div>
+            <div class="veld"><label class="vinkje"><input type="checkbox" name="cAuto" ${b.concepten?.auto !== false ? raw("checked") : ""}> <span>Automatisch een concept maken voor nieuwe leads met een website<small class="hulp">De link komt in de eerste mail. De ontwerper (geplande Claude-taak) maakt ze elk uur.</small></span></label></div>
             <p class="klein dempen">Elke eerste mail gaat altijd met een voorbeeldwebsite. Een goedgekeurde mail wacht tot het concept klaar is; lukt het concept niet, dan gaat de lead terug naar "Klaar om te mailen".</p>
             <div class="rij2">${v("cPerDag", "Max. concepten per dag", b.concepten?.perDag ?? 20, { type: "number" })}${v("cDagen", "Link geldig (dagen)", b.concepten?.geldigDagen ?? 30, { type: "number" })}</div>
             <h3>Scout (Outscraper)</h3>
@@ -1628,7 +1628,7 @@ ${p.body}</div>
             <div class="rij2"><div class="veld"><label for="s-cats">Branches</label><textarea id="s-cats" name="categories" rows="4">${b.scout.categories.join("\n")}</textarea><div class="hulp">Eén per regel.</div></div>
               <div class="veld"><label for="s-places">Plaatsen</label><textarea id="s-places" name="places" rows="4">${b.scout.places.join("\n")}</textarea><div class="hulp">Elke dag de volgende plaats.</div></div></div>
             ${v("perDay", "Ongeveer zoveel bedrijven per dag", b.scout.perDay, { type: "number" })}
-            <h3>Mailteksten</h3><p class="klein dempen">Te gebruiken: {bedrijf}, {plaats}, {intro}, {concept} (zin met de link naar hun concept, leeg als er geen is), {conceptlink}, {afzender}, {link}. De afmeldlink en je bedrijfsgegevens worden er automatisch onder gezet.</p>
+            <h3>Mailteksten</h3><p class="klein dempen">Te gebruiken: {bedrijf}, {plaats}, {intro}, {concept} (zin met de link naar hun concept, leeg als er geen is), {conceptlink}, {afzender}, {link}. De afmeldlink wordt er automatisch onder gezet.</p>
             <div class="sjabloon">${v("t1s", "Eerste mail: onderwerp", b.templates.eerste.subject)}<div class="veld"><label for="s-t1b">Eerste mail: tekst</label><textarea id="s-t1b" name="t1b">${b.templates.eerste.body}</textarea></div>
               ${v("t2s", "Opvolgmail: onderwerp", b.templates.opvolging.subject)}<div class="veld"><label for="s-t2b">Opvolgmail: tekst</label><textarea id="s-t2b" name="t2b">${b.templates.opvolging.body}</textarea></div></div>
             <div class="knoppen"><button class="knop" type="submit">Opslaan</button><button class="knop knop-licht" type="button" id="standaard">Standaardteksten terugzetten</button></div></form>

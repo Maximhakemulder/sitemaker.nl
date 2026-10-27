@@ -260,7 +260,7 @@ export async function runScout({ force = false } = {}) {
   const cats = (sc.categories || []).filter(Boolean), places = (sc.places || []).filter(Boolean);
   if (!cats.length || !places.length) return { skipped: "geen categorieën of plaatsen" };
   st.pending = st.pending || [];
-  const per = Math.max(5, Math.min(60, Math.ceil(Number(sc.perDay || 20) / cats.length) * 2));
+  const per = Math.max(5, Math.min(120, Math.ceil(Number(sc.perDay || 20) / cats.length) * 2));
   for (const cat of cats) {
     const i = (st.cursor?.[cat] || 0) % places.length;
     const d = await osc("/maps/search-v3", { query: `${cat}, ${places[i]}, Nederland`, organizationsPerQueryLimit: per, language: "nl", region: "NL", async: true });
