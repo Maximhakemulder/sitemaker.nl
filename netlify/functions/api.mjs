@@ -117,6 +117,10 @@ async function verwerk(req, context) {
       return new Response(null, { status: 302, headers: { location: Buffer.from(p.u, "base64url").toString(), "cache-control": "no-store", "referrer-policy": "no-referrer" } });
     }
     if (path === "b2b/afmelden") {
+      if (url.searchParams.get("test") === "1") {
+        if (m === "POST") return htmlPage("Je bent afgemeld", "Je ontvangt geen berichten meer van Sitemaker op dit adres. (Dit was een test: er is niemand afgemeld.)");
+        return htmlPage("Afmelden", "Wil je geen berichten meer van Sitemaker ontvangen?", `<form method="post"><button type="submit">Ja, meld mij af</button></form>`);
+      }
       const id = Number(url.searchParams.get("l")), t = url.searchParams.get("t");
       if (!id || !checkUnsub(id, t)) return htmlPage("Link werkt niet", "Deze afmeldlink is niet (meer) geldig. Stuur ons een mail met 'afmelden', dan regelen we het.");
       if (m === "POST") { await unsubscribe(id); return htmlPage("Je bent afgemeld", "Je ontvangt geen berichten meer van Sitemaker op dit adres."); }
