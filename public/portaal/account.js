@@ -37,7 +37,33 @@
   function domein(vak) {
     const { domein: d } = acc.domein;
     // De domeinnaam geeft de klant op bij de start (informatie aanleveren). Hier alleen nog de stappen zolang hij niet werkt.
-    if (!d || d.status === "actief") { vak.hidden = true; return; }
+    if (d && d.status === "actief") { vak.hidden = true; return; }
+    if (!d) {
+      vak.hidden = false;
+      render(vak, html`
+        <div class="paneel-kop"><h2 id="t-domein">Domeinnaam</h2></div>
+        <p>Op welk adres moet je website komen? Je domeinnaam blijft van jou en bij je eigen provider; wij verbinden hem met je website. Je e-mail blijft gewoon werken.</p>
+        <form id="dom-form" novalidate>
+          <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+          <div class="rij2">
+            <div class="veld"><label for="dom-naam">Je domeinnaam</label><input id="dom-naam" name="naam" placeholder="jouwbedrijf.nl" autocomplete="off" required value="${acc.domein.suggestie || ""}"><div class="fout" data-fout-voor="naam"></div></div>
+            <div class="veld"><label for="dom-prov">Bij welke provider staat hij? <span class="opt">(optioneel)</span></label><input id="dom-prov" name="provider" placeholder="bijv. TransIP, Hostnet, Strato"></div>
+          </div>
+          <div class="knoppen"><button class="knop knop-actie" type="submit">Opslaan</button></div>
+        </form>
+        <p class="klein dempen">Heb je nog geen domeinnaam? Koop hem zelf bij een provider en vul hem daarna hier in.</p>`);
+      const form = vak.querySelector("#dom-form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const knop = form.querySelector("button"); SM.bezig(knop, true, "Opslaan…");
+        try {
+          await api("portal/domein", { method: "POST", body: { naam: form.elements.naam.value, provider: form.elements.provider.value } });
+          acc.domein = await api("portal/domein"); domein(vak); toast("Opgeslagen");
+        } catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+      });
+      if (location.hash === "#account/domein") setTimeout(() => vak.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      return;
+    }
     const ins = d.instructies;
     render(vak, html`
       <div class="paneel-kop"><h2 id="t-domein">Domeinnaam</h2><span class="status ${STATUS_KLASSE[d.status] || "s-grijs"}">${d.statusLabel}</span></div>
