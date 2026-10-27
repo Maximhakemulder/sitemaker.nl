@@ -676,7 +676,7 @@ console.log("Concept-websites voor leads");
   await test("concept-pagina: noindex, eigen foto's, balk en knop naar de kennismaking", async () => {
     const p = await call("GET", "voorbeeld/" + token);
     assert.equal(p.status, 200); const h = String(p.data);
-    assert.ok(h.includes("noindex") && h.includes("Een eerste opzet voor Bakkerij Zon") && h.includes("helemaal naar jullie wensen") && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
+    assert.ok(h.includes("noindex") && h.includes("Een eerste opzet voor Bakkerij Zon") && h.includes("helemaal af") && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
     assert.ok(h.includes(`/interesse?concept=${token}&bedrijf=Bakkerij%20Zon`) && h.includes("Ik heb interesse") && h.includes("/gezien"));
     assert.ok(!String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("/gezien"), "HQ telt niet mee");
     const direct = await api(new Request("https://sitemaker.test/voorbeeld/" + token + "?hq=1"), { ip: "10.0.0.1" });
