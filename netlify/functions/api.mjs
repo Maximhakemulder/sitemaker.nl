@@ -133,6 +133,7 @@ async function verwerk(req, context) {
     if (seg[0] === "opdracht" && seg[1] && m === "GET") {
       if (seg[2] === "afbeeldingen" && seg[3]) return await opdrachten.afbeelding(0, decodeURIComponent(seg[3]), { token: seg[1] });
       if (seg.length === 2) return await opdrachten.voorbeeld(seg[1], { nonce: crypto.randomBytes(12).toString("base64") });
+      if (seg[2] === "pagina" && seg[3]) return await opdrachten.voorbeeldPagina(seg[1], decodeURIComponent(seg[3]), { nonce: crypto.randomBytes(12).toString("base64") });
     }
 
     // ------------------------------------------------ geplande Claude-taak die concepten ontwerpt (sleutel in x-taak-sleutel)
@@ -143,7 +144,8 @@ async function verwerk(req, context) {
       if (path === "taak/status" && m === "GET") return json(await taak.status());
       if (path === "taak/leads/afmelden" && m === "POST") return json(await taak.leadAfmelden(await body(req)));
       if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
-      if (path === "taak/opdrachten/claim" && m === "POST") return json(await opdrachten.claimOpdrachten((await body(req)).max));
+      if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
+      if (path === "taak/opdrachten/heropen" && m === "POST") { const b = await body(req); return json(await opdrachten.taakHeropen(Number(b.klant), b.feedback)); }
       if (seg[1] === "opdrachten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await opdrachten.afbeelding(tid, decodeURIComponent(seg[4]));
       if (seg[1] === "opdrachten" && tid && !seg[3] && m === "PUT") return json(await opdrachten.opslaan(tid, await body(req)));
       if (seg[1] === "opdrachten" && tid && seg[3] === "afmelden" && m === "POST") return json(await opdrachten.afmelden(tid, await body(req)));
