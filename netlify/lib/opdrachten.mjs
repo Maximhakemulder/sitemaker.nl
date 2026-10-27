@@ -66,7 +66,11 @@ export async function lijst() {
   const zonder = await q(`SELECT id, company, intake_at FROM customers c WHERE onboarding AND intake_at IS NOT NULL AND site_status = 'in_aanbouw'
     AND NOT EXISTS (SELECT 1 FROM opdrachten o WHERE o.customer_id = c.id) ORDER BY intake_at`);
   return {
-    opdrachten: rows.map((o) => ({ ...publiek(o), company: o.company, intakeAt: o.intake_at, dueAt: deliveryDue(o.intake_at), site: o.site_netlify_name || "", siteUrl: o.site_url || "" })),
+    opdrachten: await Promise.all(rows.map(async (o) => {
+      const dom = await one("SELECT naam, status FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' ORDER BY id DESC LIMIT 1", [o.customer_id]);
+      return { ...publiek(o), company: o.company, intakeAt: o.intake_at, dueAt: deliveryDue(o.intake_at), site: o.site_netlify_name || "", siteUrl: o.site_url || "", repo: o.site_repo || "",
+        domein: dom ? { naam: dom.naam, status: dom.status } : null };
+    })),
     zonderOpdracht: zonder.map((c) => ({ customerId: c.id, company: c.company, intakeAt: c.intake_at, dueAt: deliveryDue(c.intake_at) })),
   };
 }
@@ -152,7 +156,7 @@ export async function voorbeeld(token, { nonce }) {
   const balk = `<style nonce="${nonce}">.sm-balk{position:relative;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;text-align:center}.sm-balk b{color:#0CC0DF}</style><div class="sm-balk"><b>Voorbeeld</b> · de nieuwe website van ${escH(o.company)}${o.status === "live" ? " (staat live)" : ", nog niet live"}</div>`;
   const html = toonOntwerp(o.html, { imgBase: `${publicBase()}/api/opdracht/${o.token}/afbeeldingen/`, bodyStart: balk, bodyEnd: `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>` });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
-    "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` } });
+    "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'` } });
 }
 
 // ---------------------------------------------------------------- live zetten

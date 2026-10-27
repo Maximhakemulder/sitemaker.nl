@@ -627,3 +627,27 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .review-kaart figcaption { font-size: 14px; color: var(--grijs); }
 .betaal-veilig { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 14px; color: var(--grijs); }
 .betaal-veilig svg { color: #146C43; flex: none; }
+/* Opdrachten: grote kaart met voorbeeld en stappen */
+.opdracht-lijst { display: grid; gap: 18px; margin-bottom: 20px; }
+.opdracht-groot { background: #fff; border: 1px solid var(--lijn, #e2e0ee); border-radius: 16px; display: grid; grid-template-columns: minmax(280px, 420px) 1fr; overflow: hidden; }
+.opdracht-groot.krap { border-color: #FF5757; }
+.og-voorbeeld { position: relative; background: var(--ijs, #E7F4FF); border-right: 1px solid var(--lijn, #e2e0ee); min-height: 260px; }
+.og-schaal { position: absolute; inset: 0; overflow: hidden; }
+.og-schaal iframe { width: 1280px; height: 1000px; border: 0; transform: scale(.33); transform-origin: 0 0; pointer-events: none; }
+.og-open { position: absolute; left: 12px; bottom: 12px; background: #1C0747; color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 700; text-decoration: none; }
+.og-leeg { display: grid; place-items: center; height: 100%; min-height: 260px; color: var(--grijs); font-weight: 600; }
+.og-info { padding: 20px 22px; display: grid; gap: 10px; align-content: start; }
+.og-kop { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; }
+.og-kop h2 { font-size: 22px; margin: 0; }
+.og-kop h2 a { text-decoration: none; }
+.og-aftel { margin: 0; font-size: 16px; } .og-aftel span { color: var(--grijs); font-size: 14px; } .og-aftel.rood b { color: #C62828; }
+.og-stappen { list-style: none; padding: 0; margin: 4px 0; display: grid; gap: 8px; }
+.og-stappen li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; color: var(--grijs); }
+.og-stappen li > b { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #F1EFF7; font-size: 13px; color: #1C0747; }
+.og-stappen li > b svg { width: 15px; height: 15px; }
+.og-stappen li.klaar > b { background: #EAF6EF; color: #146C43; }
+.og-stappen li.nu > b { background: #1C0747; color: #fff; }
+.og-stappen li.nu strong { color: #1C0747; }
+.og-stappen strong { display: block; font-size: 15px; color: #1C0747; }
+.og-stappen span { font-size: 13.5px; line-height: 1.4; }
+@media (max-width: 860px) { .opdracht-groot { grid-template-columns: 1fr; } .og-voorbeeld { border-right: 0; border-bottom: 1px solid var(--lijn, #e2e0ee); min-height: 220px; } .og-schaal iframe { transform: scale(.28); } }
