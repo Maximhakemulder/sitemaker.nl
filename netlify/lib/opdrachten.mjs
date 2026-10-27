@@ -231,7 +231,7 @@ export async function liveZetten(id, user) {
   const u = await one("SELECT email FROM users WHERE customer_id = $1 AND active ORDER BY id LIMIT 1", [c.id]);
   const aan = u?.email || c.email;
   if (aan && o.status !== "live") {
-    const regels = [`Je nieuwe website staat online${url ? `: ${url}` : ""}.`, dom && dom.status !== "actief" ? `Wil je hem op ${dom.naam}? Zet dan bij je provider de twee instellingen die in je portaal bij Account staan. Wij doen de rest en mailen je zodra het werkt.` : "", `Iets aanpassen? Geef het door in je portaal; je hebt ${OFFER.changesPerMonth} wijzigingen per maand.`].filter(Boolean);
+    const regels = [`Je nieuwe website staat online${url ? `: ${url}` : ""}.`, dom && dom.status !== "actief" ? `Wil je hem op ${dom.naam}? Zet dan bij je provider de twee instellingen die in je portaal bij Account staan. Wij doen de rest en mailen je zodra het werkt.` : "", "De komende 14 dagen is je opleverronde: geef gerust al je feedback door in je portaal, die wijzigingen tellen niet mee voor je 4 per maand.", `Iets aanpassen? Geef het door in je portaal; je hebt ${OFFER.changesPerMonth} wijzigingen per maand.`].filter(Boolean);
     await sendMail({ to: aan, kind: "site-live", ref: `customer:${c.id}`, subject: "Je nieuwe website staat online",
       text: `Beste ${c.contact_name || c.company},\n\n${regels.join("\n\n")}\n\nMet vriendelijke groet,\nSitemaker`,
       html: brandHtml({ title: "Je website staat online", intro: [`Beste ${escH(c.contact_name || c.company)},`, ...regels.map(escH)], button: url ? { label: "Bekijk je website", href: url } : { label: "Naar je portaal", href: portalUrl() } }) }).catch(() => {});

@@ -167,6 +167,12 @@ await test("gelijktijdig indienen: er tellen nooit meer dan 4 mee", async () => 
   const [{ n }] = await q("SELECT COUNT(*)::int n FROM change_requests WHERE customer_id = $1 AND counts", [c1]);
   assert.ok(n <= 4, `er tellen ${n} wijzigingen mee`);
 });
+await test("opleverronde: eerste 14 dagen na livegang tellen niet mee", async () => {
+  const { opleverronde } = await import("../netlify/lib/portal.mjs");
+  assert.ok(opleverronde({ delivered_at: new Date().toISOString().slice(0, 10) }), "net live = opleverronde");
+  assert.equal(opleverronde({ delivered_at: "2020-01-01" }), null);
+  assert.equal(opleverronde({ delivered_at: null }), null);
+});
 await test("na 4 wijzigingen is het formulier dicht tot volgende maand", async () => {
   const mk = (i) => { const f = new FormData(); f.set("description", `Volgende wijziging ${i} met genoeg tekst.`); return call("POST", "portal/changes", { cookie: k1, form: f }); };
   let st = await call("GET", "portal/state", { cookie: k1 });

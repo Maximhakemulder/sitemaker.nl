@@ -22,6 +22,14 @@ export async function freeSlot(t, customerId, month) {
   return r?.s || null;
 }
 
+// Opleverronde: de eerste 14 dagen na livegang tellen wijzigingen niet mee voor de 4 per maand (besluit Maxim, 27-10-2026).
+export const OPLEVER_DAGEN = 14;
+export function opleverronde(c) {
+  if (!c?.delivered_at) return null;
+  const eind = new Date(new Date(c.delivered_at).getTime() + OPLEVER_DAGEN * 86400000);
+  return eind > new Date() ? eind.toISOString().slice(0, 10) : null;
+}
+
 // Mag deze klant (nog) wijzigingen indienen?
 export function canSubmit(c) {
   if (c.site_status === "opgezegd" || c.billing_status === "opgezegd") return { ok: false, reason: "Je abonnement is opgezegd. Neem contact met ons op als je nog iets wilt laten aanpassen." };
@@ -63,7 +71,7 @@ export async function portalState(user) {
     user: { email: user.email, name: user.name, role: user.role, viaHq: !!user.viaHq },
     customer: publicCustomer(c),
     offer: OFFER,
-    usage, canSubmit: canSubmit(c),
+    usage, canSubmit: canSubmit(c), opleverronde: opleverronde(c),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: betaalReady(),
@@ -102,6 +110,11 @@ export async function submitChange(user, form) {
         const allowed = canSubmit(c);
         if (!allowed.ok) fail(403, allowed.reason);
         const usage = await changeUsage(c.id, month, t);
+        if (opleverronde(c)) {
+          const row = await t.one(`INSERT INTO change_requests (customer_id, user_id, page, description, month, slot, counts) VALUES ($1,$2,$3,$4,$5,NULL,FALSE) RETURNING *`,
+            [c.id, user.id, page, description, month]);
+          return { c, row, usage };
+        }
         const slot = await freeSlot(t, c.id, month);
         if (!slot) fail(409, `Je hebt deze maand al ${usage.limit} wijzigingen doorgegeven. Volgende maand kun je weer nieuwe wijzigingen indienen. Is het dringend? Neem dan contact met ons op.`);
         const row = await t.one(`INSERT INTO change_requests (customer_id, user_id, page, description, month, slot) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
