@@ -54,8 +54,8 @@ export function compose(lead, kind, s) {
   const t = s.b2b.templates[kind === "opvolging" ? "opvolging" : "eerste"];
   const subject = fillTemplate(t.subject, lead, s).slice(0, 200);
   const co = s.company;
-  const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : "", [co.address, co.postcode, co.city].filter(Boolean).join(", ")].filter(Boolean).join(" · ");
-  const footer = `\n\n--\nJe ontvangt deze mail omdat je adres openbaar op je website staat. Geen berichten meer van ons? Meld je af: ${unsubUrl(lead.id)}\n${legal}`;
+  const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : ""].filter(Boolean).join(" · ");
+  const footer = `\n\n--\nGeen berichten meer van ons? Hier afmelden: ${unsubUrl(lead.id)}\n${legal}`;
   let body = fillTemplate(t.body, lead, s).replace(/^- /gm, "• "); // opsommingen als bolletjes
   // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
   if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
@@ -75,6 +75,14 @@ export function checkTrack({ l, m, u, s }) {
   const want = trackSig(u !== undefined ? `${l}:${m}:${u}` : `${l}:${m}:o`);
   const a = Buffer.from(String(s || "")), b = Buffer.from(want);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+// Voetregel: "Hier afmelden: <url>" wordt een nette link "Hier afmelden" (nooit via de klikmeting).
+function voetHtml(voet) {
+  return voet.split("\n").map((r) => {
+    const m = r.match(/^(.*?)Hier afmelden:\s*(https?:\/\/\S+)\s*$/);
+    if (m) return `${escH(m[1])}<a href="${escH(m[2])}" style="color:#6B6585;text-decoration:underline">Hier afmelden</a>.`;
+    return escH(r);
+  }).join("<br>");
 }
 export function textToHtml(text, meet = null) {
   const linkify = (s) => escH(s).replace(/https?:\/\/[^\s<]+/g, (u) => {
@@ -97,7 +105,7 @@ ${hoofd.split(/\n\n/).map((p) => {
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
     const tekst = regels.filter((_, i) => i !== knop).join("\n");
     return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#D93636;color:#FFFFFF;font-weight:bold;text-decoration:none;padding:14px 24px;border-radius:8px">Bekijk jullie nieuwe website</a></p>`;
-  }).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${linkify(voet).replace(/\n/g, "<br>")}</p>` : ""}${pixel}</body></html>`;
+  }).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${voetHtml(voet)}</p>` : ""}${pixel}</body></html>`;
 }
 // Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
 const SCANNER = /bot|crawl|spider|preview|scanner|safelinks|barracuda|mimecast|proofpoint|curl|python|go-http|headless/i;
@@ -446,7 +454,8 @@ export async function sendTestMail(leadId, kind, aan) {
   if (!lead) fail(404, "Lead niet gevonden.");
   const mail = compose(lead, kind === "opvolging" ? "opvolging" : "eerste", s);
   // Veilig: de afmeldlink van de lead werkt niet in de test, en het concept openen telt niet als "bekeken".
-  let body = mail.body.split(unsubUrl(lead.id)).join(`${publicBase()}/ (afmeldlink van de lead, uitgeschakeld in de test)`);
+  // In de test werkt de afmeldlink wel (je ziet de echte afmeldpagina), maar hij meldt niemand af.
+  let body = mail.body.split(unsubUrl(lead.id)).join(`${publicBase()}/api/b2b/afmelden?test=1`);
   if (lead.concept_token) body = body.split(conceptUrl(lead.concept_token)).join(`${conceptUrl(lead.concept_token)}?hq=1`);
   const subject = mail.subject;
   const res = await sendMail({ to: aan, subject: `[TEST] ${subject}`, text: body, html: textToHtml(body), kind: "test-b2b", ref: `test:${leadId}`, // telt niet mee in daglimiet en statistieken
