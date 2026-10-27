@@ -17,6 +17,14 @@ var d=document,h=d.documentElement,W=window,rm=matchMedia("(prefers-reduced-moti
 function $$(s,r){return[].slice.call((r||d).querySelectorAll(s))}
 function cl(x){return x<0?0:x>1?1:x}
 var kop=d.querySelector("header");function k(){if(kop)kop.classList.toggle("is-gescrold",scrollY>8)}addEventListener("scroll",k,{passive:true});k();
+// Vaste actiebalk (mobiel) pas tonen als de bel/WhatsApp/mailknoppen op de pagina zelf uit beeld zijn, anders staat alles dubbel (besluit Maxim).
+(function(){var bal=d.querySelector(".sm-actiebalk");if(!bal||!("IntersectionObserver"in W))return;
+var kn=$$('main a[href^="tel:"],main a[href^="mailto:"],main a[href*="wa.me"],main a[href*="whatsapp"]').filter(function(a){return !bal.contains(a)&&!a.closest("header,footer,nav,.sm-balk")});
+if(!kn.length)return;var zien=[];
+if(!rm)bal.style.transition="translate .35s ease, opacity .35s ease";
+function zet(){var uit=zien.length>0;bal.style.translate=uit?"0 140%":"";bal.style.opacity=uit?"0":"";bal.style.pointerEvents=uit?"none":"";if(uit)bal.setAttribute("aria-hidden","true");else bal.removeAttribute("aria-hidden")}
+var o=new IntersectionObserver(function(es){es.forEach(function(e){var i=zien.indexOf(e.target);if(e.isIntersecting&&i<0)zien.push(e.target);if(!e.isIntersecting&&i>=0)zien.splice(i,1)});zet()},{threshold:0});
+bal.style.translate="0 140%";bal.style.opacity="0";kn.forEach(function(a){o.observe(a)});})();
 if(rm||!("IntersectionObserver"in W))return;
 h.classList.add("js");
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("is-zichtbaar");io.unobserve(e.target)}})},{rootMargin:"0px 0px -10% 0px",threshold:0});

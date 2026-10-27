@@ -112,6 +112,7 @@
       ${state.pendingFirstPayment ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p><b>Rond je eerste betaling af</b> om je abonnement te starten.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div>` : ""}
 
       ${state.opzegging ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p>Je hebt opgezegd. Je website blijft online tot en met ${datumLang(state.opzegging)}.</p><a class="knop knop-licht knop-klein" href="#account">Bekijken</a></div>` : ""}
+      ${state.reviewVraag ? html`<div class="melding melding-ok p-melding">${raw(icon.ok)}<p><b>Tevreden met je nieuwe website?</b> Laat een korte review achter, dat helpt andere ondernemers enorm.</p><a class="knop knop-actie knop-klein" href="#account/review">Review schrijven</a></div>` : ""}
       ${!state.domeinGekozen ? html`<div class="melding melding-info p-melding">${raw(icon.let)}<p><b>Op welk adres komt je website?</b> Vul je domeinnaam in, dan verbinden wij hem met je website.</p><a class="knop knop-actie knop-klein" href="#account/domein">Domein invullen</a></div>` : ""}
       ${state.start?.stage === "bouwen" ? html`<section class="paneel start-bouwen"><h2>We bouwen je website</h2><p>We hebben je informatie ontvangen. Je website staat uiterlijk <b>${datumTijd(state.start.dueAt)}</b> online; je krijgt dan een mail.</p></section>` : ""}
       <section class="site-kaart" aria-label="Je website">
