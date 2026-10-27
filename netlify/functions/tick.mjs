@@ -2,7 +2,7 @@
 // Netlify kapt geplande functies af na ongeveer 15 seconden; daarom kleine porties.
 import { withLock, one, q, env, getSettings, saveSetting } from "../lib/core.mjs";
 import { mailReady, notifyStaff } from "../lib/mail.mjs";
-import { sendBatch, scanInbox, runScout, runResearch } from "../lib/b2b.mjs";
+import { sendBatch, scanInbox, runScout, runResearch, controleerBureaus } from "../lib/b2b.mjs";
 import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
@@ -47,6 +47,7 @@ async function ronde(started) {
   }
   if (!spaar && left() > 6000) await step("scout", () => runScout());
   if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
+  if (left() > 5000) await step("webbureau", () => controleerBureaus({ max: 3, budgetMs: left() - 3000 }));
 }
 
 // Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Pay.nl, btw).
