@@ -78,6 +78,26 @@
     window.scrollTo(0, 0);
   }
 
+  // Eigen domein als dat er is, anders ons voorbeeldadres (<naam>.sitemaker.nl), pas als laatste het technische adres.
+  const siteLink = (c) => (c.siteUrl && !/\.netlify\.app/.test(c.siteUrl) ? c.siteUrl : c.previewUrl || c.siteUrl || "");
+
+  // ------------------------------------------------ stappen na livegang
+  function stappenPaneel(st, c) {
+    const fbKlaar = st.feedbackOver === 0;
+    const items = [
+      { klaar: true, titel: "Je website staat online", tekst: html`Bekijk hem rustig op je telefoon en computer.`, knop: siteLink(c) ? html`<a class="knop knop-licht knop-klein" href="${siteLink(c)}" target="_blank" rel="noopener">Bekijk je website</a>` : "" },
+      { klaar: fbKlaar, titel: "Geef je feedback (2 gratis rondes)", tekst: fbKlaar ? html`Je 2 gratis feedbackrondes zijn gebruikt. Daarna heb je elke maand ${state.usage.limit} wijzigingen.` : html`Wil je iets anders? Zet al je punten in één bericht. Deze ${st.feedbackOver === 2 ? "2 rondes tellen" : "ronde telt"} niet mee voor je ${state.usage.limit} wijzigingen per maand. Nog ${st.feedbackOver} van 2 over.`, knop: !fbKlaar && state.canSubmit.ok ? html`<a class="knop knop-actie knop-klein" href="#nieuw">Feedback geven</a>` : "" },
+      { klaar: !!st.domein?.actief, titel: "Koppel je domeinnaam", tekst: !st.domein ? html`Vul in op welk adres je website moet komen (bijv. jouwbedrijf.nl).` : st.domein.actief ? html`Je website draait op ${st.domein.naam}.` : html`Zet de 2 instellingen voor ${st.domein.naam} bij je provider. Je vindt ze bij Account.`, knop: !st.domein?.actief ? html`<a class="knop knop-actie knop-klein" href="#account/domein">${st.domein ? "Bekijk de instellingen" : "Domein invullen"}</a>` : "" },
+      { klaar: st.review, titel: "Schrijf een review", tekst: st.review ? html`Dank je wel voor je review!` : html`Tevreden? Een korte review helpt andere ondernemers enorm. Het kost je een minuut.`, knop: !st.review ? html`<a class="knop knop-licht knop-klein" href="#account/review">Review schrijven</a>` : "" },
+    ];
+    if (items.every((x) => x.klaar)) return "";
+    const n = items.filter((x) => x.klaar).length;
+    return html`<section class="paneel stappen-paneel" aria-labelledby="t-stappen">
+      <div class="paneel-kop"><h2 id="t-stappen">Nog even afronden</h2><span class="klein dempen">${n} van ${items.length} klaar</span></div>
+      <ol class="stappen-lijst">${items.map((x, i) => html`<li class="${x.klaar ? "klaar" : ""}"><span class="st-nr" aria-hidden="true">${x.klaar ? "✓" : i + 1}</span><div class="st-tekst"><b>${x.titel}</b><p>${x.tekst}</p></div>${x.knop || ""}</li>`)}</ol>
+    </section>`;
+  }
+
   // ------------------------------------------------ teller
   function teller(u) {
     const blokjes = Array.from({ length: u.limit }, (_, i) => html`<span class="${i < u.used ? "gebruikt" : ""}"></span>`);
@@ -105,21 +125,35 @@
     const openFacturen = state.invoices.filter((i) => i.status === "open" || i.status === "vervallen");
     const laatste = state.invoices[0];
     const betaald = new URLSearchParams(location.search).get("betaling");
-    const host = (c.siteUrl || "").replace(/^https?:\/\//, "");
+    // Nooit het technische adres (….netlify.app) tonen: eigen domein, ons voorbeeldadres, of de bedrijfsnaam.
+    const link = siteLink(c);
+    const host = link && !/\.netlify\.app/.test(link) ? link.replace(/^https?:\/\//, "").replace(/\/$/, "") : "";
     render(main, html`
       <h1 class="p-titel">Hallo ${c.contactName || c.company}</h1>
       ${betaald ? html`<div class="melding melding-ok">${raw(icon.ok)}<p>Bedankt! Je betaling wordt verwerkt. Zodra hij binnen is, staat de factuur hier.</p></div>` : ""}
       ${state.pendingFirstPayment ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p><b>Rond je eerste betaling af</b> om je abonnement te starten.</p><a class="knop knop-actie knop-klein" href="${state.pendingFirstPayment.url}">Betalen</a></div>` : ""}
 
       ${state.opzegging ? html`<div class="melding melding-let p-melding">${raw(icon.let)}<p>Je hebt opgezegd. Je website blijft online tot en met ${datumLang(state.opzegging)}.</p><a class="knop knop-licht knop-klein" href="#account">Bekijken</a></div>` : ""}
-      ${state.reviewVraag ? html`<div class="melding melding-ok p-melding">${raw(icon.ok)}<p><b>Tevreden met je nieuwe website?</b> Laat een korte review achter, dat helpt andere ondernemers enorm.</p><a class="knop knop-actie knop-klein" href="#account/review">Review schrijven</a></div>` : ""}
-      ${!state.domeinGekozen ? html`<div class="melding melding-info p-melding">${raw(icon.let)}<p><b>Op welk adres komt je website?</b> Vul je domeinnaam in, dan verbinden wij hem met je website.</p><a class="knop knop-actie knop-klein" href="#account/domein">Domein invullen</a></div>` : ""}
+      ${state.stappen ? stappenPaneel(state.stappen, c) : ""}
+      ${c.siteStatus === "live" ? html`<section class="paneel vraag-snel" aria-labelledby="t-vraag">
+        <div class="paneel-kop"><h2 id="t-vraag">Hulp nodig? Stel je vraag</h2></div>
+        <p class="klein dempen">Alleen voor vragen. Iets aanpassen aan je website? Gebruik ${state.stappen?.feedbackOver ? "\"Feedback geven\"" : "\"Wijziging doorgeven\""}, dan wordt het direct ingepland.</p>
+        <form id="vraag-form" novalidate>
+          <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+          <div class="veld"><label for="vq-ond">Onderwerp</label><input id="vq-ond" name="onderwerp" maxlength="160" required placeholder="Bijv. vraag over mijn factuur of domein"><div class="fout" data-fout-voor="onderwerp"></div></div>
+          <div class="veld"><label for="vq-tekst">Je vraag</label><textarea id="vq-tekst" name="tekst" rows="3" maxlength="6000" required></textarea><div class="fout" data-fout-voor="tekst"></div></div>
+          <button class="knop knop-actie" type="submit">Vraag versturen</button>
+        </form>
+        <p class="klein dempen">We reageren zo snel mogelijk. Je antwoord vind je bij <a href="#account/hulp">Account › Hulp</a> en in je mail.</p>
+      </section>` : ""}
+      ${!state.stappen && state.reviewVraag ? html`<div class="melding melding-ok p-melding">${raw(icon.ok)}<p><b>Tevreden met je nieuwe website?</b> Laat een korte review achter, dat helpt andere ondernemers enorm.</p><a class="knop knop-actie knop-klein" href="#account/review">Review schrijven</a></div>` : ""}
+      ${!state.stappen && !state.domeinGekozen ? html`<div class="melding melding-info p-melding">${raw(icon.let)}<p><b>Op welk adres komt je website?</b> Vul je domeinnaam in, dan verbinden wij hem met je website.</p><a class="knop knop-actie knop-klein" href="#account/domein">Domein invullen</a></div>` : ""}
       ${state.start?.stage === "bouwen" ? html`<section class="paneel start-bouwen"><h2>We bouwen je website</h2><p>We hebben je informatie ontvangen. Je website staat uiterlijk <b>${datumTijd(state.start.dueAt)}</b> online; je krijgt dan een mail.</p></section>` : ""}
       <section class="site-kaart" aria-label="Je website">
         <div class="site-icoon" aria-hidden="true"><img src="/assets/brand/mark.png" alt=""></div>
-        <div class="site-info"><span class="dempen klein">Je website</span><b>${host || "Nog in aanbouw"}</b></div>
+        <div class="site-info"><span class="dempen klein">Je website</span><b>${host || (c.siteStatus === "live" ? (c.siteNaam || c.company) : "Nog in aanbouw")}</b></div>
         ${label(SITE, c.siteStatus)}
-        ${c.siteUrl ? html`<a class="knop knop-licht knop-klein" href="${c.siteUrl}" target="_blank" rel="noopener">${raw(icon.open)}Bekijk</a>` : ""}
+        ${link ? html`<a class="knop knop-licht knop-klein" href="${link}" target="_blank" rel="noopener">${raw(icon.open)}Bekijk</a>` : ""}
       </section>
 
       <div class="p-raster">
@@ -154,6 +188,16 @@
         </div>
       </div>`);
     koppelFactuurKnoppen(main);
+    const vf = main.querySelector("#vraag-form");
+    vf?.addEventListener("submit", async (e) => {
+      e.preventDefault(); SM.wisFouten(vf);
+      const knop = vf.querySelector("button"); SM.bezig(knop, true, "Versturen…");
+      try {
+        await api("portal/vragen", { method: "POST", body: Object.fromEntries(new FormData(vf)) });
+        vf.reset(); toast("Je vraag is verstuurd. We reageren zo snel mogelijk.");
+      } catch (err) { SM.toonFouten(vf, err); }
+      SM.bezig(knop, false);
+    });
   }
 
   // ================================================ START: gegevens → akkoord en betalen → informatie
