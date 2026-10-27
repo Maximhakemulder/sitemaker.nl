@@ -1435,31 +1435,42 @@ ${p.body}</div>
     const open = d.opdrachten.filter((o) => o.status !== "live"), live = d.opdrachten.filter((o) => o.status === "live");
     const kaart = (o) => {
       const krap = o.dueAt && o.status !== "live" && new Date(o.dueAt).getTime() - Date.now() < 12 * 3600 * 1000;
-      return html`<article class="opdracht ${krap ? "krap" : ""}">
-        <div class="wijziging-kop"><b><a href="#klant/${o.customerId}">${o.company}</a></b>${chip(L.opdracht, o.status)}</div>
-        <p class="klein dempen">${o.opBasisVanConcept ? "Op basis van het concept dat de klant zag" : "Nieuw ontwerp"} · ${o.fotos} foto's${o.intakeAt ? ` · informatie binnen ${geleden(o.intakeAt)}` : ""}</p>
-        ${o.status !== "live" && o.dueAt ? html`<p class="aftel ${krap ? "rood" : ""}"><b>${aftellen(o.dueAt)}</b> <span class="klein dempen">online uiterlijk ${tijd(o.dueAt)}</span></p>` : ""}
-        ${o.status === "live" ? html`<p class="klein">Live sinds ${tijd(o.liveAt)}${o.siteUrl ? html` · <a href="${o.siteUrl}" target="_blank" rel="noopener">${o.siteUrl.replace(/^https?:\/\//, "")}</a>` : ""}</p>` : ""}
-        ${o.feedback && o.status !== "live" ? html`<div class="notitie"><b>Jouw feedback:</b> ${o.feedback}</div>` : ""}
-        ${o.status === "fout" && o.reden ? html`<div class="melding melding-fout"><p>${o.reden}</p></div>` : ""}
-        <div class="knoppen">
-          ${["controle", "live"].includes(o.status) ? html`<a class="knop knop-licht knop-klein" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Bekijken</a>` : ""}
-          ${o.status === "controle" ? html`<button class="knop knop-actie knop-klein" data-live="${o.id}" data-naam="${o.company}">Live zetten</button>` : ""}
-          ${["controle", "fout"].includes(o.status) ? html`<button class="knop knop-tekst knop-klein" data-opnieuw="${o.id}">${o.status === "controle" ? "Aanpassen (feedback)" : "Opnieuw laten maken"}</button>` : ""}
-          ${o.status === "live" ? html`<a class="knop knop-tekst knop-klein" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Ontwerp</a>` : ""}
+      const pad = (() => { try { return new URL(o.voorbeeldUrl).pathname; } catch { return o.voorbeeldUrl; } })();
+      const stap = (n, titel, uitleg, klaar, nu) => html`<li class="${klaar ? "klaar" : nu ? "nu" : ""}"><b>${klaar ? raw(icon.ok) : n}</b><div><strong>${titel}</strong><span>${uitleg}</span></div></li>`;
+      const ontwerpKlaar = ["controle", "live"].includes(o.status), isLive = o.status === "live", domActief = o.domein?.status === "actief";
+      return html`<article class="opdracht-groot ${krap ? "krap" : ""}">
+        <div class="og-voorbeeld">${ontwerpKlaar ? html`<div class="og-schaal"><iframe src="${pad}" title="Voorbeeld van ${o.company}" loading="lazy" tabindex="-1"></iframe></div><a class="og-open" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Open op volle grootte</a>` : html`<div class="og-leeg">${o.status === "fout" ? "Ontwerp mislukt" : "De ontwerper is bezig…"}</div>`}</div>
+        <div class="og-info">
+          <div class="og-kop"><h2><a href="#klant/${o.customerId}">${o.company}</a></h2>${chip(L.opdracht, o.status)}</div>
+          <p class="klein dempen">${o.opBasisVanConcept ? "Op basis van het concept dat de klant zag" : "Nieuw ontwerp"} · ${o.fotos} foto's${o.intakeAt ? ` · informatie binnen ${geleden(o.intakeAt)}` : ""}</p>
+          ${!isLive && o.dueAt ? html`<p class="og-aftel ${krap ? "rood" : ""}"><b>${aftellen(o.dueAt)}</b> <span>online uiterlijk ${tijd(o.dueAt)}</span></p>` : ""}
+          ${o.feedback && !isLive ? html`<div class="notitie"><b>Jouw feedback:</b> ${o.feedback}</div>` : ""}
+          ${o.status === "fout" && o.reden ? html`<div class="melding melding-fout"><p>${o.reden}</p></div>` : ""}
+          <ol class="og-stappen">
+            ${stap(1, "Ontwerp", ontwerpKlaar ? "Klaar" : "De ontwerper maakt de site", ontwerpKlaar, !ontwerpKlaar)}
+            ${stap(2, "Jij controleert", "Bekijk het voorbeeld; feedback kan", isLive, o.status === "controle")}
+            ${stap(3, "Live zetten", isLive ? html`Online${o.siteUrl ? html`: <a href="${o.siteUrl}" target="_blank" rel="noopener">${o.siteUrl.replace(/^https?:\/\//, "")}</a>` : ""}${o.repo ? html` · GitHub ${o.repo}` : ""}` : "Maakt de GitHub-repo en het Netlify-project, de klant krijgt een mail", isLive, false)}
+            ${stap(4, "Domein", o.domein ? (domActief ? html`${o.domein.naam} werkt` : html`${o.domein.naam}: klant zet de DNS bij zijn provider; HQ controleert en regelt https`) : "Klant heeft nog geen domein opgegeven (portaal › Account)", domActief, isLive && !domActief)}
+          </ol>
+          <div class="knoppen">
+            ${ontwerpKlaar ? html`<a class="knop knop-licht" href="${o.voorbeeldUrl}" target="_blank" rel="noopener">Bekijken</a>` : ""}
+            ${o.status === "controle" ? html`<button class="knop knop-actie" data-live="${o.id}" data-naam="${o.company}">Live zetten</button>` : ""}
+            ${["controle", "fout"].includes(o.status) ? html`<button class="knop knop-tekst" data-opnieuw="${o.id}">${o.status === "controle" ? "Aanpassen (feedback)" : "Opnieuw laten maken"}</button>` : ""}
+            ${isLive && o.domein && !domActief ? html`<a class="knop knop-licht" href="#domeinen">Naar Domeinen</a>` : ""}
+          </div>
         </div></article>`;
     };
     render(main, html`
       <div class="hq-kop"><div><h1>Opdrachten</h1><p>Betaalde klanten die op hun website wachten. De ontwerper maakt hun site (op basis van het concept dat ze zagen, of nieuw). Jij bekijkt hem, geeft eventueel feedback en zet hem live.</p></div></div>
       ${d.zonderOpdracht.length ? html`<section class="paneel"><h2>Informatie binnen, nog geen opdracht</h2><ul class="lijst">${d.zonderOpdracht.map((k) => html`<li class="factuur-rij"><div><a href="#klant/${k.customerId}"><b>${k.company}</b></a><br><span class="klein dempen">${aftellen(k.dueAt)}</span></div><button class="knop knop-actie knop-klein" data-start="${k.customerId}">Opdracht starten</button></li>`)}</ul></section>` : ""}
-      ${open.length ? html`<div class="opdracht-raster">${open.map(kaart)}</div>` : html`<section class="paneel"><div class="leeg"><h3>Geen openstaande opdrachten</h3><p>Zodra een klant na betalen zijn informatie aanlevert, verschijnt hij hier en gaat de ontwerper aan de slag.</p></div></section>`}
-      ${live.length ? html`<details class="paneel"><summary><b>Live gezet (${live.length})</b></summary><div class="opdracht-raster">${live.map(kaart)}</div></details>` : ""}`);
+      ${open.length ? html`<div class="opdracht-lijst">${open.map(kaart)}</div>` : html`<section class="paneel"><div class="leeg"><h3>Geen openstaande opdrachten</h3><p>Zodra een klant na betalen zijn informatie aanlevert, verschijnt hij hier en gaat de ontwerper aan de slag.</p></div></section>`}
+      ${live.length ? html`<details class="paneel"><summary><b>Live gezet (${live.length})</b></summary><div class="opdracht-lijst">${live.map(kaart)}</div></details>` : ""}`);
     main.querySelectorAll("[data-start]").forEach((b) => b.addEventListener("click", async () => {
       SM.bezig(b, true, "Starten…");
       try { await api(`hq/customers/${b.dataset.start}/opdracht`, { method: "POST" }); toast("De ontwerper pakt hem op in de volgende ronde."); opdrachten(main); } catch (e) { toast(e.message, "fout"); SM.bezig(b, false); }
     }));
     main.querySelectorAll("[data-live]").forEach((b) => b.addEventListener("click", async () => {
-      if (!(await SM.bevestig(`${b.dataset.naam} live zetten?`, "De website wordt gepubliceerd en de klant krijgt een mail dat zijn site online staat.", "Live zetten"))) return;
+      if (!(await SM.bevestig(`${b.dataset.naam} live zetten?`, "HQ maakt een eigen GitHub-repo en Netlify-project voor deze klant, publiceert de website en mailt de klant dat zijn site online staat. Daarna koppel je het domein (stap 4).", "Live zetten"))) return;
       SM.bezig(b, true, "Live zetten…");
       try { const r = await api(`hq/opdrachten/${b.dataset.live}/live`, { method: "POST" }); toast(r.url ? `Live: ${r.url}` : "Live gezet", "ok"); if (r.needsLink) toast("Koppel de repo nog even met de hand aan het Netlify-project.", "fout"); opdrachten(main); }
       catch (e) { toast(e.message, "fout"); SM.bezig(b, false); }
