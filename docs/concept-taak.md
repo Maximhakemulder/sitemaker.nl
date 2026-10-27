@@ -79,7 +79,19 @@ Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
    - Is het high-end: rust, witruimte, uitlijning, grote typografie, niets rommeligs of half af?
    - Is er een laadmoment en één pronkstuk met beweging uit hun vak? Werkt het pronkstuk echt (screenshot "midden")?
    - Navigatie: een horizontale kop bovenaan, ook op desktop. Nooit een verticale menubalk aan de zijkant of gedraaide tekst (besluit Maxim).
-   - Mobiel: geen horizontaal scrollen, niets te klein of te groot, knoppen duimvriendelijk, actiebalk onderaan.
+   - **Mobiel telt even zwaar als desktop** (besluit Maxim; de meeste bezoekers komen op hun telefoon). Bekijk de 390-screenshots
+     eerst en net zo streng:
+     - geen horizontaal scrollen; niets dat over elkaar valt of half buiten beeld staat;
+     - knoppen altijd op één regel (`white-space:nowrap`); past de tekst niet, gebruik op mobiel een kortere tekst
+       (bijv. "Bel ons" in plaats van het hele nummer, "Vacature" in plaats van "Chauffeurs gezocht");
+     - kop: logo + maximaal twee knoppen passen naast elkaar op 360 px, niets wordt twee regels;
+     - twee knoppen in de hero of het contactblok naast elkaar (raster 1fr 1fr), niet onder elkaar met lege ruimte;
+     - geen onnodige ruimte: hero compact (geen min-height van een heel scherm), secties niet te veel padding;
+     - alles netjes uitgelijnd in vakken met dezelfde marges (20 px links/rechts), kaarten even breed;
+     - tekst leesbaar (min. 16 px lopende tekst), koppen niet zo groot dat één woord per regel overblijft;
+     - formulieren: velden onder elkaar, korte velden (ja/nee) naast elkaar;
+     - de vaste actiebalk onderaan (± 84 px) mag niets belangrijks afdekken, en de voorbeeldbalk bovenin ook niet;
+     - bewegende elementen (`position:absolute`) nooit over tekst of knoppen.
    - Desktop: hero niet hoger dan één scherm, geen gigantische beelden, geen lege gaten.
    - Contrast overal goed (geen donker op donker, geen licht op licht), passende foto's, geen verzonnen feiten.
    - **Geen lege vlakken**: het rapport moet op elke breedte "geen lege vlakken" zeggen, ook op 1920 en 2560. Bekijk ook
