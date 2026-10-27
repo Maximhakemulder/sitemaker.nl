@@ -53,9 +53,8 @@ export function compose(lead, kind, s) {
   if (kind !== "opvolging" && lead.concept_status === "klaar") lead = { ...lead, concept_expires: new Date(Date.now() + conceptDagen(s) * 86400000).toISOString() };
   const t = s.b2b.templates[kind === "opvolging" ? "opvolging" : "eerste"];
   const subject = fillTemplate(t.subject, lead, s).slice(0, 200);
-  const co = s.company;
-  const legal = [co.legalName || co.name, co.kvk ? `KvK ${co.kvk}` : ""].filter(Boolean).join(" · ");
-  const footer = `\n\n--\nGeen berichten meer van ons? Hier afmelden: ${unsubUrl(lead.id)}\n${legal}`;
+  // Besluit Maxim (27-10-2026): geen bedrijfsnaam/KvK meer onder de mail, alleen de afmeldregel.
+  const footer = `\n\n--\nGeen berichten meer van ons? Hier afmelden: ${unsubUrl(lead.id)}`;
   let body = fillTemplate(t.body, lead, s).replace(/^- /gm, "• "); // opsommingen als bolletjes
   // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
   if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
