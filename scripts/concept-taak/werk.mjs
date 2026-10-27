@@ -51,11 +51,12 @@ try {
     if (!d.concepten.length) console.log("Geen concepten die op een ontwerp wachten.");
   } else if (cmd === "opdracht-claim") {
     // Opdrachten (betaalde klanten) gaan altijd voor. Map: $CONCEPT_WERK/opdracht-<id>/
-    const d = await api("POST", "opdrachten/claim", { max: Number(args[0] || 3) });
+    const d = await api("POST", "opdrachten/claim", /^#\d+$/.test(args[0] || "") ? { id: Number(args[0].slice(1)) } : { max: Number(args[0] || 3) });
     for (const o of d.opdrachten) {
       const m = `opdracht-${o.id}`;
       schrijf(dir(m, "opdracht.json"), JSON.stringify(o, null, 1));
       for (const a of o.afbeeldingen) schrijf(dir(m, "afbeeldingen", a.naam), await api("GET", `opdrachten/${o.id}/afbeeldingen/${encodeURIComponent(a.naam)}`, null, { raw: true }));
+      for (const [n, h] of Object.entries(o.vorigeVersie?.paginas || {})) schrijf(dir(m, "paginas", n), h);
       const i = o.intake || {};
       const regels = Object.entries(i).filter(([k, v]) => v && k !== "voorIngevuld").map(([k, v]) => `- **${k}**: ${String(v).replace(/\n/g, "\n  ")}`).join("\n");
       schrijf(dir(m, "informatie-klant.md"), `# Informatie van ${o.bedrijf.naam} (bindend)\n\nKlantgegevens: ${[o.bedrijf.contactpersoon, o.bedrijf.email, o.bedrijf.telefoon, o.bedrijf.adres].filter(Boolean).join(" · ")}\n\n${regels}\n${o.feedback ? `\n## Feedback van Maxim op de vorige versie (verwerken!)\n${o.feedback}\n` : ""}`);
@@ -76,8 +77,15 @@ try {
     const [id] = args, m = `opdracht-${id}`;
     const content = JSON.parse(fs.readFileSync(dir(m, "content.json"), "utf8"));
     const html = fs.readFileSync(dir(m, "index.html"), "utf8");
-    const d = await api("PUT", `opdrachten/${id}`, { content, html });
+    const paginas = {};
+    if (fs.existsSync(dir(m, "paginas"))) for (const f of fs.readdirSync(dir(m, "paginas"))) if (f.endsWith(".html")) paginas[f] = fs.readFileSync(dir(m, "paginas", f), "utf8");
+    const d = await api("PUT", `opdrachten/${id}`, { content, html, paginas });
     console.log(`Opgeslagen: ${d.url}\nControleer nu: node scripts/concept-taak/controle.mjs ${d.url}`);
+  } else if (cmd === "opdracht-heropen") {
+    // Feedback van Maxim via de chat: opdracht van klant <klantId> terug naar wacht, daarna: opdracht-claim #<id>
+    const [klant, ...fb] = args;
+    const d = await api("POST", "opdrachten/heropen", { klant: Number(klant), feedback: fb.join(" ") });
+    console.log(`Opdracht #${d.id} wacht weer. Pak hem op met: werk.mjs opdracht-claim #${d.id}`);
   } else if (cmd === "opdracht-afmelden") {
     const [id, reden] = args;
     await api("POST", `opdrachten/${id}/afmelden`, { reden });

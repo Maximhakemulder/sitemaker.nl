@@ -84,10 +84,25 @@ export async function opnieuw(id, feedback, user) {
   return publiek(o);
 }
 
+// Taak: opdracht van een klant zelf weer oppakken (feedback van Maxim via de chat). Status → ontwerpen.
+export async function taakHeropen(customerId, feedback) {
+  const o = await one("SELECT * FROM opdrachten WHERE customer_id = $1 ORDER BY id DESC LIMIT 1", [customerId]);
+  if (!o) fail(404, "Geen opdracht voor deze klant.");
+  if (o.status === "live") fail(409, "Deze opdracht staat al live.");
+  await q("UPDATE opdrachten SET status = 'wacht', feedback = COALESCE(NULLIF($2, ''), feedback), updated_at = NOW() WHERE id = $1", [o.id, str(feedback, 3000)]);
+  return { ok: true, id: o.id };
+}
+export async function claimEen(id) {
+  const r = await one("UPDATE opdrachten SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW() WHERE id = $1 AND status = 'wacht' RETURNING id", [id]);
+  if (!r) fail(409, "Deze opdracht wacht niet.");
+  return r;
+}
+
 // ---------------------------------------------------------------- voor de ontwerper (taak-API)
-export async function claimOpdrachten(max = 3) {
+export async function claimOpdrachten(max = 3, id = 0) {
+  if (id) await claimEen(id);
   await q("UPDATE opdrachten SET status = 'wacht', updated_at = NOW() WHERE status = 'ontwerpen' AND taak_at < NOW() - INTERVAL '3 hours'");
-  const rows = await q(`UPDATE opdrachten SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
+  const rows = id ? await q("SELECT * FROM opdrachten WHERE id = $1", [id]) : await q(`UPDATE opdrachten SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
     WHERE id IN (SELECT id FROM opdrachten WHERE status = 'wacht' ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED) RETURNING *`, [Math.min(5, Math.max(1, Number(max) || 3))]);
   const out = [];
   const recent = (await q("SELECT bron->'dna' AS dna FROM concepts WHERE bron ? 'dna' ORDER BY COALESCE(taak_at, updated_at) DESC LIMIT 12")).map((r) => r.dna);
@@ -104,7 +119,7 @@ export async function claimOpdrachten(max = 3) {
       basis: concept ? "concept" : "nieuw",
       concept: concept ? { html: concept.html || "", content: concept.content || {}, bron: { url: concept.bron?.url || "", tekst: concept.bron?.tekst || "" } } : null,
       ontwerpDNA: concept ? "" : dnaTekst(dna),
-      vorigeVersie: o.html ? { html: o.html, content: o.content } : null,
+      vorigeVersie: o.html ? { html: o.html, content: o.content, paginas: o.paginas || {} } : null,
       afbeeldingen: (o.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: i.logo, alt: i.alt, sfeerbeeld: i.stock, van: i.bron })),
     });
   }
@@ -124,7 +139,9 @@ export async function afbeelding(id, naam, { token = "" } = {}) {
   return new Response(buf, { headers: { "content-type": i.type, "cache-control": "private, max-age=300", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox" } });
 }
 
-export async function opslaan(id, { content, html }) {
+// Toegestane extra pagina's (naam → bestand op de site).
+export const PAGINAS = ["algemene-voorwaarden.html", "privacy.html"];
+export async function opslaan(id, { content, html, paginas }) {
   const o = await eigen(id);
   if (o.status !== "ontwerpen") fail(409, `Opdracht staat op '${o.status}', niet op ontwerpen.`);
   const c = await one("SELECT * FROM customers WHERE id = $1", [o.customer_id]);
@@ -139,7 +156,14 @@ export async function opslaan(id, { content, html }) {
   if (!h || h.length < 4000) fail(400, "Het ontwerp is geen geldig of volledig HTML-document (of bevatte <script>/javascript:).");
   const fouten = feitencheck(h, { ...schoon, extraTekst: bronTekst });
   if (fouten.length) fail(400, `Feitencontrole: ${fouten.slice(0, 6).join(", ")}. Haal dit weg of neem het exact over uit wat de klant aanleverde.`);
-  await q("UPDATE opdrachten SET status = 'controle', html = $2, content = $3, klaar_at = NOW(), reden = '', updated_at = NOW() WHERE id = $1", [id, h, JSON.stringify(schoon)]);
+  const extra = {};
+  for (const [naam, inhoud] of Object.entries(paginas || {})) {
+    if (!PAGINAS.includes(naam)) fail(400, `Onbekende pagina ${naam} (toegestaan: ${PAGINAS.join(", ")}).`);
+    const p = sanitize(String(inhoud || ""), { imgBase: "afbeeldingen/", namen });
+    if (!p || p.length < 1500) fail(400, `Pagina ${naam} is geen geldig HTML-document.`);
+    extra[naam] = p;
+  }
+  await q("UPDATE opdrachten SET status = 'controle', html = $2, content = $3, paginas = $4, klaar_at = NOW(), reden = '', updated_at = NOW() WHERE id = $1", [id, h, JSON.stringify(schoon), JSON.stringify(extra)]);
   await notifyStaff(`Website klaar om te controleren: ${c.company}`, [`De ontwerper heeft de website van ${c.company} gemaakt${o.concept_id ? " (op basis van het concept)" : ""}.`, `Bekijk hem op mobiel en desktop en zet hem live in HQ › Opdrachten.`, `Uiterlijk online: ${new Date(deliveryDue(c.intake_at) || Date.now()).toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}.`], "/hq/#opdrachten").catch(() => {});
   return { ok: true, url: `${publicBase()}/api/opdracht/${o.token}` };
 }
@@ -150,11 +174,20 @@ export async function afmelden(id, { reden }) {
 }
 
 // ---------------------------------------------------------------- voorbeeld (Maxim, en eventueel de klant)
+export async function voorbeeldPagina(token, naam, { nonce }) {
+  const o = await one("SELECT * FROM opdrachten WHERE token = $1", [token]);
+  const p = PAGINAS.includes(naam) && o?.paginas?.[naam];
+  if (!p) return new Response("Niet gevonden", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+  const html = toonOntwerp(p, { imgBase: `${publicBase()}/api/opdracht/${o.token}/afbeeldingen/`, bodyStart: "", bodyEnd: `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>` })
+    .replace(/href="\/(algemene-voorwaarden|privacy)\.html"/g, (m, n) => `href="${publicBase()}/api/opdracht/${o.token}/pagina/${n}.html"`).replace(/href="\/(#[^"]*)?"/g, (m, h) => `href="${publicBase()}/api/opdracht/${o.token}${h || ""}"`);
+  return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
+    "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'` } });
+}
 export async function voorbeeld(token, { nonce }) {
   const o = await one("SELECT o.*, c.company FROM opdrachten o JOIN customers c ON c.id = o.customer_id WHERE o.token = $1", [token]);
   if (!o?.html) return new Response("Deze website is nog niet klaar.", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
   const balk = `<style nonce="${nonce}">.sm-balk{position:relative;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;text-align:center}.sm-balk b{color:#0CC0DF}</style><div class="sm-balk"><b>Voorbeeld</b> · de nieuwe website van ${escH(o.company)}${o.status === "live" ? " (staat live)" : ", nog niet live"}</div>`;
-  const html = toonOntwerp(o.html, { imgBase: `${publicBase()}/api/opdracht/${o.token}/afbeeldingen/`, bodyStart: balk, bodyEnd: `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>` });
+  const html = toonOntwerp(o.html.replace(/href="\/(algemene-voorwaarden|privacy)\.html"/g, (m, n) => `href="${publicBase()}/api/opdracht/${o.token}/pagina/${n}.html"`), { imgBase: `${publicBase()}/api/opdracht/${o.token}/afbeeldingen/`, bodyStart: balk, bodyEnd: `<script nonce="${nonce}">${ONTWERP_SCRIPT}</script><script nonce="${nonce}">${BEWEGING}</script>` });
   return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow", "referrer-policy": "no-referrer",
     "content-security-policy": `default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline' https://fonts.bunny.net; font-src https://fonts.bunny.net; script-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'` } });
 }
@@ -168,8 +201,9 @@ export async function siteBestanden(o) {
     { path: "beweging.js", content: `${ONTWERP_SCRIPT}\n${BEWEGING}\n` },
     { path: "sprite.svg", content: sprite() },
     { path: "vangnet.css", content: VANGNET_CSS },
+    ...Object.entries(o.paginas || {}).filter(([n]) => PAGINAS.includes(n)).map(([n, h]) => ({ path: n, content: h })),
   ];
-  const gebruikt = new Set([...(o.html.match(/afbeeldingen\/[\w.\-]+/g) || []), ...(JSON.stringify(o.content || {}).match(/afbeeldingen\/[\w.\-]+/g) || [])]);
+  const gebruikt = new Set([...((o.html + Object.values(o.paginas || {}).join("")).match(/afbeeldingen\/[\w.\-]+/g) || []), ...(JSON.stringify(o.content || {}).match(/afbeeldingen\/[\w.\-]+/g) || [])]);
   for (const i of o.images || []) {
     if (!gebruikt.has(`afbeeldingen/${i.name}`)) continue;
     const buf = await getFile(i.key);
