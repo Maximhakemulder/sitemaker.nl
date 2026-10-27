@@ -564,6 +564,7 @@ export async function saveAdminSettings(b, user) {
     await saveSetting("b2b", {
       senderName: str(x.senderName ?? cur.senderName, 80),
       dailyMax: Math.min(200, Math.max(0, Number(x.dailyMax ?? cur.dailyMax) || 0)),
+      perUur: Math.min(50, Math.max(0, Number(x.perUur ?? cur.perUur) || 0)),
       followupDays: Math.min(30, Math.max(2, Number(x.followupDays ?? cur.followupDays) || 5)),
       sendHours: Array.isArray(x.sendHours) && x.sendHours.length === 2 ? x.sendHours.map((h) => Math.min(23, Math.max(0, Number(h) || 0))) : cur.sendHours,
       scout: { active: x.scout?.active ?? cur.scout.active, perDay: Math.min(100, Math.max(5, Number(x.scout?.perDay ?? cur.scout.perDay) || 20)),

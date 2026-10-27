@@ -118,6 +118,14 @@ export async function recordTrack({ l, m, u, ua = "" }) {
   return true;
 }
 
+// Mails per uur: vast getal, of automatisch de daglimiet gelijk verdeeld over de verzenduren.
+export function perUurVan(b2b) {
+  const [van, tot] = b2b.sendHours || [8, 17];
+  const vast = Number(b2b.perUur || 0);
+  if (vast > 0) return vast;
+  return Math.max(1, Math.ceil(Number(b2b.dailyMax || 40) / Math.max(1, tot - van)));
+}
+
 // ---------------------------------------------------------------- versturen (vanuit tick)
 export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   if (!mailReady()) return { skipped: "mail" };
@@ -129,6 +137,9 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   const [{ n: today }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   let room = Math.max(0, Number(s.b2b.dailyMax || 40) - today);
   if (!room) return { skipped: "daglimiet" };
+  const [{ n: ditUur }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('hour', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  room = Math.min(room, Math.max(0, perUurVan(s.b2b) - ditUur));
+  if (!room) return { skipped: "uurlimiet" };
   const started = Date.now();
   // Een eerste mail gaat alleen uit met een klare voorbeeldwebsite (besluit Maxim). Lukt het concept niet, dan gaat de lead terug.
   await q(`UPDATE leads l SET status = CASE WHEN c.status = 'overgeslagen' THEN 'overgeslagen' ELSE 'nieuw' END,
