@@ -96,6 +96,9 @@ try {
     schrijf(dir(id, "bron.json"), JSON.stringify(bron, null, 1));
     fs.rmSync(dir(id, "kandidaten"), { recursive: true, force: true });
     console.log(d.toegevoegd.map((t) => `+ ${t.naam} (${t.w}x${t.h}) ${t.alt}`).join("\n") || "Niets toegevoegd.");
+  } else if (cmd === "heropen") {
+    // node werk.mjs heropen <id> — klaar concept terug naar 'ontwerpen' (de map in /tmp/concepten blijft je werkmap)
+    console.log(JSON.stringify(await api("POST", `concepten/${args[0]}/heropen`, {})));
   } else if (cmd === "eigen") {
     // node werk.mjs eigen <id> <url> [logo] — logo of foto van hun eigen site/CDN ophalen (bijv. Wix-sites)
     const [id, url, soort] = args;

@@ -161,6 +161,14 @@ export async function opslaan(id, { content, html }) {
   return { ok: true, url: `${conceptUrl(c.token)}?hq=1`, waarschuwingen: kleurcheck(h, [schoon.kleuren?.primair, schoon.kleuren?.accent].filter(Boolean)) };
 }
 
+// Een klaar concept terugzetten naar 'ontwerpen' voor een correctie (bijv. feedback van Maxim). Afbeeldingen en DNA blijven.
+export async function heropen(id) {
+  const c = await one("UPDATE concepts SET status = 'ontwerpen', taak_at = NOW(), updated_at = NOW() WHERE id = $1 AND status = 'klaar' RETURNING id", [id]);
+  if (!c) fail(409, "Alleen een klaar concept kan worden heropend.");
+  await audit(null, "concept_heropend", "concept", id, {});
+  return { ok: true };
+}
+
 // Niet geschikt (webshop, te weinig info) of mislukt.
 export async function afmelden(id, { reden, overslaan }) {
   await eigen(id, ["ontwerpen", "ontwerp"]);
