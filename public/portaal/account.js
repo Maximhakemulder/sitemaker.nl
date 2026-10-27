@@ -41,17 +41,18 @@
     if (!d) {
       vak.hidden = false;
       render(vak, html`
-        <div class="paneel-kop"><h2 id="t-domein">Domeinnaam</h2></div>
-        <p>Op welk adres moet je website komen? Je domeinnaam blijft van jou en bij je eigen provider; wij verbinden hem met je website. Je e-mail blijft gewoon werken.</p>
-        <form id="dom-form" novalidate>
+        <div class="paneel-kop"><h2 id="t-domein">Je domeinnaam</h2></div>
+        <ol class="dom-stappen">
+          <li><b>Vul hieronder je domeinnaam in</b> (bijv. jouwbedrijf.nl).</li>
+          <li><b>Staat je website live?</b> Dan zie je hier 2 instellingen, en je krijgt ze ook per mail.</li>
+          <li><b>Zet die 2 instellingen bij je provider</b>, of vraag je provider dat te doen. Wij doen de rest; je e-mail blijft gewoon werken.</li>
+        </ol>
+        <form id="dom-form" class="dom-form" novalidate>
           <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-          <div class="rij2">
-            <div class="veld"><label for="dom-naam">Je domeinnaam</label><input id="dom-naam" name="naam" placeholder="jouwbedrijf.nl" autocomplete="off" required value="${acc.domein.suggestie || ""}"><div class="fout" data-fout-voor="naam"></div></div>
-            <div class="veld"><label for="dom-prov">Bij welke provider staat hij? <span class="opt">(optioneel)</span></label><input id="dom-prov" name="provider" placeholder="bijv. TransIP, Hostnet, Strato"></div>
-          </div>
-          <div class="knoppen"><button class="knop knop-actie" type="submit">Opslaan</button></div>
-        </form>
-        <p class="klein dempen">Heb je nog geen domeinnaam? Koop hem zelf bij een provider en vul hem daarna hier in.</p>`);
+          <div class="veld"><label for="dom-naam">Domeinnaam</label><input id="dom-naam" name="naam" placeholder="jouwbedrijf.nl" autocomplete="off" required value="${acc.domein.suggestie || ""}"><div class="fout" data-fout-voor="naam"></div></div>
+          <div class="veld"><label for="dom-prov">Provider <span class="opt">(optioneel)</span></label><input id="dom-prov" name="provider" placeholder="Bijv. TransIP, Hostnet of Strato"><div class="hulp">Waar je je domeinnaam hebt gekocht.</div></div>
+          <button class="knop knop-actie" type="submit">Domeinnaam opslaan</button>
+        </form>`);
       const form = vak.querySelector("#dom-form");
       form.addEventListener("submit", async (e) => {
         e.preventDefault(); SM.wisFouten(form);

@@ -22,12 +22,13 @@ export async function freeSlot(t, customerId, month) {
   return r?.s || null;
 }
 
-// Opleverronde: de eerste 14 dagen na livegang tellen wijzigingen niet mee voor de 4 per maand (besluit Maxim, 27-10-2026).
-export const OPLEVER_DAGEN = 14;
-export function opleverronde(c) {
-  if (!c?.delivered_at) return null;
-  const eind = new Date(new Date(c.delivered_at).getTime() + OPLEVER_DAGEN * 86400000);
-  return eind > new Date() ? eind.toISOString().slice(0, 10) : null;
+// Feedbackrondes: na livegang tellen de eerste 2 wijzigingen niet mee voor de 4 per maand (besluit Maxim, 27-10-2026).
+export const FEEDBACK_RONDES = 2;
+export async function feedbackRondes(c, t = null) {
+  if (!c?.delivered_at) return 0;
+  const run = t || { one };
+  const r = await run.one("SELECT COUNT(*)::int AS n FROM change_requests WHERE customer_id = $1 AND oplever", [c.id]);
+  return Math.max(0, FEEDBACK_RONDES - (r?.n || 0));
 }
 
 // Mag deze klant (nog) wijzigingen indienen?
@@ -71,7 +72,7 @@ export async function portalState(user) {
     user: { email: user.email, name: user.name, role: user.role, viaHq: !!user.viaHq },
     customer: publicCustomer(c),
     offer: OFFER,
-    usage, canSubmit: canSubmit(c), opleverronde: opleverronde(c),
+    usage, canSubmit: canSubmit(c), feedbackRondes: await feedbackRondes(c),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: betaalReady(),
@@ -110,8 +111,8 @@ export async function submitChange(user, form) {
         const allowed = canSubmit(c);
         if (!allowed.ok) fail(403, allowed.reason);
         const usage = await changeUsage(c.id, month, t);
-        if (opleverronde(c)) {
-          const row = await t.one(`INSERT INTO change_requests (customer_id, user_id, page, description, month, slot, counts) VALUES ($1,$2,$3,$4,$5,NULL,FALSE) RETURNING *`,
+        if (await feedbackRondes(c, t)) {
+          const row = await t.one(`INSERT INTO change_requests (customer_id, user_id, page, description, month, slot, counts, oplever) VALUES ($1,$2,$3,$4,$5,NULL,FALSE,TRUE) RETURNING *`,
             [c.id, user.id, page, description, month]);
           return { c, row, usage };
         }
