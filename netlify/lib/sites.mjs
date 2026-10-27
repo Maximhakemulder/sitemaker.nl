@@ -330,7 +330,7 @@ export async function koppelTest(user) {
   const stappen = [];
   const stap = (naam, ok, info = "") => { stappen.push({ naam, ok, info }); return ok; };
   if (!stap("GitHub-sleutels ingevuld", githubReady(), githubReady() ? `organisatie ${env("GITHUB_ORG")}` : "GITHUB_TOKEN of GITHUB_ORG ontbreekt")) return { ok: false, stappen };
-  if (!stap("Netlify-sleutels ingevuld", netlifyReady(), netlifyReady() ? `team ${env("NETLIFY_ACCOUNT_SLUG")}` : "NETLIFY_API_TOKEN of NETLIFY_ACCOUNT_SLUG ontbreekt")) return { ok: false, stappen };
+  if (!stap("Netlify-sleutels ingevuld", netlifyReady(), netlifyReady() ? `team ${env("NETLIFY_KLANTEN_SLUG") || env("NETLIFY_ACCOUNT_SLUG")}` : "NETLIFY_API_TOKEN of NETLIFY_ACCOUNT_SLUG ontbreekt")) return { ok: false, stappen };
   const naam = `sitemaker-koppeltest-${crypto.randomBytes(3).toString("hex")}`;
   let repo = null, site = null;
   try {
