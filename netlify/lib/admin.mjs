@@ -447,6 +447,16 @@ export async function listLeads({ status } = {}) {
   };
 }
 
+// Snel zoeken (bijv. iemand reageert boos): op domein, e-mail of bedrijfsnaam.
+export async function zoekLeads(zoek) {
+  const t = str(zoek, 120).toLowerCase().trim().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (t.length < 3) return { leads: [] };
+  const rows = await q(`SELECT l.id, l.company, l.email, l.website, l.city, l.status, c.status AS concept_status FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id
+    WHERE lower(l.domain) LIKE $1 OR lower(l.website) LIKE $1 OR lower(COALESCE(l.email,'')) LIKE $1 OR lower(l.company) LIKE $1
+    ORDER BY (lower(l.domain) = $2 OR lower(COALESCE(l.email,'')) = $2) DESC, l.updated_at DESC LIMIT 10`, [`%${t}%`, t]);
+  return { leads: rows };
+}
+
 export async function leadAction(b, user) {
   const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).map(Number).filter(Boolean).slice(0, 500);
   if (!ids.length) fail(400, "Selecteer minimaal één lead.");

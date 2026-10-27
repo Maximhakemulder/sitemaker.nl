@@ -93,7 +93,7 @@ export function textToHtml(text, meet = null) {
   // Visitekaartje van Maxim tussen de mail en de wettelijke voetregel.
   const [hoofd, ...rest] = text.split(/\n\n--\n/);
   const voet = rest.join("\n\n--\n");
-  const kaart = `<p style="margin:18px 0 18px"><a href="${escH(publicBase())}" style="text-decoration:none"><img src="${escH(publicBase())}/assets/brand/maxim-visitekaart.png?v=2" width="520" height="260" alt="Maxim, websiteadviseur bij Sitemaker · +31 6 19 92 12 22 · www.sitemaker.nl · hallo@sitemaker.nl" style="display:block;border:0;width:100%;max-width:520px;height:auto;border-radius:10px"></a></p>`;
+  const kaart = `<p style="margin:18px 0 18px"><a href="${escH(publicBase())}" style="text-decoration:none"><img src="${escH(publicBase())}/assets/brand/maxim-visitekaart.png?v=3" width="520" height="260" alt="Maxim, websiteadviseur bij Sitemaker · +31 6 19 92 12 22 · www.sitemaker.nl · hallo@sitemaker.nl" style="display:block;border:0;width:100%;max-width:520px;height:auto;border-radius:10px"></a></p>`;
   return `<!doctype html><html lang="nl"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:21px;color:#1C0747">
 ${hoofd.split(/\n\n/).map((p) => {
     // Een regel met alleen de link naar de voorbeeldwebsite wordt een duidelijke knop.

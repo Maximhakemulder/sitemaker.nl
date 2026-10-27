@@ -1116,7 +1116,7 @@
     const opvolgKlaar = d.followupDue.length;
     render(main, html`
       <div class="hq-kop"><div><h1>B2B</h1><p>Bedrijven benaderen per mail. Niets gaat de deur uit zonder jouw goedkeuring; afmelden kan altijd met één klik. Vandaag verstuurd: ${d.sentToday} van max. ${d.dailyMax}.</p></div>
-        <div class="knoppen"><button class="knop knop-actie" id="lead-nieuw">Lead toevoegen</button><button class="knop knop-licht" id="lead-import">CSV importeren</button>${d.ready.scout ? html`<button class="knop knop-licht" id="scout">Scout nu zoeken</button>` : ""}</div></div>
+        <div class="knoppen"><button class="knop knop-gevaar" id="offline" title="Iemand wil het niet: concept direct offline en nooit meer mailen">Direct offline</button><button class="knop knop-actie" id="lead-nieuw">Lead toevoegen</button><button class="knop knop-licht" id="lead-import">CSV importeren</button>${d.ready.scout ? html`<button class="knop knop-licht" id="scout">Scout nu zoeken</button>` : ""}</div></div>
       ${b2bTabs("leads", n("nieuw"))}
       ${!d.ready.mail ? html`<div class="melding melding-let">${raw(icon.let)}<p>Mail is nog niet ingesteld (MAIL_USER/MAIL_PASSWORD). Goedgekeurde mails blijven in de wachtrij tot dat geregeld is.</p></div>` : ""}
       ${!d.ready.company ? html`<div class="melding melding-let">${raw(icon.let)}<p>Vul bij <a href="#instellingen">Instellingen</a> je bedrijfsnaam en KvK-nummer in; die staan verplicht onder elke zakelijke mail.</p></div>` : ""}
@@ -1140,6 +1140,7 @@
 
     main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", async () => { leadFilter = b.dataset.f; await b2bLeads(main); zetBalk(main, "b2b"); }));
     main.querySelector("#lead-nieuw").onclick = () => leadToevoegen();
+    main.querySelector("#offline").onclick = () => offlineDialoog();
     main.querySelector("#lead-import").onclick = () => leadImport();
     main.querySelector("#scout")?.addEventListener("click", async (e) => { SM.bezig(e.target, true, "Zoeken…"); try { await api("hq/scout", { method: "POST" }); toast("Zoekopdrachten gestart; resultaten komen binnen het uur binnen."); } catch (err) { toast(err.message, "fout"); } SM.bezig(e.target, false); });
     main.querySelector("#opvolgen")?.addEventListener("click", async () => {
@@ -1163,6 +1164,33 @@
     if (!c) return l.website ? html`<span class="klein dempen">Nog niet</span>` : html`<span class="klein dempen">Geen website</span>`;
     if (c.status !== "klaar") return html`${chip(L.concept, c.status)}${c.reden ? html`<br><span class="klein dempen">${c.reden}</span>` : ""}`;
     return html`<a class="klein" href="${c.url}?hq=1" target="_blank" rel="noopener">Bekijken</a>${c.views ? html`<br><span class="status s-fout">${c.views}× bekeken</span>` : html`<br><span class="klein dempen">Nog niet geopend</span>`}`;
+  }
+
+  // Iemand reageert boos of wil het niet: zoek de lead en haal het voorbeeld direct offline (en nooit meer mailen).
+  function offlineDialoog() {
+    const dlg = SM.dialoog("Direct offline halen", html`<form novalidate>
+      <div class="veld"><label for="off-q">Domein, e-mailadres of bedrijfsnaam</label><input id="off-q" name="q" autocomplete="off" placeholder="bijv. fysiokilic.nl"></div>
+      <div id="off-lijst" class="klein dempen">Typ minstens 3 tekens.</div></form>`);
+    const inp = dlg.querySelector("#off-q"), lijst = dlg.querySelector("#off-lijst");
+    let timer;
+    const zoek = async () => {
+      const v = inp.value.trim();
+      if (v.length < 3) { lijst.textContent = "Typ minstens 3 tekens."; return; }
+      try {
+        const r = await api("hq/leads/zoek?q=" + encodeURIComponent(v));
+        if (!r.leads.length) { lijst.textContent = "Niets gevonden."; return; }
+        render(lijst, html`<ul class="offline-lijst">${r.leads.map((l) => html`<li><div><b>${l.company}</b><br><span class="klein dempen">${l.website || ""}${l.email ? ` · ${l.email}` : ""}${l.status === "afgemeld" ? " · al afgemeld" : ""}</span></div>
+          <button class="knop knop-gevaar knop-klein" type="button" data-id="${l.id}" data-naam="${l.company}">${l.status === "afgemeld" ? "Nogmaals offline" : "Offline halen"}</button></li>`)}</ul>`);
+      } catch (e) { lijst.textContent = e.message; }
+    };
+    inp.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(zoek, 250); });
+    dlg.querySelector("form").addEventListener("submit", (e) => { e.preventDefault(); zoek(); });
+    lijst.addEventListener("click", async (e) => {
+      const b = e.target.closest("button[data-id]"); if (!b) return;
+      if (!(await SM.bevestig("Direct offline halen?", `Het voorbeeld van ${b.dataset.naam} gaat meteen offline en ze krijgen nooit meer een mail van ons.`, "Offline halen"))) return;
+      try { await api("hq/leads/action", { method: "POST", body: { action: "afmelden", ids: [Number(b.dataset.id)] } }); toast("Offline gehaald en afgemeld"); dlg.close(); herlaad(); } catch (err) { toast(err.message, "fout"); }
+    });
+    inp.focus();
   }
 
   function leadToevoegen() {
@@ -1204,7 +1232,7 @@
         <div class="veld"><label for="d-notes">Notities</label><input id="d-notes" name="notes" value="${l.notes}"></div>
         <div class="knoppen"><button class="knop" type="submit">Opslaan</button>${l.website ? html`<button class="knop knop-licht" type="button" data-onderzoek>Website opnieuw onderzoeken</button>` : ""}
           ${["reactie", "afspraak", "verstuurd", "opgevolgd"].includes(l.status) ? html`<button class="knop knop-actie" type="button" data-klant>Maak klant aan</button><button class="knop knop-licht" type="button" data-afspraak>Afspraak gepland</button>` : ""}
-          <button class="knop knop-gevaar" type="button" data-afmelden>Nooit meer mailen</button></div></form>
+          <button class="knop knop-gevaar" type="button" data-afmelden>Direct offline en nooit meer mailen</button></div></form>
       <h3>Voorbeeld ${kind === "opvolging" ? "opvolgmail" : "eerste mail"}</h3><div class="preview" id="preview">Laden…</div>`, { breed: true });
     const form = dlg.querySelector("form");
     const toonPreview = async () => { try { const p = await api(`hq/leads/${l.id}/preview?kind=${kind}`); dlg.querySelector("#preview").textContent = `Onderwerp: ${p.subject}\n\n${p.body}`; } catch (e) { dlg.querySelector("#preview").textContent = e.message; } };
@@ -1216,7 +1244,7 @@
     const act = async (action, msg) => { try { await api("hq/leads/action", { method: "POST", body: { action, ids: [l.id] } }); toast(msg); dlg.close(); herlaad(); } catch (err) { toast(err.message, "fout"); } };
     form.querySelector("[data-onderzoek]")?.addEventListener("click", async (e) => { SM.bezig(e.target, true, "Onderzoeken…"); try { const r = await api("hq/leads/action", { method: "POST", body: { action: "onderzoeken", ids: [l.id] } }); toast(r.email ? `Gevonden: ${r.email}` : `Niet bruikbaar: ${r.reason || "geen adres"}`, r.email ? "ok" : "fout"); dlg.close(); herlaad(); } catch (err) { toast(err.message, "fout"); SM.bezig(e.target, false); } });
     form.querySelector("[data-afspraak]")?.addEventListener("click", () => act("afspraak", "Op afspraak gezet"));
-    form.querySelector("[data-afmelden]").addEventListener("click", async () => { if (await SM.bevestig("Nooit meer mailen?", `${l.email || l.company} komt op de afmeldlijst en krijgt geen B2B-mail meer.`, "Afmelden")) act("afmelden", "Afgemeld"); });
+    form.querySelector("[data-afmelden]").addEventListener("click", async () => { if (await SM.bevestig("Direct offline halen?", `Het voorbeeld van ${l.company} gaat meteen offline en ${l.email || "dit bedrijf"} krijgt nooit meer een mail van ons.`, "Offline halen")) act("afmelden", "Offline gehaald en afgemeld"); });
     form.querySelector("[data-klant]")?.addEventListener("click", () => { dlg.close(); klantDialoog({ company: l.company, email: l.email, phone: l.phone, siteUrl: l.website, notes: l.notes, leadId: l.id }); });
     koppelConcept(dlg, l, () => { dlg.close(); herlaad(); });
   }
