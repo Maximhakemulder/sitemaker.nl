@@ -41,6 +41,7 @@ export async function commitFiles(repo, branch, files, message, { createFrom } =
   const baseCommit = await gh("GET", `/repos/${repo}/git/commits/${base}`);
   const tree = [];
   for (const f of files) {
+    if (f.content === null) { tree.push({ path: f.path, mode: "100644", type: "blob", sha: null }); continue; } // verwijderen
     const blob = await gh("POST", `/repos/${repo}/git/blobs`, { content: Buffer.from(f.content).toString("base64"), encoding: "base64" });
     tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
   }

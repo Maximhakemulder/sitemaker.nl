@@ -384,6 +384,7 @@ export const checkTeamKey = (s, key) => { const a = Buffer.from(String(key || ""
 export async function runJob(job) {
   if (job.kind === "vraag") return answerQuestion(Number(job.id));
   if (job.kind === "briefings") return runBriefings({ force: !!job.force });
+  if (job.kind === "backup") return (await import("./backup.mjs")).maakBackup();
   if (job.kind === "ticket") return (await import("./service.mjs")).draftAnswer(Number(job.id));
 }
 export async function trigger(job) {
