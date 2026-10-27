@@ -32,6 +32,11 @@ const { captured } = await import("../netlify/lib/mail.mjs");
 const { handleExchange, __fake } = await import("../netlify/lib/betalen.mjs");
 const exchange = (velden) => call("POST", "paynl/exchange", { form: new URLSearchParams(velden), csrf: false, headers: { "content-type": "application/x-www-form-urlencoded" }, raw: true });
 const { sendBatch } = await import("../netlify/lib/b2b.mjs");
+{ const { webbureauVan } = await import("../netlify/lib/b2b.mjs");
+  const assert0 = (await import("node:assert/strict")).default;
+  assert0.equal(webbureauVan('<footer>Website door <a href="https://www.pixelkracht.nl">Pixelkracht</a></footer>', "bakker.nl"), "Pixelkracht");
+  assert0.equal(webbureauVan('<footer>Mogelijk gemaakt door <a href="https://wordpress.org">WordPress</a></footer>', "a.nl"), "");
+  assert0.equal(webbureauVan('<footer><a href="https://facebook.com/x">Facebook</a></footer>', "a.nl"), ""); }
 const { q, closeDb } = await import("../netlify/lib/core.mjs");
 
 let passed = 0;

@@ -386,6 +386,50 @@ export async function vernieuwIntros() {
   return { id: l.id, intro: !!intro };
 }
 
+
+// ---------------------------------------------------------------- webbureau herkennen
+// Site gemaakt door een webdesigner/webbureau? ("Website door X", "Webdesign: X", "Realisatie: X", "Made by X" onderaan.)
+// Zelfbouwplatforms (WordPress, Wix, JouwWeb …) tellen niet: die bedrijven doen het zelf en zijn juist interessant.
+const PLATFORM = /wordpress|wix|jimdo|jouwweb|squarespace|shopify|webnode|weebly|strato|one\.com|mijndomein|hostnet|godaddy|site123|webflow|elementor|divi|joomla|drupal|google|facebook|instagram|linkedin|cookie|privacy|algemene voorwaarden|kvk/i;
+const CREDIT = /(web\s?design|webdesigner|website|webdevelopment|ontwerp|realisatie|gerealiseerd|ontwikkeld|gemaakt|gebouwd|ontworpen|vormgeving|design(?:ed)?|made|developed|built|created|powered|a website by|site by)\s*(?:en\s+\S+\s+)?(?:met\s+\S+\s+)?(?:door|by|:)\s*$/i;
+const kaal = (h) => String(h || "").replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#?\w+;/g, " ").replace(/\s+/g, " ").trim();
+export function webbureauVan(html, eigenDomein = "") {
+  const staart = String(html || "").slice(-20000);
+  const eigen = String(eigenDomein || "").replace(/^www\./, "");
+  const re = /<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  while ((m = re.exec(staart))) {
+    const dom = (domainOf(m[1]) || "").replace(/^www\./, "");
+    if (!dom || (eigen && (dom === eigen || dom.endsWith("." + eigen)))) continue;
+    const tekst = kaal(m[2]);
+    if (PLATFORM.test(dom) || PLATFORM.test(tekst)) continue;
+    const voor = kaal(staart.slice(Math.max(0, m.index - 200), m.index)).slice(-60);
+    if (CREDIT.test(voor) || /^(web\s?design|website|realisatie|ontwerp)\s*(door|by|:)/i.test(tekst)) return (tekst.replace(/^(web\s?design|website|realisatie|ontwerp)\s*(door|by|:)\s*/i, "") || dom).slice(0, 60);
+  }
+  const t = kaal(staart);
+  const v = t.match(/(?:[Ww]eb\s?design|[Ww]ebsite|[Ww]ebdevelopment|[Rr]ealisatie|[Oo]ntwerp|[Vv]ormgeving|[Oo]ntwikkeld|[Gg]emaakt|[Gg]ebouwd|[Oo]ntworpen|[Dd]esigned|[Mm]ade|[Dd]eveloped|[Bb]uilt)\s+(?:door|by)\s*:?\s*([A-Z0-9][\w&.\-]*(?:\s+[A-Z0-9][\w&.\-]*){0,3})/) || t.match(/\b(?:Webdesign|Website|Realisatie|Ontwerp)\s*:\s*([A-Z0-9][\w&.\-]*(?:\s+[A-Z0-9][\w&.\-]*){0,3})/);
+  if (v && !PLATFORM.test(v[1])) return v[1].slice(0, 60);
+  return "";
+}
+
+// Bestaande leads die nog geen mail kregen: één keer controleren op een webbureau (een paar per ronde).
+export async function controleerBureaus({ max = 3, budgetMs = 6000 } = {}) {
+  const started = Date.now();
+  const rows = await q("SELECT id, website, domain FROM leads WHERE bureau_at IS NULL AND website <> '' AND sent_at IS NULL AND status IN ('kandidaat','nieuw','goedgekeurd') ORDER BY id LIMIT $1", [max]);
+  let weg = 0;
+  for (const l of rows) {
+    if (Date.now() - started > budgetMs) break;
+    const { html } = await fetchText(l.website);
+    const bureau = html ? webbureauVan(html, l.domain) : "";
+    if (bureau) {
+      await q("UPDATE leads SET status = 'overgeslagen', reject_reason = $2, bureau = $3, bureau_at = NOW(), updated_at = NOW() WHERE id = $1", [l.id, `site gemaakt door een webbureau (${bureau})`, bureau]);
+      await deleteConcept(l.id).catch(() => {});
+      weg++;
+    } else await q("UPDATE leads SET bureau_at = NOW() WHERE id = $1", [l.id]);
+  }
+  return { gecontroleerd: rows.length, weg };
+}
+
 export async function researchLead(lead) {
   if (!lead.website) {
     // Geen website: dan is ook geen algemeen mailadres te vinden. Handmatig benaderen (telefoon) of overslaan.
@@ -397,6 +441,11 @@ export async function researchLead(lead) {
   const link = (home.html.match(/href=["']([^"']*contact[^"']*)["']/i) || [])[1];
   try { contact = await fetchText(new URL(link || "/contact", lead.website).href); } catch {}
   const text = (home.text + " " + contact.text).slice(0, 30000);
+  const bureau = home.html ? webbureauVan(home.html, lead.domain) : "";
+  if (bureau) {
+    await q("UPDATE leads SET status = 'overgeslagen', reject_reason = $2, bureau = $3, bureau_at = NOW(), researched_at = NOW(), updated_at = NOW() WHERE id = $1", [lead.id, `site gemaakt door een webbureau (${bureau})`, bureau]);
+    return { reason: "webbureau", bureau };
+  }
   const emails = findEmails(home.html + contact.html, text, lead.domain);
   const generic = emails.filter((e) => GENERIC.test(e));
   let reason = "";
@@ -411,7 +460,7 @@ export async function researchLead(lead) {
     return { reason };
   }
   const { intro, note } = await schrijfIntro(lead, text);
-  await q("UPDATE leads SET email = $2, status = 'nieuw', intro = $3, research_note = $4, intro_v = $5, researched_at = NOW(), reject_reason = '', updated_at = NOW() WHERE id = $1",
+  await q("UPDATE leads SET email = $2, status = 'nieuw', intro = $3, research_note = $4, intro_v = $5, bureau_at = NOW(), researched_at = NOW(), reject_reason = '', updated_at = NOW() WHERE id = $1",
     [lead.id, email, intro, note, INTRO_VERSIE]);
   return { email };
 }
