@@ -1,5 +1,6 @@
 // Netlify-koppeling: per klant een eigen project, gekoppeld aan de GitHub-repo van die klant.
-// Sleutels in Netlify: NETLIFY_API_TOKEN, NETLIFY_ACCOUNT_SLUG (team), NETLIFY_GITHUB_INSTALLATION_ID
+// Sleutels in Netlify: NETLIFY_API_TOKEN, NETLIFY_ACCOUNT_SLUG (team van sitemaker.nl), NETLIFY_KLANTEN_SLUG (apart team voor klantsites; anders NETLIFY_ACCOUNT_SLUG), NETLIFY_GITHUB_INSTALLATION_ID
+export const klantenTeam = () => env("NETLIFY_KLANTEN_SLUG") || env("NETLIFY_ACCOUNT_SLUG");
 // (te vinden onder Team settings › GitHub app). Zonder die laatste koppelt HQ de repo niet zelf,
 // maar laat het de stappen zien om het project in Netlify met de hand te koppelen.
 import { env, fail } from "./core.mjs";
@@ -27,7 +28,7 @@ export async function createSite({ name, repoFullName, repoId }) {
       cmd: "node build.mjs", dir: "dist", installation_id: Number(env("NETLIFY_GITHUB_INSTALLATION_ID")),
     };
   }
-  const site = await nf("POST", `/${env("NETLIFY_ACCOUNT_SLUG")}/sites`, body);
+  const site = await nf("POST", `/${klantenTeam()}/sites`, body);
   return { id: site.id, name: site.name, url: site.ssl_url || site.url, linked: !!body.repo };
 }
 
