@@ -575,7 +575,7 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-beter{list-style:none;padding:0;margin:0 auto 26px;max-width:560px;text-align:left;display:grid;gap:8px}.sm-beter li{background:rgba(255,255,255,.07);border-radius:10px;padding:10px 14px 10px 40px;position:relative;color:#fff}.sm-beter li::before{content:"✓";position:absolute;left:14px;color:#0CC0DF;font-weight:700}.sm-beter small{display:block;margin:2px 0 0;color:#B8AEDB}
 .sm-eind h3{font-size:18px;margin:6px 0 12px;color:#fff}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
-<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)} op basis van jullie huidige site. De echte website maken we helemaal naar jullie wensen.</span><span class="sm-kort"> · jullie echte site maken we op maat</span></span><a href="${kennis}">Ik heb interesse</a></div>`;
+<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)}. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen.</span><span class="sm-kort"> · Mooi? Wij maken hem helemaal af</span></span><a href="${kennis}">Ik heb interesse</a></div>`;
   // De balk staat vast bovenaan; vaste/plakkende koppen van het ontwerp schuiven eronder (nooit eroverheen).
   const balkScript = `<script>(function(){var b=document.querySelector(".sm-balk");if(!b)return;var r=document.createElement("div");r.className="sm-balk-ruimte";b.after(r);var H=0,lijst=[];
 function hoog(){H=b.offsetHeight;r.style.height=H+"px";document.documentElement.style.setProperty("--sm-balk",H+"px")}
