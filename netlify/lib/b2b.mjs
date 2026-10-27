@@ -103,7 +103,7 @@ ${hoofd.split(/\n\n/).map((p) => {
     const url = regels[knop].trim();
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
     const tekst = regels.filter((_, i) => i !== knop).join("\n");
-    return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#1C0747;color:#FFFFFF;font-weight:bold;text-decoration:none;padding:14px 24px;border-radius:8px">Bekijk mijn ontwerp</a></p>`;
+    return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#146C43;color:#FFFFFF;font-weight:bold;text-decoration:none;padding:14px 24px;border-radius:8px">Bekijk mijn ontwerp</a></p>`;
   }).join("")}${kaart}${voet ? `<p style="margin:0;font-size:12px;line-height:18px;color:#6B6585">${voetHtml(voet)}</p>` : ""}${pixel}</body></html>`;
 }
 // Opens en klikken registreren. Binnen 60 s na verzenden of van bekende scanners telt niet (virusscanners openen alles meteen).
