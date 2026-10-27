@@ -89,6 +89,7 @@ export const DEFAULT_SETTINGS = {
   notify: { email: "" },
   b2b: {
     senderName: "",
+    perUur: 0, // max. mails per uur (0 = automatisch: daglimiet gelijk verdeeld over de verzenduren)
     dailyMax: 15, // rustig opbouwen: week 1–2 15, week 3–4 25, daarna 40
     meten: { opens: true, kliks: true },
     followupDays: 5,

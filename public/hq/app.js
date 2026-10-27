@@ -1096,12 +1096,13 @@
         <div class="veld"><label for="l-max">Maximaal aantal mails per dag</label><input id="l-max" name="dailyMax" type="number" min="0" max="200" value="${z.max}"><div class="hulp">Begin rustig (20–40 per dag) zodat je mails niet in de spam belanden; bouw daarna op.</div></div>
         <div class="rij2"><div class="veld"><label for="l-van">Versturen vanaf (uur)</label><input id="l-van" name="van" type="number" min="0" max="23" value="${z.uren[0]}"></div>
           <div class="veld"><label for="l-tot">Tot (uur)</label><input id="l-tot" name="tot" type="number" min="1" max="23" value="${z.uren[1]}"></div></div>
+        <div class="veld"><label for="l-uur">Maximaal per uur</label><input id="l-uur" name="perUur" type="number" min="0" max="50" value="${z.perUur || 0}"><div class="hulp">0 = automatisch verdelen over de dag (nu ${z.perUurNu} per uur). Gespreid versturen oogt natuurlijker en laat zien op welk uur mensen reageren.</div></div>
         <p class="klein dempen">Alleen op werkdagen.</p>
         <button class="knop knop-actie" type="submit">Opslaan</button></form>`);
       const form = dlg.querySelector("form");
       form.addEventListener("submit", async (e) => {
         e.preventDefault(); SM.wisFouten(form);
-        try { await api("hq/settings", { method: "PUT", body: { b2b: { dailyMax: form.elements.dailyMax.value, sendHours: [form.elements.van.value, form.elements.tot.value] } } }); dlg.close(); toast("Opgeslagen"); herlaad(); }
+        try { await api("hq/settings", { method: "PUT", body: { b2b: { dailyMax: form.elements.dailyMax.value, perUur: form.elements.perUur.value, sendHours: [form.elements.van.value, form.elements.tot.value] } } }); dlg.close(); toast("Opgeslagen"); herlaad(); }
         catch (err) { SM.toonFouten(form, err); }
       });
     });
@@ -1615,7 +1616,7 @@ ${p.body}</div>
           <section class="paneel"><div class="paneel-kop"><h2>Koppelingen</h2><button class="knop knop-licht knop-klein" id="testmail">Testmail naar mij</button></div>
             <ul class="checklijst">${d.setup.map((x) => html`<li><span class="ic ${x.ok ? "ja" : "nee"}">${x.ok ? "✓" : "!"}</span><div>${x.label}${x.ok ? "" : html`<small>${x.hint}</small>`}</div></li>`)}</ul></section>
           <form class="paneel" id="f-b2b" novalidate><h2>B2B-mail</h2>
-            <div class="rij2">${v("senderName", "Je naam als afzender", b.senderName)}${v("dailyMax", "Max. mails per dag", b.dailyMax, { type: "number" })}</div>
+            <div class="rij3">${v("senderName", "Je naam als afzender", b.senderName)}${v("dailyMax", "Max. mails per dag", b.dailyMax, { type: "number" })}${v("perUur", "Max. per uur (0 = automatisch)", b.perUur || 0, { type: "number" })}</div>
             <div class="rij3">${v("from", "Versturen vanaf (uur)", b.sendHours[0], { type: "number" })}${v("to", "tot (uur)", b.sendHours[1], { type: "number" })}${v("followupDays", "Opvolgen na (dagen)", b.followupDays, { type: "number" })}</div>
             <div class="veld"><label class="vinkje"><input type="checkbox" name="aiResearch" ${b.ai.research ? raw("checked") : ""}> Openingszin laten schrijven op basis van de website van het bedrijf (AI)</label></div>
             <h3>Concept-websites</h3>
@@ -1648,7 +1649,7 @@ ${p.body}</div>
     main.querySelector("#f-tracking").addEventListener("submit", (e) => { e.preventDefault(); opslaan(e.target, { tracking: fd(e.target) }); });
     main.querySelector("#f-b2b").addEventListener("submit", (e) => {
       e.preventDefault(); const f = fd(e.target), el = e.target.elements;
-      opslaan(e.target, { b2b: { senderName: f.senderName, dailyMax: Number(f.dailyMax), followupDays: Number(f.followupDays), sendHours: [Number(f.from), Number(f.to)], ai: { research: el.aiResearch.checked },
+      opslaan(e.target, { b2b: { senderName: f.senderName, dailyMax: Number(f.dailyMax), perUur: Number(f.perUur), followupDays: Number(f.followupDays), sendHours: [Number(f.from), Number(f.to)], ai: { research: el.aiResearch.checked },
         concepten: { auto: el.cAuto.checked, perDag: Number(f.cPerDag), geldigDagen: Number(f.cDagen) },
         scout: { active: el.scoutActive.checked, perDay: Number(f.perDay), categories: f.categories, places: f.places },
         templates: { eerste: { subject: f.t1s, body: f.t1b }, opvolging: { subject: f.t2s, body: f.t2b } } } });

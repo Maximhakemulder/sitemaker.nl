@@ -1,7 +1,7 @@
 // B2B-overzicht voor HQ: waar de scout zoekt, wat er gevonden is, wat er vandaag verstuurd kan worden en wat het oplevert.
 import { q, one, getSettings, env, dayKey, hourAms } from "./core.mjs";
 import { mailReady } from "./mail.mjs";
-import { scoutReady } from "./b2b.mjs";
+import { scoutReady, perUurVan } from "./b2b.mjs";
 
 const T0 = "(date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')";
 const VERSTUURD = "('verstuurd','opvolging_goedgekeurd','opgevolgd','reactie','afspraak','klant','afgemeld')";
@@ -105,7 +105,7 @@ export async function b2bDashboard() {
   });
   return {
     scout: { klaar: scoutReady(), actief: !!sc.active, perDag: sc.perDay || 20, categorieen: cats, plaatsen: places, plan, laatsteDag: st.lastDay || null, bezig: (st.pending || []).length, geschiedenis: (st.history || []).slice(0, 25) },
-    verzenden: { mail: mailReady(), max, vandaag: vandaag.verstuurd, opvolgingen: vandaag.opvolgingen, rest, wachtrij, uren: [van, tot2], open: venster && mailReady(), weekend,
+    verzenden: { mail: mailReady(), max, vandaag: vandaag.verstuurd, opvolgingen: vandaag.opvolgingen, rest, wachtrij, uren: [van, tot2], perUur: Number(s.b2b.perUur || 0), perUurNu: perUurVan(s.b2b), open: venster && mailReady(), weekend,
       nogTeVersturenVandaag: venster ? Math.min(rest, wachtrij.eerste + wachtrij.opvolging) : 0 },
     vandaag, totaal: tot, bron: Object.fromEntries(bron.map((b) => [b.source, b.n])),
     perCategorie: perCat, perPlaats, dagen, inbox, mail: await mailPrestaties(), meten: { opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false },
