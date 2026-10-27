@@ -14,11 +14,13 @@ const hashCode = (email, code) => crypto.createHmac("sha256", pepper()).update(`
 export const ipOf = (req, context) => context?.ip || req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
 
 const adminEmails = () => env("ADMIN_EMAILS").split(",").map(cleanEmail).filter(Boolean);
+// HQ staat dicht voor iedereen behalve deze adressen (besluit Maxim, 27-10-2026). Wijzigen: env HQ_ALLEEN (komma-gescheiden).
+export const hqAlleen = () => (env("HQ_ALLEEN") || "maxim@sitemaker.nl").split(",").map(cleanEmail).filter(Boolean);
 
 // Zoekt (of maakt, voor ADMIN_EMAILS) de gebruiker bij een adres.
 async function findUser(email) {
   let u = await one("SELECT * FROM users WHERE email = $1", [email]);
-  if (!u && adminEmails().includes(email)) {
+  if (!u && (adminEmails().includes(email) || hqAlleen().includes(email))) {
     u = await one("INSERT INTO users (email, role, name) VALUES ($1, 'admin', '') ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING *", [email]);
   }
   return u;
@@ -33,7 +35,7 @@ export async function requestCode(rawEmail, ip, portal) {
   if (perEmail >= 5 || perIp >= 20) fail(429, "Je hebt te vaak een code aangevraagd. Probeer het over een uur opnieuw.");
 
   const user = await findUser(email);
-  const allowed = user && user.active && (portal === "hq" ? user.role !== "klant" : true);
+  const allowed = user && user.active && (portal === "hq" ? user.role !== "klant" && hqAlleen().includes(user.email) : true);
   // We loggen ook pogingen voor onbekende adressen (voor de grens), maar sturen dan geen mail.
   const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
   await q("INSERT INTO login_codes (email, code_hash, ip, expires_at, used) VALUES ($1, $2, $3, NOW() + ($4 || ' minutes')::interval, $5)",
@@ -182,7 +184,7 @@ export async function viewAsCustomer(staff, customerId) {
   return { cookie: alsCookie(token, 8 * 3600) };
 }
 
-export const isStaff = (u) => u && (u.role === "medewerker" || u.role === "admin");
+export const isStaff = (u) => !!u && (u.role === "medewerker" || u.role === "admin") && hqAlleen().includes(cleanEmail(u.email));
 export function requireUser(u) { if (!u) fail(401, "Je bent niet (meer) ingelogd."); return u; }
 export function requireStaff(u) { requireUser(u); if (!isStaff(u)) fail(403, "Geen toegang."); return u; }
 export function requireAdmin(u) { requireUser(u); if (u.role !== "admin") fail(403, "Alleen een beheerder kan dit."); return u; }

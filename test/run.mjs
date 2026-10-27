@@ -11,7 +11,7 @@ const cs = await db.start();
 await db.applyMigrations("./netlify/database/migrations");
 const files = await fs.mkdtemp(path.join(os.tmpdir(), "sm-files-"));
 Object.assign(process.env, {
-  SM_DB_URL: cs, MAIL_TRANSPORT: "capture", SM_LOCAL_FILES: files, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: "maxim@sitemaker.test",
+  SM_DB_URL: cs, MAIL_TRANSPORT: "capture", SM_LOCAL_FILES: files, SM_INSECURE_COOKIE: "1", ADMIN_EMAILS: "maxim@sitemaker.test", HQ_ALLEEN: "maxim@sitemaker.test,medewerker@sitemaker.test,tijdelijk@sitemaker.test",
   AUTH_SECRET: "test-secret", PUBLIC_BASE_URL: "https://sitemaker.test", PAYNL_FAKE: "1", PAYNL_SERVICE_ID: "SL-1111-2222", PAYNL_SERVICE_SECRET: "geheim", PAYNL_AT_CODE: "AT-0000-0000", PAYNL_TOKEN: "token", B2B_ANY_TIME: "1",
   GITHUB_FAKE: "1", GITHUB_TOKEN: "x", GITHUB_ORG: "sitemaker-sites", NETLIFY_FAKE: "1", NETLIFY_API_TOKEN: "x", NETLIFY_ACCOUNT_SLUG: "team", NETLIFY_GITHUB_INSTALLATION_ID: "1",
   AI_FAKE: "1", SM_INLINE_AI: "1",
@@ -274,6 +274,10 @@ await test("HQ-overzicht telt alles op", async () => {
 await test("medewerker mag geen instellingen of team wijzigen", async () => {
   await call("POST", "hq/medewerkers", { cookie: admin, body: { email: "medewerker@sitemaker.test", role: "medewerker" } });
   const mw = await login("medewerker@sitemaker.test", "hq");
+  // HQ staat dicht voor adressen buiten HQ_ALLEEN, ook als ze medewerker zijn.
+  const { isStaff } = await import("../netlify/lib/auth.mjs");
+  assert.equal(isStaff({ role: "medewerker", email: "buiten@sitemaker.test" }), false, "buiten HQ_ALLEEN geen toegang tot HQ");
+  assert.equal(isStaff({ role: "admin", email: "maxim@sitemaker.test" }), true);
   assert.equal((await call("PUT", "hq/settings", { cookie: mw, body: { notify: { email: "a@b.test" } } })).status, 403);
   assert.equal((await call("POST", "hq/medewerkers", { cookie: mw, body: { email: "x@y.test" } })).status, 403);
   assert.equal((await call("GET", "hq/customers", { cookie: mw })).status, 200);
