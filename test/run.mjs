@@ -235,6 +235,8 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   const imp = await call("POST", "hq/leads/import", { cookie: admin, body: { csv: "bedrijf;email;plaats\nSchilder Blauw;info@blauw.test;Utrecht\nDubbel;info@groen.test;Breda\n" } });
   assert.equal(imp.data.added, 1); assert.equal(imp.data.duplicates, 1);
   const list = await call("GET", "hq/leads", { cookie: admin });
+  const zk = await call("GET", "hq/leads/zoek?q=" + encodeURIComponent("groen.test"), { cookie: admin });
+  assert.equal(zk.status, 200); assert.ok(zk.data.leads.some((l) => l.company === "Hovenier Groen"), "snel zoeken op domein/e-mail");
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
   assert.match(prev.data.body, /€299,95 eenmalig/); assert.match(prev.data.body, /afmelden\?l=/);

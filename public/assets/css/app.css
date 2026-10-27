@@ -651,3 +651,5 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .og-stappen strong { display: block; font-size: 15px; color: #1C0747; }
 .og-stappen span { font-size: 13.5px; line-height: 1.4; }
 @media (max-width: 860px) { .opdracht-groot { grid-template-columns: 1fr; } .og-voorbeeld { border-right: 0; border-bottom: 1px solid var(--lijn, #e2e0ee); min-height: 220px; } .og-schaal iframe { transform: scale(.28); } }
+
+.offline-lijst{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}.offline-lijst li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--lijn,#e3e0ee);border-radius:10px}

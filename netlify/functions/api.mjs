@@ -318,6 +318,7 @@ async function verwerk(req, context) {
         case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "" }));
         case "POST leads": return json(await hq.addLead(await body(req), user.id));
         case "POST leads/import": return json(await hq.importLeads((await body(req)).csv, user));
+        case "GET leads/zoek": return json(await hq.zoekLeads(url.searchParams.get("q") || ""));
         case "POST leads/action": return json(await hq.leadAction(await body(req), user));
         case "PUT leads/:id": return json(await hq.updateLead(id, await body(req)));
         case "GET leads/:id/preview": return json(await hq.leadPreview(id, url.searchParams.get("kind") || "eerste"));
