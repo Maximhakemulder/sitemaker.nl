@@ -659,3 +659,17 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .dom-form{display:grid;gap:14px;max-width:440px}
 .dom-form .veld{margin:0}
 .dom-form .knop{justify-self:start;margin-top:4px}
+
+.stappen-paneel{margin-bottom:16px}
+.stappen-lijst{list-style:none;margin:6px 0 0;padding:0;display:grid}
+.stappen-lijst li{display:grid;grid-template-columns:34px 1fr auto;gap:12px 14px;align-items:center;padding:14px 0;border-top:1px solid #ECEAF3}
+.stappen-lijst li:first-child{border-top:0}
+.st-nr{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:#E7F4FF;color:#1C0747}
+.stappen-lijst li.klaar .st-nr{background:#146C43;color:#fff}
+.stappen-lijst li.klaar .st-tekst b{color:#5c577a}
+.st-tekst b{display:block;font-size:16px}
+.st-tekst p{margin:2px 0 0;font-size:14.5px;color:#5c577a}
+.stappen-lijst .knop{white-space:nowrap}
+@media(max-width:640px){.stappen-lijst li{grid-template-columns:34px 1fr}.stappen-lijst li .knop{grid-column:2;justify-self:start}}
+
+.vraag-snel{margin-bottom:16px}.vraag-snel form{display:grid;gap:12px;margin-top:10px}.vraag-snel form .knop{justify-self:start}

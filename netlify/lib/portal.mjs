@@ -40,7 +40,7 @@ export function canSubmit(c) {
 
 export function publicCustomer(c) {
   return {
-    id: c.id, company: c.company, siteNaam: c.site_naam, contactName: c.contact_name, email: c.email, siteUrl: c.site_url,
+    id: c.id, company: c.company, siteNaam: c.site_naam, contactName: c.contact_name, email: c.email, siteUrl: c.site_url, previewUrl: c.preview_host ? `https://${c.preview_host}` : "",
     siteStatus: c.site_status, deliveredAt: c.delivered_at, billingStatus: c.billing_status,
     monthlyCents: c.monthly_cents, buildCents: c.build_cents, subscriptionStart: c.subscription_start,
     online: c.check_at ? { ok: c.check_ok, at: c.check_at } : null,
@@ -66,13 +66,19 @@ export async function portalState(user) {
     q("SELECT * FROM change_requests WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 100", [c.id]),
     q("SELECT * FROM invoices WHERE customer_id = $1 ORDER BY invoice_date DESC, id DESC LIMIT 200", [c.id]),
     one("SELECT checkout_url, amount_cents FROM payments WHERE customer_id = $1 AND kind = 'eerste' AND status = 'open' AND checkout_url IS NOT NULL ORDER BY id DESC LIMIT 1", [c.id]),
-    one("SELECT 1 AS x FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' LIMIT 1", [c.id]),
+    one("SELECT naam, status FROM domains WHERE customer_id = $1 AND status <> 'opgezegd' ORDER BY id DESC LIMIT 1", [c.id]),
   ]);
   return {
     user: { email: user.email, name: user.name, role: user.role, viaHq: !!user.viaHq },
     customer: publicCustomer(c),
     offer: OFFER,
     usage, canSubmit: canSubmit(c), feedbackRondes: await feedbackRondes(c),
+    stappen: c.site_status === "live" ? {
+      feedbackOver: await feedbackRondes(c),
+      feedbackGegeven: (await one("SELECT COUNT(*)::int AS n FROM change_requests WHERE customer_id = $1 AND oplever", [c.id])).n,
+      domein: dom ? { naam: dom.naam, actief: dom.status === "actief" } : null,
+      review: !!(await one("SELECT 1 FROM reviews WHERE customer_id = $1 AND source = 'portaal'", [c.id])),
+    } : null,
     reviewVraag: c.site_status === "live" && !!(await one("SELECT 1 FROM change_requests WHERE customer_id = $1 AND oplever AND status = 'verwerkt'", [c.id])) && !(await one("SELECT 1 FROM reviews WHERE customer_id = $1 AND source = 'portaal'", [c.id])),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),

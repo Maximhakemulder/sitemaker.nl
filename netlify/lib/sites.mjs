@@ -80,6 +80,7 @@ export async function provisionSite(customerId, b, user, { bestanden = null } = 
   await q("UPDATE customers SET site_repo = $1, site_netlify_id = $2, site_netlify_name = $3, site_theme = $4, updated_at = NOW() WHERE id = $5",
     [repo.full_name, site.id, site.name, thema, c.id]);
   await audit(user.id, c.id, "site.aangemaakt", { repo: repo.full_name, netlify: site.name, gekoppeld: site.linked, bron });
+  if (site.id) await previewAlias(c.id).catch((e) => console.log("[sites] voorbeeldadres", e.message));
   return { repo: repo.full_name, repoUrl: repo.html_url, netlify: site, needsLink: !site.linked, bron };
 }
 async function waitForMain(repo) {
@@ -350,4 +351,20 @@ export async function koppelTest(user) {
   }
   await audit(user.id, null, "koppelingen.test", { ok: stappen.every((x) => x.ok) });
   return { ok: stappen.every((x) => x.ok), stappen };
+}
+
+// Ons eigen voorbeeldadres voor een klantsite: <netlifynaam>.<PREVIEW_DOMEIN> (env, bijv. sitemaker.nl; vereist een
+// wildcard-CNAME *.<PREVIEW_DOMEIN> naar Netlify). Zonder env gebeurt er niets.
+const GERESERVEERD = new Set(["www", "hq", "mijn", "mail", "api", "app", "admin", "portaal"]);
+export async function previewAlias(customerId) {
+  const basis = env("PREVIEW_DOMEIN");
+  if (!basis) return { skipped: "geen PREVIEW_DOMEIN" };
+  const c = await one("SELECT id, site_netlify_id, site_netlify_name FROM customers WHERE id = $1", [customerId]);
+  if (!c?.site_netlify_id || !c.site_netlify_name) fail(409, "Deze klant heeft nog geen Netlify-project.");
+  const naam = GERESERVEERD.has(c.site_netlify_name) ? `site-${c.site_netlify_name}` : c.site_netlify_name;
+  const host = `${naam}.${basis}`;
+  const { voegAliasToe } = await import("./netlifyapi.mjs");
+  await voegAliasToe(c.site_netlify_id, host);
+  await q("UPDATE customers SET preview_host = $2, updated_at = NOW() WHERE id = $1", [c.id, host]);
+  return { ok: true, host };
 }

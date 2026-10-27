@@ -34,4 +34,14 @@ export async function createSite({ name, repoFullName, repoId }) {
 
 export const deleteSite = (id) => nf("DELETE", `/sites/${id}`);
 
+// Extra adres (domain alias) aan een klantsite toevoegen, bijv. ons voorbeeldadres <naam>.sitemaker.nl. Vraagt daarna https aan.
+export async function voegAliasToe(siteId, host) {
+  if (env("NETLIFY_FAKE")) return { ok: true };
+  const s = await nf("GET", `/sites/${siteId}`);
+  const aliases = [...new Set([...(s.domain_aliases || []), host])];
+  await nf("PATCH", `/sites/${siteId}`, { domain_aliases: aliases });
+  await nf("POST", `/sites/${siteId}/ssl`).catch(() => {});
+  return { ok: true };
+}
+
 export const previewUrl = (siteName, prNumber) => (siteName && prNumber ? `https://deploy-preview-${prNumber}--${siteName}.netlify.app` : "");

@@ -1516,6 +1516,7 @@ ${p.body}</div>
   // Netlify-credits: melding bovenaan HQ vanaf 75% (bij 100% zet Netlify alles op pauze).
   async function creditBalk() {
     const plek = document.getElementById("credit-balk"); if (!plek) return;
+    plek.replaceChildren(); return; // besluit Maxim (27-10): geen melding bovenaan; de stand staat bij Kosten
     const c = await api("hq/credits").catch(() => null);
     const s = c?.status;
     if (!s || (s.pct < 75 && !c.spaarstand)) { plek.replaceChildren(); return; }
