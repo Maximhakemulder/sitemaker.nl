@@ -141,6 +141,7 @@ async function verwerk(req, context) {
       const tid = Number(seg[2]) || 0;
       if (path === "taak/instructies" && m === "GET") return json(taak.instructies());
       if (path === "taak/status" && m === "GET") return json(await taak.status());
+      if (path === "taak/leads/afmelden" && m === "POST") return json(await taak.leadAfmelden(await body(req)));
       if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
       if (path === "taak/opdrachten/claim" && m === "POST") return json(await opdrachten.claimOpdrachten((await body(req)).max));
       if (seg[1] === "opdrachten" && tid && seg[3] === "afbeeldingen" && seg[4] && m === "GET") return await opdrachten.afbeelding(tid, decodeURIComponent(seg[4]));

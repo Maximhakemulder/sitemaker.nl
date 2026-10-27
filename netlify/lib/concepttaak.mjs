@@ -181,3 +181,14 @@ export async function status() {
   const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE status = 'klaar' AND ready_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag };
 }
+
+// Lead op verzoek helemaal stoppen (concept offline, afgemeld, geen mails meer), gezocht op domein van hun website.
+export async function leadAfmelden({ domein }) {
+  const d = str(domein, 120).toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (!d || d.length < 4 || !d.includes(".")) fail(400, "Geef een domein, bijv. voorbeeld.nl.");
+  const leads = await q("SELECT id, company, website, status FROM leads WHERE lower(website) LIKE $1 OR lower(domain) LIKE $1 OR lower(email) LIKE $2", [`%${d}%`, `%@${d}`]);
+  const { unsubscribe } = await import("./b2b.mjs");
+  for (const l of leads) await unsubscribe(l.id);
+  await audit(null, "lead_afgemeld_taak", "lead", null, { domein: d, ids: leads.map((l) => l.id) });
+  return { ok: true, afgemeld: leads.map((l) => ({ id: l.id, naam: l.company, website: l.website, was: l.status })) };
+}
