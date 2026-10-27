@@ -93,6 +93,7 @@ export const DEFAULT_SETTINGS = {
     meten: { opens: true, kliks: true },
     followupDays: 5,
     sendHours: [8, 17],
+    perUur: 0, // max. mails per klokuur, gelijk verdeeld over het uur (0 = alleen daglimiet)
     scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "fysiotherapeut", "administratiekantoor", "boekhoudkantoor", "coach", "psycholoog", "therapeut", "rijschool", "hondentrainer", "trimsalon", "fotograaf", "schoonmaakbedrijf", "verhuisbedrijf", "keukenzaak", "interieurontwerper"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
     // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
