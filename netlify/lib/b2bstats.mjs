@@ -48,7 +48,7 @@ export async function b2bDashboard() {
   const sc = s.b2b.scout || {};
   const st = (await one("SELECT value FROM settings WHERE key = 'scout_state'"))?.value || {};
   const inbox = (await one("SELECT value FROM settings WHERE key = 'inbox_scan'"))?.value || null;
-  const [tot, vandaag, perCat, perPlaats, dagen, wachtrij, bron] = await Promise.all([
+  const [tot, vandaag, perCat, perPlaats, dagen, wachtrij, bron, perUurStats] = await Promise.all([
     one(`SELECT COUNT(*)::int AS leads,
         COUNT(*) FILTER (WHERE email IS NOT NULL)::int AS met_mail,
         COUNT(*) FILTER (WHERE website = '')::int AS zonder_site,
@@ -89,6 +89,14 @@ export async function b2bDashboard() {
        FROM dag ORDER BY dag.dag`),
     one("SELECT COUNT(*) FILTER (WHERE status = 'goedgekeurd')::int AS eerste, COUNT(*) FILTER (WHERE status = 'opvolging_goedgekeurd')::int AS opvolging FROM leads"),
     q("SELECT source, COUNT(*)::int AS n FROM leads GROUP BY source"),
+    // Respons per verzenduur (eerste mails, laatste 60 dagen): zo zie je of mails in de avond beter werken.
+    q(`SELECT EXTRACT(HOUR FROM m.created_at AT TIME ZONE 'Europe/Amsterdam')::int AS uur, COUNT(DISTINCT l.id)::int AS verstuurd,
+        COUNT(DISTINCT l.id) FILTER (WHERE EXISTS (SELECT 1 FROM mail_events e WHERE e.lead_id = l.id AND e.mail = 'eerste' AND e.soort = 'open'))::int AS geopend,
+        COUNT(DISTINCT l.id) FILTER (WHERE c.views > 0)::int AS bekeken,
+        COUNT(DISTINCT l.id) FILTER (WHERE l.reply_at IS NOT NULL OR l.status IN ('reactie','afspraak','klant'))::int AS reacties,
+        COUNT(DISTINCT l.id) FILTER (WHERE l.status IN ('afspraak','klant'))::int AS afspraken
+      FROM mail_log m JOIN leads l ON m.ref = 'lead:' || l.id LEFT JOIN concepts c ON c.lead_id = l.id
+      WHERE m.kind = 'b2b-eerste' AND m.ok AND m.created_at >= NOW() - INTERVAL '60 days' GROUP BY 1 ORDER BY 1`),
   ]);
   const max = Number(s.b2b.dailyMax || 40);
   const [van, tot2] = s.b2b.sendHours || [8, 17];
@@ -105,9 +113,9 @@ export async function b2bDashboard() {
   });
   return {
     scout: { klaar: scoutReady(), actief: !!sc.active, perDag: sc.perDay || 20, categorieen: cats, plaatsen: places, plan, laatsteDag: st.lastDay || null, bezig: (st.pending || []).length, geschiedenis: (st.history || []).slice(0, 25) },
-    verzenden: { mail: mailReady(), max, vandaag: vandaag.verstuurd, opvolgingen: vandaag.opvolgingen, rest, wachtrij, uren: [van, tot2], open: venster && mailReady(), weekend,
+    verzenden: { mail: mailReady(), max, perUur: Number(s.b2b.perUur || 0), vandaag: vandaag.verstuurd, opvolgingen: vandaag.opvolgingen, rest, wachtrij, uren: [van, tot2], open: venster && mailReady(), weekend,
       nogTeVersturenVandaag: venster ? Math.min(rest, wachtrij.eerste + wachtrij.opvolging) : 0 },
     vandaag, totaal: tot, bron: Object.fromEntries(bron.map((b) => [b.source, b.n])),
-    perCategorie: perCat, perPlaats, dagen, inbox, mail: await mailPrestaties(), meten: { opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false },
+    perCategorie: perCat, perPlaats, perUur: perUurStats, dagen, inbox, mail: await mailPrestaties(), meten: { opens: s.b2b.meten?.opens !== false, kliks: s.b2b.meten?.kliks !== false },
   };
 }

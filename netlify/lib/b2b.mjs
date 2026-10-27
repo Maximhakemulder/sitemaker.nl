@@ -129,6 +129,14 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   const [{ n: today }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   let room = Math.max(0, Number(s.b2b.dailyMax || 40) - today);
   if (!room) return { skipped: "daglimiet" };
+  // Max. per klokuur, gelijk verdeeld: na m minuten mogen er ceil(perUur × (m+1)/60) uit zijn (10 per uur ≈ één per 6 minuten).
+  const perUur = Number(s.b2b.perUur || 0);
+  if (perUur > 0) {
+    const [{ n: ditUur }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= date_trunc('hour', NOW())");
+    const magNu = Math.min(perUur, Math.ceil((perUur * (now.getUTCMinutes() + 1)) / 60));
+    room = Math.min(room, Math.max(0, magNu - ditUur));
+    if (!room) return { skipped: "uurlimiet" };
+  }
   const started = Date.now();
   // Een eerste mail gaat alleen uit met een klare voorbeeldwebsite (besluit Maxim). Lukt het concept niet, dan gaat de lead terug.
   await q(`UPDATE leads l SET status = CASE WHEN c.status = 'overgeslagen' THEN 'overgeslagen' ELSE 'nieuw' END,

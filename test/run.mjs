@@ -259,6 +259,27 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   const again = await call("POST", "hq/leads", { cookie: admin, body: { company: "Opnieuw", email: "info@groen.test" } });
   assert.equal(again.status, 400);
 });
+await test("uurlimiet: max. per uur, gelijk verdeeld; per verzenduur in het overzicht", async () => {
+  const core = await import("../netlify/lib/core.mjs");
+  const b = (await core.getSettings()).b2b;
+  const put = await call("PUT", "hq/settings", { cookie: admin, body: { b2b: { perUur: 10 } } });
+  assert.equal(put.status, 200);
+  assert.equal((await core.getSettings()).b2b.perUur, 10);
+  const ids = [];
+  for (let i = 0; i < 4; i++) {
+    const r = await q("INSERT INTO leads (company, email, website, domain, status) VALUES ($1, $2, $3, $4, 'goedgekeurd') RETURNING id", [`Uur ${i}`, `info@uur${i}.test`, `https://uur${i}.test`, `uur${i}.test`]);
+    ids.push(r[0].id);
+    await q("INSERT INTO concepts (lead_id, token, status, ready_at) VALUES ($1, $2, 'klaar', NOW())", [r[0].id, `uurtok${i}xyzabc`]);
+  }
+  const ditUur = (await q("SELECT COUNT(*)::int n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= date_trunc('hour', NOW())"))[0].n;
+  const magNu = Math.min(10, Math.ceil((10 * (new Date().getUTCMinutes() + 1)) / 60));
+  const res = await sendBatch({ max: 5, budgetMs: 20000 });
+  assert.equal(res.sent ?? 0, Math.min(4, Math.max(0, magNu - ditUur)), "niet meer dan wat dit deel van het uur toelaat");
+  const ov = await call("GET", "hq/b2b", { cookie: admin });
+  assert.ok(Array.isArray(ov.data.perUur)); assert.equal(ov.data.verzenden.perUur, 10);
+  await q("DELETE FROM leads WHERE id = ANY($1) AND status = 'goedgekeurd'", [ids]);
+  await core.saveSetting("b2b", { ...b, perUur: 0 });
+});
 await test("aanvraag van een bestaande lead zet de lead op 'afspraak'", async () => {
   await call("POST", "aanvraag", { body: { name: "Kees", company: "Schilder Blauw", email: "info@blauw.test", t: Date.now() - 5000 } });
   assert.equal((await q("SELECT status FROM leads WHERE email = 'info@blauw.test'"))[0].status, "afspraak");
