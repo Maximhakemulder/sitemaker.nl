@@ -73,6 +73,7 @@ export async function portalState(user) {
     customer: publicCustomer(c),
     offer: OFFER,
     usage, canSubmit: canSubmit(c), feedbackRondes: await feedbackRondes(c),
+    reviewVraag: c.site_status === "live" && !!(await one("SELECT 1 FROM change_requests WHERE customer_id = $1 AND oplever AND status = 'verwerkt'", [c.id])) && !(await one("SELECT 1 FROM reviews WHERE customer_id = $1 AND source = 'portaal'", [c.id])),
     changes: changes.map(publicChange),
     invoices: invoices.map(publicInvoice),
     payOnline: betaalReady(),
@@ -181,14 +182,17 @@ export async function mailChangeStatus(changeId) {
                        JOIN customers c ON c.id = cr.customer_id LEFT JOIN users u ON u.id = cr.user_id WHERE cr.id = $1`, [changeId]);
   if (!r?.to_email) return { ok: false };
   const done = r.status === "verwerkt";
+  // Na een gratis feedbackronde: vraag om een review (één keer, alleen als hij er nog geen schreef).
+  const reviewVragen = done && r.oplever && !(await one("SELECT 1 FROM reviews WHERE customer_id = $1 AND source = 'portaal'", [r.customer_id]));
   const title = done ? "Je wijziging is verwerkt" : "Over je wijzigingsverzoek";
   const lines = done
     ? ["Je wijziging staat online. Bekijk het resultaat op je website.", r.staff_note ? `Toelichting: ${escH(r.staff_note)}` : ""]
     : ["We hebben je verzoek bekeken maar kunnen het niet zo uitvoeren.", r.staff_note ? `Toelichting: ${escH(r.staff_note)}` : "", r.counts ? "" : "Deze aanvraag telt niet mee voor je vier wijzigingen van deze maand."];
   return sendMail({
     to: r.to_email, kind: "wijziging-status", ref: `change:${r.id}`, subject: title,
-    text: `${lines.filter(Boolean).join("\n\n").replace(/<[^>]+>/g, "")}\n\nJouw verzoek:\n${r.description}\n\n${portalUrl()}#wijzigingen`,
-    html: brandHtml({ title, intro: [...lines.filter(Boolean), `<i>${escH(r.description.slice(0, 600)).replace(/\n/g, "<br>")}</i>`], button: { label: "Open je portaal", href: `${portalUrl()}#wijzigingen` } }),
+    text: `${lines.filter(Boolean).join("\n\n").replace(/<[^>]+>/g, "")}\n\nJouw verzoek:\n${r.description}\n\n${reviewVragen ? `Tevreden met je nieuwe website? Laat een korte review achter: ${portalUrl()}#account/review\n\n` : ""}${portalUrl()}#wijzigingen`,
+    html: brandHtml({ title, intro: [...lines.filter(Boolean), `<i>${escH(r.description.slice(0, 600)).replace(/\n/g, "<br>")}</i>`, ...(reviewVragen ? ["<b>Tevreden met je nieuwe website?</b> We zouden het heel fijn vinden als je een korte review achterlaat. Dat kost je een minuut en helpt andere ondernemers kiezen."] : [])],
+      button: reviewVragen ? { label: "Schrijf een review", href: `${portalUrl()}#account/review` } : { label: "Open je portaal", href: `${portalUrl()}#wijzigingen` } }),
   });
 }
 

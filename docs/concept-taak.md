@@ -91,6 +91,8 @@ Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
      - tekst leesbaar (min. 16 px lopende tekst), koppen niet zo groot dat één woord per regel overblijft;
      - formulieren: velden onder elkaar, korte velden (ja/nee) naast elkaar;
      - de vaste actiebalk onderaan (± 84 px) mag niets belangrijks afdekken, en de voorbeeldbalk bovenin ook niet;
+     - de vaste actiebalk (`.sm-actiebalk`) verschijnt vanzelf pas als de bel/WhatsApp/mailknoppen op de pagina uit beeld zijn
+       (ons script regelt dat); zet er dus gewoon dezelfde acties in, en gebruik voor die knoppen echte `tel:`/`wa.me`/`mailto:`-links;
      - bewegende elementen (`position:absolute`) nooit over tekst of knoppen.
    - Desktop: hero niet hoger dan één scherm, geen gigantische beelden, geen lege gaten.
    - Contrast overal goed (geen donker op donker, geen licht op licht), passende foto's, geen verzonnen feiten.
