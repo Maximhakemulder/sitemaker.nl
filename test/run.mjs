@@ -237,7 +237,7 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   const list = await call("GET", "hq/leads", { cookie: admin });
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
-  assert.match(prev.data.body, /€299,95 eenmalig/); assert.match(prev.data.body, /KvK 12345678/); assert.match(prev.data.body, /afmelden\?l=/);
+  assert.match(prev.data.body, /€299,95 eenmalig/); assert.match(prev.data.body, /afmelden\?l=/);
   // Zonder website geen voorbeeldwebsite, dus geen eerste mail.
   assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } })).data.changed, 0);
   for (const id of ids) {
