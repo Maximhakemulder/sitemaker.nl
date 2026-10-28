@@ -1176,7 +1176,18 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
     const als = await call("POST", `hq/customers/${x.data.id}/als-klant`, { cookie: admin });
     assert.equal(als.status, 200, JSON.stringify(als.data));
   });
-  await test("kosten invullen, winst per maand en export voor de boekhouder", async () => {
+  await test("herstelmail: alleen leads zonder link, één keer", async () => {
+  const b = await import("../netlify/lib/b2b.mjs");
+  const core = await import("../netlify/lib/core.mjs");
+  const l = await core.one("INSERT INTO leads (company, email, status, sent_at, sent_subject) VALUES ('Herstel BV','info@herstel-bv.nl','verstuurd', NOW(), 'Vraagje over Herstel BV') RETURNING id");
+  await core.q("INSERT INTO concepts (lead_id, token, status, expires_at) VALUES ($1, 'hersteltok', 'klaar', NOW() + interval '7 days')", [l.id]);
+  const d = await b.herstelLinkMails();
+  assert.ok(d.leads.some((x) => x.id === l.id));
+  const r = await b.herstelLinkMails({ verstuur: true, max: 50 });
+  assert.ok(r.verstuurd >= 1);
+  assert.ok(!(await b.herstelLinkMails()).leads.some((x) => x.id === l.id), "niet nog een keer");
+});
+await test("kosten invullen, winst per maand en export voor de boekhouder", async () => {
     assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Netlify", bedrag: "", datum: "2026-01-01" } })).status, 400);
     const vandaag = new Date().toISOString().slice(0, 10);
     assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Netlify Pro", leverancier: "Netlify", categorie: "hosting", soort: "maandelijks", bedrag: "19,00", btw: "0", datum: "2026-01-01" } })).status, 200);
