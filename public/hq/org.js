@@ -19,7 +19,7 @@ window.SM_ORG = [
       { key: "marketeer", person: "Lisa", role: "Marketingmanager", look: { hair: 0x7a3b22, acc: "headset" }, color: 1,
         does: ["Bepaalt elke week de invalshoeken (snel, vaste prijs, vakmensen zonder tijd)", "Schrijft de teksten voor Meta: kop, primaire tekst en knop", "Leert van wat jij goedkeurt en afkeurt"] },
       { key: "designer", person: "Milo", role: "Designer", look: { hair: 0x15110e, acc: "cap" }, color: 4,
-        does: ["Maakt elke maandag 4 statics en 2 animaties met Kive", "Vakmensen met een voorbeeldwebsite op telefoon of laptop (verzonnen bedrijf)", "Formaten voor feed (1:1, 4:5) en stories/reels (9:16)"] },
+        does: ["Maakt elke maandag 4 statics en 2 animaties met Kive", "Vakmensen met een voorbeeldwebsite op telefoon of laptop (verzonnen bedrijf)", "Elke ad in 1:1 (feed) en 9:16 (story), ook in je Canva-map"] },
     ],
     tasks: ["Elke maandag: 4 statics + 2 animaties met Kive (Milo), teksten door Lisa", "Jij keurt in HQ › Marketing en zet ze in Meta"],
   },

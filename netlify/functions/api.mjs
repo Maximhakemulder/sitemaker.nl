@@ -105,6 +105,10 @@ async function verwerk(req, context) {
     }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(url.searchParams.get("soort") || undefined), 200, { "cache-control": "no-store" });
     // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.
+    if (path.startsWith("adbestand/") && m === "GET") {
+      const [, id, f] = path.split("/"); const ads = await import("../lib/ads.mjs");
+      return await ads.publiekBestand(Number(id) || 0, String(f || "").replace(/\.[a-z0-9]+$/, ""));
+    }
     if (path === "t/o" && m === "GET") {
       const p = Object.fromEntries(url.searchParams);
       if (checkTrack(p)) await recordTrack({ ...p, u: undefined, ua: req.headers.get("user-agent") || "" }).catch(() => {});
@@ -147,7 +151,7 @@ async function verwerk(req, context) {
       if (seg[1] === "klanten" && seg[2] && seg[3] === "voorbeeldadres" && m === "POST") { const { previewAlias } = await import("../lib/sites.mjs"); return json(await previewAlias(Number(seg[2]))); }
       if (path === "taak/backup" && m === "POST") { const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
       if (path === "taak/backup" && m === "GET") { const { backupStatus } = await import("../lib/backup.mjs"); return json(await backupStatus()); }
-      if (path === "taak/ads" && m === "POST") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakOpslaan(await body(req))); }
+      if (path === "taak/ads" && m === "POST") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakOpslaan(await body(req), publicBase(req))); }
       if (path === "taak/ads/feedback" && m === "GET") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakFeedback()); }
       if (path === "taak/koppelingen/test" && m === "POST") { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest({ id: null })); }
       if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
