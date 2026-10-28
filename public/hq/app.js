@@ -210,7 +210,6 @@
             <form novalidate id="vraag-form" class="vraag-form"><div class="veld"><label for="vraag">Vraag aan ${manager.person}</label><textarea id="vraag" name="vraag" rows="2" placeholder="${key === "b2b" ? "Bijv. welke branche reageert het best?" : key === "finance" ? "Bijv. hoeveel hebben we deze maand verdiend?" : "Stel een vraag over de afdeling"}"></textarea><div class="fout" data-fout-voor="vraag"></div></div>
               <button class="knop knop-klein" type="submit">Vraag stellen</button></form>
             <div id="vragen"></div></section>` : ""}
-          ${isAdmin() ? html`<section class="paneel gevaar-zone"><h2>Klant verwijderen</h2><p class="klein dempen">Voor testklanten of klanten die weg zijn. Is de website door ons gemaakt, dan verdwijnen ook de GitHub-repo en het Netlify-project. Heeft de klant facturen, dan blijven die voor je boekhouding bewaard (bewaarplicht) en wordt de klant gearchiveerd in plaats van gewist.</p><button class="knop knop-gevaar knop-klein" id="klant-weg">Klant verwijderen</button></section>` : ""}
           <section class="paneel"><h2>Logboek</h2>${logboek(st.feed || [])}</section>
         </div>
       </div>`);
@@ -409,6 +408,7 @@
           <section class="paneel"><h2>Gegevens</h2><dl class="gegevens">
             <dt>Telefoon</dt><dd>${c.phone || "–"}</dd><dt>KvK</dt><dd>${c.kvk || "–"}</dd><dt>Btw</dt><dd>${c.vatNumber || "–"}</dd><dt>Adres</dt><dd>${c.address || "–"}</dd><dt>Klant sinds</dt><dd>${datumLang(c.createdAt)}</dd></dl>
             ${c.notes ? html`<div class="notitie">${c.notes}</div>` : ""}</section>
+          ${isAdmin() ? html`<section class="paneel gevaar-zone"><h2>Klant verwijderen</h2><p class="klein dempen">Voor testklanten of klanten die weg zijn. Is de website door ons gemaakt, dan verdwijnen ook de GitHub-repo en het Netlify-project. Heeft de klant facturen, dan blijven die voor je boekhouding bewaard (bewaarplicht) en wordt de klant gearchiveerd in plaats van gewist.</p><button class="knop knop-gevaar knop-klein" id="klant-weg">Klant verwijderen</button></section>` : ""}
           <section class="paneel"><h2>Logboek</h2>${d.log.length ? html`<ul class="lijst log">${d.log.map((l) => html`<li>${logTekst(l)}<br><span class="dempen">${tijd(l.created_at)}${l.email ? " · " + l.email : ""}</span></li>`)}</ul>` : html`<p class="dempen">Nog niets gebeurd.</p>`}</section>
         </div>
       </div>`);
