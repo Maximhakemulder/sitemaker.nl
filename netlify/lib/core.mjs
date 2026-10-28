@@ -94,7 +94,7 @@ export const DEFAULT_SETTINGS = {
     meten: { opens: true, kliks: true },
     followupDays: 5,
     sendHours: [8, 17],
-    scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "administratiekantoor", "boekhoudkantoor", "coach", "psycholoog", "therapeut", "rijschool", "hondentrainer", "trimsalon", "fotograaf", "schoonmaakbedrijf", "verhuisbedrijf", "keukenzaak", "interieurontwerper", "stukadoor", "tegelzetter", "dakdekker", "loodgieter", "glazenwasser", "bestratingsbedrijf"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
+    scout: { active: false, perDay: 20, categories: ["kapper", "installatiebedrijf", "schoonheidssalon", "hovenier", "schilder", "rijschool", "hondentrainer", "trimsalon", "schoonmaakbedrijf", "verhuisbedrijf", "stukadoor", "tegelzetter", "dakdekker", "loodgieter", "glazenwasser", "bestratingsbedrijf", "timmerman", "aannemer", "klusbedrijf", "elektricien", "metselaar", "vloerenlegger", "autobedrijf", "slotenmaker"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
     // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
     concepten: { auto: true, perDag: 15, geldigDagen: 30, wachten: true, maker: "taak" },
