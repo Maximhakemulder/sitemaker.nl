@@ -169,6 +169,22 @@ await test("gelijktijdig indienen: er tellen nooit meer dan 4 mee", async () => 
   const [{ n }] = await q("SELECT COUNT(*)::int n FROM change_requests WHERE customer_id = $1 AND counts", [c1]);
   assert.ok(n <= 4, `er tellen ${n} wijzigingen mee`);
 });
+await test("marketing: taak levert een ad aan, HQ keurt en serveert het bestand", async () => {
+  const ads = await import("../netlify/lib/ads.mjs");
+  const echt = globalThis.fetch;
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+  globalThis.fetch = async (u, o) => String(u).startsWith("https://kive.test/") ? new Response(png, { headers: { "content-type": "image/png" } }) : echt(u, o);
+  try {
+    const r = await ads.taakOpslaan({ soort: "static", formaat: "1x1", kop: "Website binnen 48 uur", tekst: "Geen tijd voor je website? Wij regelen het.", url: "https://kive.test/a.png" });
+    assert.ok(r.id);
+    const l = await call("GET", "hq/ads", { cookie: admin });
+    assert.equal(l.data.ads[0].kop, "Website binnen 48 uur");
+    assert.equal((await call("PUT", `hq/ads/${r.id}`, { cookie: admin, body: { status: "afgekeurd", feedback: "te druk" } })).data.status, "afgekeurd");
+    assert.equal((await ads.taakFeedback()).ads[0].feedback, "te druk");
+    const f = await call("GET", `hq/ads/${r.id}/bestand`, { cookie: admin, raw: true });
+    assert.equal(f.status, 200);
+  } finally { globalThis.fetch = echt; }
+});
 await test("klant verwijderen: zonder facturen weg, bevestiging verplicht", async () => {
   const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Weg Test BV", email: "weg@test.test" } });
   const id = r.data.customer?.id || r.data.id;

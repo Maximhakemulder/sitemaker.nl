@@ -11,7 +11,7 @@ import { scoutReady } from "./b2b.mjs";
 // Managers (zelfde namen als public/hq/org.js).
 export const DEPTS = {
   directie: { name: "Directie", manager: "Victor", role: "algemeen directeur" },
-  marketing: { name: "Marketing & Design", manager: "Lisa", role: "performance marketeer" },
+  marketing: { name: "Marketing & Design", manager: "Lisa", role: "marketingmanager" },
   b2b: { name: "B2B Verkoop", manager: "Noah", role: "verkoopmanager" },
   projecten: { name: "Projecten", manager: "Iris", role: "projectmanager" },
   klantenservice: { name: "Klantenservice", manager: "Emma", role: "klantenservice-medewerker" },
@@ -190,21 +190,25 @@ async function domeinen(pulseData) {
 }
 
 async function marketing() {
-  const meta = await one("SELECT * FROM team_reports WHERE dept = 'marketing' AND kind = 'meta' ORDER BY created_at DESC LIMIT 1");
-  const ads = await q("SELECT * FROM team_reports WHERE dept = 'marketing' AND kind = 'statics' ORDER BY created_at DESC LIMIT 1");
-  const m = meta?.data || {};
+  const { weekKey } = await import("./ads.mjs");
+  const deze = weekKey();
+  const [tel, laatste, open] = await Promise.all([
+    one("SELECT COUNT(*) FILTER (WHERE soort = 'static')::int AS s, COUNT(*) FILTER (WHERE soort = 'animatie')::int AS a FROM ads WHERE week = $1", [deze]),
+    one("SELECT created_at FROM ads ORDER BY created_at DESC LIMIT 1"),
+    one("SELECT COUNT(*)::int AS n FROM ads WHERE status = 'nieuw'"),
+  ]);
   return {
-    live: !!meta || ads.length > 0,
-    metrics: meta ? [
-      { label: "uitgegeven (7 dagen)", value: m.spend != null ? euro(Math.round(m.spend * 100)) : "–" },
-      { label: "kliks (7 dagen)", value: m.clicks ?? "–" },
-      { label: "afspraken via ads (7 dagen)", value: m.leads ?? "–" },
-    ] : [{ label: "Meta-rapport", value: "nog niet", sub: "Wacht op de geplande taak" }],
+    live: !!laatste,
+    metrics: [
+      { label: "statics deze week", value: tel.s },
+      { label: "animaties deze week", value: tel.a },
+      { label: "wachten op jouw keuring", value: open.n },
+    ],
     people: {
-      marketeer: { text: meta ? `Laatste Meta-rapport: ${meta.title || new Date(meta.created_at).toLocaleDateString("nl-NL")}` : "Wacht op de koppeling met Meta via Windsor", busy: recent(meta?.created_at, 60) },
-      designer: { text: ads.length ? `${(ads[0].data.ads || []).length} statics gemaakt (${new Date(ads[0].created_at).toLocaleDateString("nl-NL")})` : "Maakt elke maandag 5 statics zodra de taak loopt", busy: recent(ads[0]?.created_at, 60) },
+      marketeer: { text: open.n ? `${open.n} advertenties wachten op jouw keuring in Marketing` : "Alle advertenties zijn gekeurd", busy: false },
+      designer: { text: laatste ? `Deze week ${tel.s} statics en ${tel.a} animaties gemaakt met Kive` : "Maakt elke maandag 4 statics en 2 animaties met Kive", busy: recent(laatste?.created_at, 60) },
     },
-    meta, statics: ads[0] || null,
+    wacht: open.n,
   };
 }
 

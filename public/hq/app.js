@@ -6,6 +6,7 @@
 
   // ------------------------------------------------ labels
   const L = {
+    ad: { nieuw: ["Te keuren", "s-let"], goedgekeurd: ["Goedgekeurd", "s-ok"], gebruikt: ["In Meta", "s-info"], afgekeurd: ["Afgekeurd", "s-grijs"] },
     wijziging: { ontvangen: ["Ontvangen", "s-info"], in_behandeling: ["In behandeling", "s-let"], verwerkt: ["Verwerkt", "s-ok"], afgewezen: ["Niet uitgevoerd", "s-grijs"] },
     factuur: { open: ["Openstaand", "s-let"], betaald: ["Betaald", "s-ok"], vervallen: ["Vervallen", "s-fout"], gecrediteerd: ["Gecrediteerd", "s-grijs"] },
     site: { in_aanbouw: ["In aanbouw", "s-info"], live: ["Live", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] },
@@ -55,6 +56,7 @@
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
     ["b2b", "B2B", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
     ["concepten", "Concepten", '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 8h18M8 21h8M12 17v4"/>'],
+    ["marketing", "Marketing", '<path d="M3 11l18-8v18L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'],
     ["reviews", "Reviews", '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'],
     ["instellingen", "Instellingen", '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>', "Beheer"],
     ["team", "Team", '<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6Z"/>'],
@@ -93,7 +95,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina === "afdeling" ? "bedrijf" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { bedrijf, afdeling, overzicht, klanten, klant, opdrachten, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten }[pagina] || bedrijf;
+    const fn = { bedrijf, afdeling, overzicht, klanten, klant, opdrachten, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten, marketing }[pagina] || bedrijf;
     if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
     try { await fn(main, id); zetBalk(main, pagina); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
@@ -153,7 +155,7 @@
   }
 
   // Het team van de afdeling bovenaan elke werkpagina: wie er werkt, wat ze nu doen, en hun verdieping in 3D.
-  const PAGINA_AFD = { opdrachten: "projecten", b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance" };
+  const PAGINA_AFD = { opdrachten: "projecten", b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance", marketing: "marketing" };
   let teamCache = null;
   const balkDicht = () => { try { return localStorage.getItem("sm_balk") === "dicht"; } catch { return false; } };
   async function zetBalk(main, pagina) {
@@ -1368,6 +1370,55 @@ ${p.body}</div>
   }
 
   // ================================================ REVIEWS
+  // ================================================ MARKETING (advertenties voor Meta, gemaakt met Kive)
+  let adFilter = "nieuw";
+  async function marketing(main) {
+    const d = await api("hq/ads");
+    const t = d.tellers || {};
+    const filters = [["nieuw", "Te keuren"], ["goedgekeurd", "Goedgekeurd"], ["gebruikt", "In Meta gezet"], ["afgekeurd", "Afgekeurd"], ["alle", "Alle"]];
+    const ads = d.ads.filter((a) => adFilter === "alle" || a.status === adFilter);
+    const weken = [...new Set(ads.map((a) => a.week))];
+    const bron = (a) => `/api/hq/ads/${a.id}/bestand`;
+    const kaart = (a) => html`<article class="ad-kaart" data-ad="${a.id}">
+      <div class="ad-beeld ad-${a.formaat}">${a.heeftBestand ? (a.type.startsWith("video/") ? html`<video src="${bron(a)}" controls muted loop playsinline preload="metadata"></video>` : html`<img src="${bron(a)}" alt="${a.kop}" loading="lazy">`) : html`<span class="dempen">Geen bestand</span>`}</div>
+      <div class="ad-info">
+        <div class="ad-chips"><span class="chip">${a.soort === "animatie" ? "Animatie" : "Static"}</span><span class="chip">${a.formaat.replace("x", ":")}</span>${chip(L.ad, a.status)}</div>
+        ${a.idee ? html`<p class="klein dempen">${a.idee}</p>` : ""}
+        <dl class="ad-teksten">
+          <dt>Primaire tekst <button class="knop knop-tekst knop-klein" data-kopieer="${a.tekst}">Kopieer</button></dt><dd>${a.tekst}</dd>
+          <dt>Kop <button class="knop knop-tekst knop-klein" data-kopieer="${a.kop}">Kopieer</button></dt><dd><b>${a.kop}</b></dd>
+          ${a.beschrijving ? html`<dt>Beschrijving <button class="knop knop-tekst knop-klein" data-kopieer="${a.beschrijving}">Kopieer</button></dt><dd>${a.beschrijving}</dd>` : ""}
+          <dt>Knop</dt><dd>${a.cta}</dd>
+        </dl>
+        ${a.feedback ? html`<p class="klein ad-feedback">Jouw feedback: ${a.feedback}</p>` : ""}
+        <div class="knoppen">
+          ${a.status !== "goedgekeurd" && a.status !== "gebruikt" ? html`<button class="knop knop-actie knop-klein" data-actie="goedgekeurd">Goedkeuren</button>` : ""}
+          ${a.status === "goedgekeurd" ? html`<button class="knop knop-klein" data-actie="gebruikt">In Meta gezet</button>` : ""}
+          ${a.status !== "afgekeurd" ? html`<button class="knop knop-licht knop-klein" data-actie="afgekeurd">Afkeuren</button>` : ""}
+          ${a.heeftBestand ? html`<a class="knop knop-licht knop-klein" href="${bron(a)}?download=1">Download</a>` : ""}
+          <button class="knop knop-tekst knop-klein" data-actie="weg">Verwijderen</button>
+        </div>
+      </div></article>`;
+    render(main, html`
+      <div class="hq-kop"><div><h1>Marketing</h1><p>Elke maandag maken Lisa en Milo 4 statics en 2 animaties met Kive. Keur ze hier, download ze en zet ze zelf in Meta. Wat je afkeurt (met een korte reden) neemt Milo mee in de volgende ronde.</p></div></div>
+      <div class="filters" role="group" aria-label="Filter">${filters.map(([k, tt]) => html`<button aria-pressed="${k === adFilter}" data-f="${k}">${tt}${k !== "alle" ? html`<span class="n">${t[k] || 0}</span>` : ""}</button>`)}</div>
+      ${ads.length ? weken.map((w) => html`<section class="paneel"><h2>Week ${w.split("-W")[1]} · ${w.split("-W")[0]}</h2><div class="ad-raster">${ads.filter((a) => a.week === w).map(kaart)}</div></section>`)
+        : html`<section class="paneel"><div class="leeg"><h3>${adFilter === "nieuw" ? "Niets te keuren" : "Nog niets hier"}</h3><p>De eerste advertenties komen maandag. ${adFilter === "nieuw" ? "" : "Kies een ander filter om de rest te zien."}</p></div></section>`}`);
+    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => { adFilter = b.dataset.f; marketing(main); }));
+    main.querySelectorAll("[data-kopieer]").forEach((b) => b.addEventListener("click", async () => { try { await navigator.clipboard.writeText(b.dataset.kopieer); toast("Gekopieerd"); } catch { toast("Kopiëren lukte niet", "fout"); } }));
+    main.querySelectorAll("[data-actie]").forEach((b) => b.addEventListener("click", async () => {
+      const id = b.closest("[data-ad]").dataset.ad, actie = b.dataset.actie;
+      try {
+        if (actie === "weg") { if (!(await SM.bevestig("Advertentie verwijderen?", "Het bestand en de teksten verdwijnen.", "Verwijderen"))) return; await api(`hq/ads/${id}`, { method: "DELETE" }); }
+        else if (actie === "afgekeurd") {
+          const dlg = SM.dialoog("Afkeuren", html`<form novalidate><div class="veld"><label for="ad-fb">Waarom? Milo neemt dit mee in de volgende ronde.</label><textarea id="ad-fb" name="feedback" rows="3" placeholder="Bijv. te druk, tekst te lang, man ziet er niet uit als vakman"></textarea></div><div class="knoppen"><button class="knop knop-actie" type="submit">Afkeuren</button></div></form>`);
+          await new Promise((res) => dlg.querySelector("form").addEventListener("submit", async (e) => { e.preventDefault(); await api(`hq/ads/${id}`, { method: "PUT", body: { status: "afgekeurd", feedback: e.target.elements.feedback.value } }).catch((err) => toast(err.message, "fout")); dlg.close(); res(); }));
+        } else await api(`hq/ads/${id}`, { method: "PUT", body: { status: actie } });
+        toast(actie === "weg" ? "Verwijderd" : "Bijgewerkt"); marketing(main);
+      } catch (err) { toast(err.message, "fout"); }
+    }));
+  }
+
   async function reviews(main) {
     const [{ reviews: lijst }, { customers }] = await Promise.all([api("hq/reviews"), api("hq/customers")]);
     const st = (n) => "★".repeat(n) + "☆".repeat(5 - n);

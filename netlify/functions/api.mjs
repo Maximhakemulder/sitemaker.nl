@@ -147,6 +147,8 @@ async function verwerk(req, context) {
       if (seg[1] === "klanten" && seg[2] && seg[3] === "voorbeeldadres" && m === "POST") { const { previewAlias } = await import("../lib/sites.mjs"); return json(await previewAlias(Number(seg[2]))); }
       if (path === "taak/backup" && m === "POST") { const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
       if (path === "taak/backup" && m === "GET") { const { backupStatus } = await import("../lib/backup.mjs"); return json(await backupStatus()); }
+      if (path === "taak/ads" && m === "POST") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakOpslaan(await body(req))); }
+      if (path === "taak/ads/feedback" && m === "GET") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakFeedback()); }
       if (path === "taak/koppelingen/test" && m === "POST") { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest({ id: null })); }
       if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
       if (path === "taak/opdrachten/heropen" && m === "POST") { const b = await body(req); return json(await opdrachten.taakHeropen(Number(b.klant), b.feedback)); }
@@ -324,6 +326,10 @@ async function verwerk(req, context) {
         case "POST customers/:id/verwijderen": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await hq.verwijderKlant(id, await body(req), user));
         case "POST customers/:id/extra-website": return json(await websites.staffExtra(id, await body(req), user));
         case "GET b2b": return json(await b2bDashboard());
+        case "GET ads": return json(await (await import("../lib/ads.mjs")).lijst());
+        case "PUT ads/:id": return json(await (await import("../lib/ads.mjs")).bijwerken(id, await body(req), user));
+        case "DELETE ads/:id": return json(await (await import("../lib/ads.mjs")).verwijder(id));
+        case "GET ads/:id/bestand": return await (await import("../lib/ads.mjs")).bestand(id, { download: url.searchParams.has("download") });
         case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "", zoek: url.searchParams.get("zoek") || "" }));
         case "POST leads": return json(await hq.addLead(await body(req), user.id));
         case "POST leads/import": return json(await hq.importLeads((await body(req)).csv, user));
