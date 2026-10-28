@@ -105,6 +105,7 @@ async function verwerk(req, context) {
     }
     if (path === "agenda/slots" && m === "GET") return json(await agenda.publicSlots(url.searchParams.get("soort") || undefined), 200, { "cache-control": "no-store" });
     // Meten B2B-mail: onzichtbaar plaatje (open) en doorstuurlink (klik). Ondertekend, dus geen open redirect.
+    if (path.startsWith("media/") && m === "GET") { const md = await import("../lib/media.mjs"); return await md.serveer(path.slice(6)); }
     if (path.startsWith("adbestand/") && m === "GET") {
       const [, id, f] = path.split("/"); const ads = await import("../lib/ads.mjs");
       return await ads.publiekBestand(Number(id) || 0, String(f || "").replace(/\.[a-z0-9]+$/, ""));
@@ -153,6 +154,8 @@ async function verwerk(req, context) {
       if (path === "taak/backup" && m === "POST") { const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
       if (path === "taak/backup" && m === "GET") { const { backupStatus } = await import("../lib/backup.mjs"); return json(await backupStatus()); }
       if (path === "taak/ads" && m === "POST") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakOpslaan(await body(req), publicBase(req))); }
+      if (path === "taak/media" && m === "PUT") { const md = await import("../lib/media.mjs"); return json(await md.upload(req, publicBase(req))); }
+      if (path === "taak/media" && m === "POST") { const md = await import("../lib/media.mjs"); return json(await md.ophalen((await body(req)).url, publicBase(req))); }
       if (path === "taak/ads/feedback" && m === "GET") { const ads = await import("../lib/ads.mjs"); return json(await ads.taakFeedback()); }
       if (path === "taak/koppelingen/test" && m === "POST") { const { koppelTest } = await import("../lib/sites.mjs"); return json(await koppelTest({ id: null })); }
       if (path === "taak/opdrachten/claim" && m === "POST") { const b = await body(req); return json(await opdrachten.claimOpdrachten(b.max, Number(b.id) || 0)); }
