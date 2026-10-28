@@ -324,7 +324,7 @@ async function verwerk(req, context) {
         case "POST customers/:id/verwijderen": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await hq.verwijderKlant(id, await body(req), user));
         case "POST customers/:id/extra-website": return json(await websites.staffExtra(id, await body(req), user));
         case "GET b2b": return json(await b2bDashboard());
-        case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "" }));
+        case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "", zoek: url.searchParams.get("zoek") || "" }));
         case "POST leads": return json(await hq.addLead(await body(req), user.id));
         case "POST leads/import": return json(await hq.importLeads((await body(req)).csv, user));
         case "GET leads/zoek": return json(await hq.zoekLeads(url.searchParams.get("q") || ""));
