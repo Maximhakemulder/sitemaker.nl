@@ -58,7 +58,7 @@ async function ronde(started) {
     await teamTrigger({ kind: "backup" });
     return { gestart: true };
   });
-  if (left() > 5000) await step("webbureau", () => controleerBureaus({ max: 3, budgetMs: left() - 3000 }));
+  if (left() > 5000) await step("webbureau", () => controleerBureaus({ max: 6, budgetMs: left() - 3000 }));
 }
 
 // Eenmalig zodra de mail werkt: herinnering aan Maxim om de start af te ronden (open modus, Pay.nl, btw).
