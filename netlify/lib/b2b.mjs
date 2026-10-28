@@ -406,6 +406,17 @@ export function webbureauVan(html, eigenDomein = "") {
     const voor = kaal(staart.slice(Math.max(0, m.index - 200), m.index)).slice(-60);
     if (CREDIT.test(voor) || /^(web\s?design|website|realisatie|ontwerp)\s*(door|by|:)/i.test(tekst)) return (tekst.replace(/^(web\s?design|website|realisatie|ontwerp)\s*(door|by|:)\s*/i, "") || dom).slice(0, 60);
   }
+  // Kale link onderaan naar een webbureau, vaak direct onder "© Bedrijf 2026" (bijv. "APD Creations").
+  const voet = staart.slice(-4000), BUREAU = /(creation|design|webs?ite|webbouw|webdev|media|studio|digital|pixel|marketing|agency|bureau|develop|internet|hosting|\bweb)/i;
+  const re2 = /<a\b[^>]*href=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let m2;
+  while ((m2 = re2.exec(voet))) {
+    const dom = (domainOf(m2[1]) || "").replace(/^www\./, "");
+    if (!dom || (eigen && (dom === eigen || dom.endsWith("." + eigen)))) continue;
+    const tekst = kaal(m2[2]);
+    if (PLATFORM.test(dom) || PLATFORM.test(tekst) || /(maps|wa\.me|whatsapp|youtube|tiktok|pinterest|twitter|x\.com|treatwell|salonized|booksy|bol\.com|kiyoh|trustpilot|thuiswinkel)/i.test(dom)) continue;
+    if (BUREAU.test(dom) || BUREAU.test(tekst)) return (tekst || dom).slice(0, 60);
+  }
   const t = kaal(staart);
   const v = t.match(/(?:[Ww]eb\s?design|[Ww]ebsite|[Ww]ebdevelopment|[Rr]ealisatie|[Oo]ntwerp|[Vv]ormgeving|[Oo]ntwikkeld|[Gg]emaakt|[Gg]ebouwd|[Oo]ntworpen|[Dd]esigned|[Mm]ade|[Dd]eveloped|[Bb]uilt)\s+(?:door|by)\s*:?\s*([A-Z0-9][\w&.\-]*(?:\s+[A-Z0-9][\w&.\-]*){0,3})/) || t.match(/\b(?:Webdesign|Website|Realisatie|Ontwerp)\s*:\s*([A-Z0-9][\w&.\-]*(?:\s+[A-Z0-9][\w&.\-]*){0,3})/);
   if (v && !PLATFORM.test(v[1])) return v[1].slice(0, 60);

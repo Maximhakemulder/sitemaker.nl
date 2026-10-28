@@ -36,7 +36,9 @@ const { sendBatch } = await import("../netlify/lib/b2b.mjs");
   const assert0 = (await import("node:assert/strict")).default;
   assert0.equal(webbureauVan('<footer>Website door <a href="https://www.pixelkracht.nl">Pixelkracht</a></footer>', "bakker.nl"), "Pixelkracht");
   assert0.equal(webbureauVan('<footer>Mogelijk gemaakt door <a href="https://wordpress.org">WordPress</a></footer>', "a.nl"), "");
-  assert0.equal(webbureauVan('<footer><a href="https://facebook.com/x">Facebook</a></footer>', "a.nl"), ""); }
+  assert0.equal(webbureauVan('<footer><a href="https://facebook.com/x">Facebook</a></footer>', "a.nl"), "");
+  assert0.equal(webbureauVan('<footer><p>© Zeralya Skin – 2026</p><a href="https://www.apdcreations.nl">APD Creations</a></footer>', "zeralyaskin.nl"), "APD Creations");
+  assert0.equal(webbureauVan('<footer><a href="https://www.google.com/maps/x">Route</a><a href="https://wa.me/316">WhatsApp</a></footer>', "a.nl"), ""); }
 const { q, closeDb } = await import("../netlify/lib/core.mjs");
 
 let passed = 0;
