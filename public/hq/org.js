@@ -13,15 +13,15 @@ window.SM_ORG = [
     tasks: ["Elke ochtend na 8:00 de directiebriefing", "Prioriteiten en beslissingen voor jou klaarzetten"],
   },
   {
-    key: "marketing", floor: 6, name: "Marketing & Design", color: "#FF5757", status: "opbouw", manager: "marketeer",
-    desc: "Meta-advertenties bewaken en elke week nieuwe statische advertenties maken.",
+    key: "marketing", floor: 6, name: "Marketing & Design", color: "#FF5757", status: "live", manager: "marketeer", page: "marketing",
+    desc: "Elke week nieuwe advertenties voor Meta: statische beelden en korte animaties, gemaakt met Kive. Jij keurt ze en zet ze zelf in Meta.",
     people: [
-      { key: "marketeer", person: "Lisa", role: "Performance marketeer", look: { hair: 0x7a3b22, acc: "headset" }, color: 1,
-        does: ["Checkt elke ochtend de Meta-advertenties via Windsor", "Uitgaven, kosten per afspraak, wat werkt en wat niet", "Geeft de designer een briefing"] },
+      { key: "marketeer", person: "Lisa", role: "Marketingmanager", look: { hair: 0x7a3b22, acc: "headset" }, color: 1,
+        does: ["Bepaalt elke week de invalshoeken (snel, vaste prijs, vakmensen zonder tijd)", "Schrijft de teksten voor Meta: kop, primaire tekst en knop", "Leert van wat jij goedkeurt en afkeurt"] },
       { key: "designer", person: "Milo", role: "Designer", look: { hair: 0x15110e, acc: "cap" }, color: 4,
-        does: ["Maakt elke maandag 5 statische advertenties met Kive", "Zet ze klaar in Canva om aan te passen"] },
+        does: ["Maakt elke maandag 4 statics en 2 animaties met Kive", "Vakmensen met een voorbeeldwebsite op telefoon of laptop (verzonnen bedrijf)", "Formaten voor feed (1:1, 4:5) en stories/reels (9:16)"] },
     ],
-    tasks: ["Elke ochtend: Meta-rapport (Lisa)", "Elke maandag: 5 statics met Kive, klaar in Canva (Milo)"],
+    tasks: ["Elke maandag: 4 statics + 2 animaties met Kive (Milo), teksten door Lisa", "Jij keurt in HQ › Marketing en zet ze in Meta"],
   },
   {
     key: "b2b", floor: 5, name: "B2B Verkoop", color: "#6C4CF1", status: "live", manager: "verkoopmanager", page: "concepten",

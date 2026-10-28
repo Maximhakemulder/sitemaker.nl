@@ -675,3 +675,16 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .vraag-snel{margin-bottom:16px}.vraag-snel form{display:grid;gap:12px;margin-top:10px}.vraag-snel form .knop{justify-self:start}
 
 .lead-zoek{display:flex;gap:8px;margin:0 0 12px;max-width:560px}.lead-zoek input{flex:1;min-height:42px;border:1px solid #D9D5E6;border-radius:10px;padding:0 14px;font:inherit}
+
+.ad-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:12px}
+.ad-kaart{border:1px solid #ECEAF3;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.ad-beeld{background:#F4F2FA;display:grid;place-items:center}
+.ad-beeld img,.ad-beeld video{width:100%;height:100%;object-fit:contain;display:block}
+.ad-1x1{aspect-ratio:1/1}.ad-4x5{aspect-ratio:4/5}.ad-9x16{aspect-ratio:9/16;max-height:520px}
+.ad-info{padding:14px 16px 16px;display:grid;gap:10px}
+.ad-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ad-chips .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:#E7F4FF;color:#1C0747}
+.ad-teksten{margin:0;display:grid;gap:4px}
+.ad-teksten dt{font-size:12.5px;font-weight:700;color:#5c577a;display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.ad-teksten dd{margin:0;font-size:14.5px;white-space:pre-line}
+.ad-feedback{background:#FFF4E5;border-radius:8px;padding:8px 10px}
