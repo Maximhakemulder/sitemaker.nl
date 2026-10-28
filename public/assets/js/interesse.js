@@ -18,7 +18,7 @@
     vakken.start.hidden = k !== "start";
     vakken.afspraak.hidden = k === "start";
     if (k !== "start") { soort = k; laadMomenten(); }
-    (k === "start" ? vakken.start : vakken.afspraak).scrollIntoView({ behavior: "smooth", block: "start" });
+    (b.closest("[data-scroll-doel]") || document.querySelector("[data-scroll-doel]") || (k === "start" ? vakken.start : vakken.afspraak)).scrollIntoView({ behavior: "smooth", block: "start" });
   }));
 
   // Vanaf de homepage: ?keuze=start|video|telefoon opent die keuze meteen.
@@ -57,7 +57,7 @@
     if ((d.bedrijf || "").trim().length < 2) err.bedrijf = "Vul de naam van je bedrijf in.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((d.email || "").trim())) err.email = "Vul een geldig e-mailadres in, bijvoorbeeld naam@bedrijf.nl.";
     if (Object.keys(err).length) return zetFouten(sf, "se", err);
-    const knop = sf.querySelector("[type=submit]"); knop.disabled = true; knop.textContent = "Bezig…";
+    const knop = sf.querySelector("[type=submit]"), label = knop.textContent; knop.disabled = true; knop.textContent = "Bezig…";
     try {
       const r = await fetch("/api/start/aanmelden", { method: "POST", headers: { "content-type": "application/json", "x-sm": "1" }, body: JSON.stringify({ ...d, concept, t: geopend }) });
       const res = await r.json().catch(() => ({}));
@@ -67,7 +67,7 @@
       if (res.bestaat) bedankt(vakken.start, "Je hebt al een account", `Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail.`, naar);
       else bedankt(vakken.start, "Je account staat klaar", `We hebben je een mail gestuurd. Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail. Daarna loop je de drie stappen door en gaan wij aan de slag.`, naar);
     } catch { fout.textContent = "Er is geen verbinding. Controleer je internet en probeer het opnieuw."; fout.hidden = false; }
-    finally { knop.disabled = false; knop.textContent = "Account aanmaken"; }
+    finally { knop.disabled = false; knop.textContent = label; }
   });
 
   // ---------------- Videomeeting of bellen
