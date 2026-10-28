@@ -539,3 +539,33 @@ export async function sendTestMail(leadId, kind, aan) {
   if (!res?.ok) fail(502, res?.error || "Versturen lukte niet.");
   return { ok: true, aan };
 }
+
+// ---------------------------------------------------------------- herstel 28-10-2026
+// Eerste mails verstuurd met "link geldig 7 dagen" misten de voorbeeldlink (en dus de knop).
+// Herkenning: verstuurd en het voorbeeld verloopt binnen 7,5 dag na het versturen. Elke lead krijgt hooguit één herstelmail.
+export async function herstelLinkMails({ verstuur = false, max = 12 } = {}) {
+  const s = await getSettings();
+  const rows = await q(`${LEAD_SELECT} WHERE l.status = 'verstuurd' AND l.sent_at IS NOT NULL AND c.status = 'klaar' AND c.token IS NOT NULL
+    AND c.expires_at IS NOT NULL AND c.expires_at <= l.sent_at + interval '7 days 12 hours'
+    AND NOT EXISTS (SELECT 1 FROM mail_log m WHERE m.ref = 'lead:' || l.id AND m.kind = 'herstel-b2b' AND m.ok)
+    AND NOT EXISTS (SELECT 1 FROM suppressions x WHERE x.email = lower(l.email))
+    ORDER BY l.sent_at`);
+  if (!verstuur) return { aantal: rows.length, leads: rows.map((l) => ({ id: l.id, bedrijf: l.company, email: l.email, verstuurd: l.sent_at })) };
+  if (!mailReady()) fail(503, "De mail is nog niet ingesteld.");
+  let ok = 0, fout = 0;
+  for (const lead of rows.slice(0, max)) {
+    // Voorbeeld nog minstens 7 dagen te bekijken vanaf nu.
+    await q("UPDATE concepts SET expires_at = GREATEST(expires_at, NOW() + interval '7 days'), updated_at = NOW() WHERE lead_id = $1", [lead.id]);
+    const exp = await one("SELECT expires_at FROM concepts WHERE lead_id = $1", [lead.id]);
+    const body = `Hi!\n\nIn mijn vorige mail ontbrak de link naar het ontwerp dat ik voor ${lead.company} heb gemaakt, sorry daarvoor. Hier is hij:\n${conceptUrl(lead.concept_token)}\n\nGoed om te weten: dit is een voorbeeldlink die alleen jij kunt zien. Dit heeft geen invloed op je huidige website. Je kunt het rustig bekijken tot ${datumNl(exp.expires_at)}.\n\nMet vriendelijke groet,\n\n--\nGeen berichten meer van ons? Hier afmelden: ${unsubUrl(lead.id)}`;
+    const subject = /^re:/i.test(lead.sent_subject || "") ? lead.sent_subject : `Re: ${lead.sent_subject || `Vraagje over ${lead.company}`}`;
+    const res = await sendMail({
+      to: lead.email, subject, text: body, html: textToHtml(body, { leadId: lead.id, mail: "eerste", opens: false, kliks: s.b2b.meten?.kliks !== false }), kind: "herstel-b2b", ref: `lead:${lead.id}`,
+      fromName: `${s.b2b.senderName || ""} | Sitemaker`.replace(/^ \| /, ""),
+      headers: { "List-Unsubscribe": `<${unsubUrl(lead.id)}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+      inReplyTo: lead.message_id || undefined, references: lead.message_id || undefined,
+    });
+    if (res.ok) ok++; else { fout++; if (res.code === "EAUTH" || [421, 450, 451, 452].includes(res.responseCode)) break; }
+  }
+  return { verstuurd: ok, fout, resterend: Math.max(0, rows.length - ok) };
+}
