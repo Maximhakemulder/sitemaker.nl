@@ -167,6 +167,15 @@ await test("gelijktijdig indienen: er tellen nooit meer dan 4 mee", async () => 
   const [{ n }] = await q("SELECT COUNT(*)::int n FROM change_requests WHERE customer_id = $1 AND counts", [c1]);
   assert.ok(n <= 4, `er tellen ${n} wijzigingen mee`);
 });
+await test("klant verwijderen: zonder facturen weg, bevestiging verplicht", async () => {
+  const r = await call("POST", "hq/customers", { cookie: admin, body: { company: "Weg Test BV", email: "weg@test.test" } });
+  const id = r.data.customer?.id || r.data.id;
+  assert.ok(id, JSON.stringify(r.data));
+  assert.equal((await call("POST", `hq/customers/${id}/verwijderen`, { cookie: admin, body: { bevestiging: "verkeerd" } })).status, 400);
+  const ok = await call("POST", `hq/customers/${id}/verwijderen`, { cookie: admin, body: { bevestiging: "weg test bv" } });
+  assert.equal(ok.status, 200); assert.equal(ok.data.verwijderd, true);
+  assert.equal((await call("GET", `hq/customers/${id}`, { cookie: admin })).status, 404);
+});
 await test("back-up: database versleuteld naar GitHub en weer leesbaar", async () => {
   const b = await import("../netlify/lib/backup.mjs");
   const zlib = (await import("node:zlib")).default;
