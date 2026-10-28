@@ -23,8 +23,8 @@ async function findUser(email) {
   if (!u && (adminEmails().includes(email) || hqAlleen().includes(email))) {
     u = await one("INSERT INTO users (email, role, name) VALUES ($1, 'admin', '') ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email RETURNING *", [email]);
   }
-  // Wie op de HQ-lijst staat, is beheerder.
-  if (u && u.role === "medewerker" && hqAlleen().includes(email)) u = await one("UPDATE users SET role = 'admin' WHERE id = $1 RETURNING *", [u.id]);
+  // De eerste op de HQ-lijst (Maxim) is altijd beheerder.
+  if (u && u.role === "medewerker" && hqAlleen()[0] === email) u = await one("UPDATE users SET role = 'admin' WHERE id = $1 RETURNING *", [u.id]);
   return u;
 }
 
