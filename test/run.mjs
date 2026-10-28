@@ -169,6 +169,15 @@ await test("gelijktijdig indienen: er tellen nooit meer dan 4 mee", async () => 
   const [{ n }] = await q("SELECT COUNT(*)::int n FROM change_requests WHERE customer_id = $1 AND counts", [c1]);
   assert.ok(n <= 4, `er tellen ${n} wijzigingen mee`);
 });
+await test("eerste mail heeft altijd de knop naar het voorbeeld, ook als de link maar 7 dagen geldig is", async () => {
+  const b = await import("../netlify/lib/b2b.mjs");
+  const core = await import("../netlify/lib/core.mjs");
+  const s = structuredClone(core.DEFAULT_SETTINGS); s.b2b.concepten.geldigDagen = 7;
+  const lead = { id: 9, company: "Test BV", concept_token: "tok123", concept_status: "klaar", concept_expires: new Date(Date.now() + 3 * 86400000).toISOString() };
+  const { body } = b.compose(lead, "eerste", s);
+  assert.ok(body.includes("/voorbeeld/tok123"), body);
+  assert.ok(b.textToHtml(body).includes("Bekijk mijn ontwerp"));
+});
 await test("marketing: taak levert een ad aan, HQ keurt en serveert het bestand", async () => {
   const ads = await import("../netlify/lib/ads.mjs");
   const echt = globalThis.fetch;

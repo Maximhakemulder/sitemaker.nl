@@ -29,7 +29,8 @@ export async function unsubscribe(id) {
 }
 
 // ---------------------------------------------------------------- opstellen
-export const conceptReady = (lead) => lead.concept_status === "klaar" && lead.concept_token && (!lead.concept_expires || new Date(lead.concept_expires) > new Date(Date.now() + 7 * 86400000));
+export const conceptReady = (lead) => lead.concept_status === "klaar" && lead.concept_token && (!lead.concept_expires || new Date(lead.concept_expires) > new Date(Date.now() + 2 * 86400000));
+// (Was 7 dagen marge: met geldigDagen = 7 viel de link dan weg uit de eerste mail, 28-10-2026.)
 export const LEAD_SELECT = `SELECT l.*, c.token AS concept_token, c.status AS concept_status, c.expires_at AS concept_expires, c.created_at AS concept_created FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id`;
 export function fillTemplate(tpl, lead, s) {
   const sender = s.b2b.senderName || s.company.name || "Sitemaker";
@@ -157,6 +158,11 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
     if (supp) { await q("UPDATE leads SET status = 'afgemeld', updated_at = NOW() WHERE id = $1", [lead.id]); continue; }
     const kind = lead.status === "opvolging_goedgekeurd" ? "opvolging" : "eerste";
     const { subject, body } = compose(lead, kind, s);
+    // Vangnet: een eerste mail gaat nooit zonder de link naar de voorbeeldwebsite.
+    if (kind === "eerste" && (!lead.concept_token || !body.includes(conceptUrl(lead.concept_token)))) {
+      await q("UPDATE leads SET error = $2, updated_at = NOW() WHERE id = $1", [lead.id, "Niet verstuurd: de link naar de voorbeeldwebsite ontbrak in de mail."]);
+      failed++; continue;
+    }
     // Voorbeeld blijft vanaf nu conceptDagen te bekijken (staat zo in de mail).
     if (kind === "eerste") await q("UPDATE concepts SET expires_at = NOW() + ($2 || ' days')::interval, updated_at = NOW() WHERE lead_id = $1", [lead.id, String(conceptDagen(s))]);
     const res = await sendMail({
