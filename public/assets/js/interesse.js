@@ -63,6 +63,7 @@
       const res = await r.json().catch(() => ({}));
       if (!r.ok) { if (res.errors) zetFouten(sf, "se", res.errors); else { fout.textContent = res.error || "Dat lukte niet. Probeer het opnieuw."; fout.hidden = false; fout.focus(); } return; }
       const naar = { label: "Naar je portaal", href: res.portaal || "/portaal/" };
+      try { window.fbq && (window.fbq("track", "Lead", { content_name: "direct starten" }), window.fbq("track", "CompleteRegistration")); } catch {}
       if (res.bestaat) bedankt(vakken.start, "Je hebt al een account", `Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail.`, naar);
       else bedankt(vakken.start, "Je account staat klaar", `We hebben je een mail gestuurd. Log in op je portaal met <b>${esc(res.email)}</b>; je krijgt een code per mail. Daarna loop je de drie stappen door en gaan wij aan de slag.`, naar);
     } catch { fout.textContent = "Er is geen verbinding. Controleer je internet en probeer het opnieuw."; fout.hidden = false; }
@@ -118,6 +119,7 @@
         else { fout.textContent = res.error || "Dat lukte niet. Probeer het opnieuw."; fout.hidden = false; fout.focus(); }
         return;
       }
+      try { window.fbq && (window.fbq("track", "Lead", { content_name: soort }), window.fbq("track", "Schedule")); } catch {}
       bedankt(vakken.afspraak, "Je afspraak staat vast", `<b>${esc(res.wanneer)}</b>, ${esc(res.hoe)}. Je krijgt een bevestiging per mail, met een link om te annuleren.`);
     } catch { fout.textContent = "Er is geen verbinding. Controleer je internet en probeer het opnieuw."; fout.hidden = false; }
     finally { knop.disabled = false; knop.textContent = "Afspraak bevestigen"; }

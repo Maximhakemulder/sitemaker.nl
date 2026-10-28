@@ -759,3 +759,19 @@ p { margin: 0 0 1em; }
 .home-opties .optie:hover em { background: var(--paars); color: var(--wit); }
 .home-opties .optie-hoofd:hover em { background: var(--knop-hover); }
 @media (max-width: 900px) { .keuzes-home .home-opties { margin-top: 0; } .home-opties .optie-hoofd { margin-top: 12px; } }
+
+/* Landingspagina voor advertenties (/start) */
+.landing .kop .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.landing .kop-knop { min-height: 42px; padding: 0 16px; font-size: 15px; white-space: nowrap; }
+.usp-raster { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.usp-raster .kaart { height: 100%; }
+.landing-keuzekop { margin-bottom: 36px; }
+.landing-keuzekop h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.05; }
+@media (max-width: 1060px) { .usp-raster { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) {
+  .usp-raster { grid-template-columns: 1fr; gap: 12px; }
+  .landing .kop-knop { min-height: 38px; padding: 0 12px; font-size: 14px; }
+  .landing .kop .logo img { width: 150px; height: auto; }
+  .landing-keuzekop { margin-bottom: 24px; }
+  .landing .hero .acties .knop-rand { display: none; }
+}
