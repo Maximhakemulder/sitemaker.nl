@@ -425,9 +425,12 @@ export async function updateAppointment(id, b, user) {
 }
 
 // ---------------------------------------------------------------- B2B
-export async function listLeads({ status } = {}) {
+export async function listLeads({ status, zoek = "" } = {}) {
   const sel = "SELECT l.*, row_to_json(c.*) AS concept FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id";
-  const rows = status === "bekeken"
+  const z = str(zoek, 120).trim().toLowerCase();
+  const rows = z.length >= 2
+    ? await q(`${sel} WHERE lower(l.company) LIKE $1 OR lower(COALESCE(l.email,'')) LIKE $1 OR lower(l.website) LIKE $1 OR lower(l.city) LIKE $1 ORDER BY l.updated_at DESC LIMIT 200`, [`%${z}%`])
+    : status === "bekeken"
     ? await q(`${sel} WHERE c.views > 0 ORDER BY c.last_view_at DESC LIMIT 500`)
     : status && LEAD_STATUSES.includes(status)
       ? await q(`${sel} WHERE l.status = $1 ORDER BY l.updated_at DESC LIMIT 500`, [status])

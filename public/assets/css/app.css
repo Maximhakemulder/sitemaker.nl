@@ -673,3 +673,5 @@ details.anders[open] > summary { margin-bottom: 12px; }
 @media(max-width:640px){.stappen-lijst li{grid-template-columns:34px 1fr}.stappen-lijst li .knop{grid-column:2;justify-self:start}}
 
 .vraag-snel{margin-bottom:16px}.vraag-snel form{display:grid;gap:12px;margin-top:10px}.vraag-snel form .knop{justify-self:start}
+
+.lead-zoek{display:flex;gap:8px;margin:0 0 12px;max-width:560px}.lead-zoek input{flex:1;min-height:42px;border:1px solid #D9D5E6;border-radius:10px;padding:0 14px;font:inherit}

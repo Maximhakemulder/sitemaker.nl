@@ -996,6 +996,7 @@
 
   // ================================================ B2B
   let leadFilter = "nieuw";
+  let leadZoek = "";
   // ================================================ B2B: overzicht (waar we zoeken, wat het oplevert) + leads
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "–");
   const b2bTabs = (actief, d) => html`<nav class="sub-tabs" aria-label="B2B"><a href="#b2b" ${actief === "overzicht" ? raw('aria-current="page"') : ""}>Overzicht</a><a href="#b2b/leads" ${actief === "leads" ? raw('aria-current="page"') : ""}>Leads${d ? html` <span class="n">${d}</span>` : ""}</a><a href="#concepten">Concepten</a></nav>`;
@@ -1127,7 +1128,7 @@
   }
 
   async function b2bLeads(main) {
-    const d = await api("hq/leads?status=" + (leadFilter === "alle" ? "" : leadFilter));
+    const d = await api("hq/leads?status=" + (leadFilter === "alle" ? "" : leadFilter) + (leadZoek ? "&zoek=" + encodeURIComponent(leadZoek) : ""));
     const c = d.counts;
     const n = (k) => c[k] || 0;
     const filters = [["bekeken", "Concept bekeken"], ["nieuw", "Klaar om te mailen"], ["goedgekeurd", "Wachtrij"], ["verstuurd", "Verstuurd"], ["opgevolgd", "Opgevolgd"], ["reactie", "Reacties"], ["afspraak", "Afspraak"], ["kandidaat", "Te onderzoeken"], ["overgeslagen", "Overgeslagen"], ["afgemeld", "Afgemeld"], ["fout", "Fout"], ["alle", "Alle"]];
@@ -1139,7 +1140,9 @@
       ${!d.ready.mail ? html`<div class="melding melding-let">${raw(icon.let)}<p>Mail is nog niet ingesteld (MAIL_USER/MAIL_PASSWORD). Goedgekeurde mails blijven in de wachtrij tot dat geregeld is.</p></div>` : ""}
       ${!d.ready.company ? html`<div class="melding melding-let">${raw(icon.let)}<p>Vul bij <a href="#instellingen">Instellingen</a> je bedrijfsnaam en KvK-nummer in; die staan verplicht onder elke zakelijke mail.</p></div>` : ""}
       ${opvolgKlaar ? html`<div class="melding melding-info">${raw(icon.let)}<div><p><b>${opvolgKlaar} leads</b> zijn langer dan je opvolgtermijn geleden gemaild zonder reactie.</p><button class="knop knop-klein" id="opvolgen">Opvolging goedkeuren</button></div></div>` : ""}
-      <div class="filters" role="group" aria-label="Filter">${filters.map(([k, t]) => html`<button aria-pressed="${k === leadFilter}" data-f="${k}">${t}${k !== "alle" ? html`<span class="n">${k === "opgevolgd" ? n("opgevolgd") + n("opvolging_goedgekeurd") : n(k)}</span>` : ""}</button>`)}</div>
+      <form class="lead-zoek" id="lead-zoek" role="search"><input type="search" name="q" value="${leadZoek}" placeholder="Zoek op bedrijf, e-mail, website of plaats" aria-label="Zoek in leads">${leadZoek ? html`<button class="knop knop-licht knop-klein" type="button" id="zoek-wis">Wissen</button>` : ""}</form>
+      ${leadZoek ? html`<p class="klein dempen">${d.leads.length} resultaten voor "${leadZoek}" in alle statussen.</p>` : ""}
+      <div class="filters" role="group" aria-label="Filter">${filters.map(([k, t]) => html`<button aria-pressed="${!leadZoek && k === leadFilter}" data-f="${k}">${t}${k !== "alle" ? html`<span class="n">${k === "opgevolgd" ? n("opgevolgd") + n("opvolging_goedgekeurd") : n(k)}</span>` : ""}</button>`)}</div>
       <section class="paneel">${d.leads.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th><input type="checkbox" class="selecteer" id="alles" aria-label="Alles selecteren"></th><th>Bedrijf</th><th>E-mail</th><th>Plaats / branche</th><th>Concept</th><th>Status</th><th>Laatst</th></tr></thead><tbody>
         ${d.leads.map((l) => html`<tr class="klikbaar" data-lead="${l.id}"><td><input type="checkbox" class="selecteer" value="${l.id}" aria-label="Selecteer ${l.company}"></td>
           <td><b>${l.company}</b>${l.intro ? html`<br><span class="klein dempen">Met openingszin</span>` : ""}${l.rejectReason && l.status === "overgeslagen" ? html`<br><span class="klein dempen">${l.rejectReason}</span>` : ""}</td>
@@ -1156,7 +1159,13 @@
         : html`<div class="leeg"><h3>Geen leads in deze lijst</h3><p>Voeg leads toe, importeer een CSV${d.ready.scout ? " of laat de scout zoeken" : ""}.</p></div>`}</section>
       <p class="klein dempen">Mailteksten, verzendtijden en de scout stel je in bij <a href="#instellingen">Instellingen</a>. ${d.ready.ai ? "Openingszinnen worden met AI geschreven op basis van de eigen website van het bedrijf." : ""}</p>`);
 
-    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", async () => { leadFilter = b.dataset.f; await b2bLeads(main); zetBalk(main, "b2b"); }));
+    main.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", async () => { leadFilter = b.dataset.f; leadZoek = ""; await b2bLeads(main); zetBalk(main, "b2b"); }));
+    const zf = main.querySelector("#lead-zoek");
+    let zt;
+    const zoekNu = async () => { leadZoek = zf.elements.q.value.trim(); await b2bLeads(main); zetBalk(main, "b2b"); const i = main.querySelector("#lead-zoek input"); i?.focus(); i?.setSelectionRange(i.value.length, i.value.length); };
+    zf?.addEventListener("submit", (e) => { e.preventDefault(); clearTimeout(zt); zoekNu(); });
+    zf?.elements.q.addEventListener("input", () => { clearTimeout(zt); const v = zf.elements.q.value.trim(); if (v.length >= 2 || (!v && leadZoek)) zt = setTimeout(zoekNu, 450); });
+    main.querySelector("#zoek-wis")?.addEventListener("click", async () => { leadZoek = ""; await b2bLeads(main); zetBalk(main, "b2b"); });
     main.querySelector("#lead-nieuw").onclick = () => leadToevoegen();
     main.querySelector("#offline").onclick = () => offlineDialoog();
     main.querySelector("#lead-import").onclick = () => leadImport();
