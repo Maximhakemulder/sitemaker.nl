@@ -183,6 +183,9 @@ await test("marketing: taak levert een ad aan, HQ keurt en serveert het bestand"
     assert.equal((await ads.taakFeedback()).ads[0].feedback, "te druk");
     const f = await call("GET", `hq/ads/${r.id}/bestand`, { cookie: admin, raw: true });
     assert.equal(f.status, 200);
+    const pad = new URL(r.bestandUrl, "http://x").pathname.replace(/^\/api\//, "");
+    assert.equal((await call("GET", pad, { raw: true })).status, 200, "publieke link voor Canva werkt");
+    assert.equal((await call("GET", `adbestand/${r.id}/fout.png`, { raw: true })).status, 404);
   } finally { globalThis.fetch = echt; }
 });
 await test("klant verwijderen: zonder facturen weg, bevestiging verplicht", async () => {

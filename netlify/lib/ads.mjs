@@ -1,12 +1,24 @@
 // Marketing & Design (Milo): advertenties voor Meta, gemaakt door een geplande Claude-taak met Kive.
 // De taak levert per ad de teksten + een Kive-URL; wij halen het bestand op en bewaren het in Blobs (ads/<id>.<ext>).
-import { q, one, str, fail, audit } from "./core.mjs";
+import crypto from "node:crypto";
+import { env, q, one, str, fail, audit, publicBase } from "./core.mjs";
 import { putFile, getFile, deleteFile } from "./files.mjs";
 
 const SOORTEN = ["static", "animatie"], FORMATEN = ["1x1", "4x5", "9x16"], STATUS = ["nieuw", "goedgekeurd", "afgekeurd", "gebruikt"];
 const TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm" };
 const publiek = (a) => ({ id: a.id, week: a.week, soort: a.soort, formaat: a.formaat, idee: a.idee, kop: a.kop, tekst: a.tekst, beschrijving: a.beschrijving,
   cta: a.cta, status: a.status, feedback: a.feedback, heeftBestand: !!a.bestand_key, type: a.bestand_type, bronUrl: a.bron_url, createdAt: a.created_at });
+
+// Publieke, ondertekende link naar het bestand (voor Canva "upload vanaf URL"; Kive-links haalt Canva niet op).
+const adSig = (id) => crypto.createHmac("sha256", env("AUTH_SECRET", "sitemaker-local-dev")).update(`ad:${id}`).digest("base64url").slice(0, 24);
+export const adPubliekUrl = (base, id, type) => `${base}/api/adbestand/${id}/${adSig(id)}.${TYPES[type] || "bin"}`;
+export async function publiekBestand(id, sig) {
+  if (!id || !sig || sig !== adSig(id)) return new Response("Niet gevonden", { status: 404 });
+  const a = await one("SELECT * FROM ads WHERE id = $1", [id]);
+  const buf = a?.bestand_key && await getFile(a.bestand_key);
+  if (!buf) return new Response("Niet gevonden", { status: 404 });
+  return new Response(buf, { headers: { "content-type": a.bestand_type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "x-robots-tag": "noindex" } });
+}
 
 export function weekKey(d = new Date()) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -16,7 +28,7 @@ export function weekKey(d = new Date()) {
 }
 
 // ---- taak-API
-export async function taakOpslaan(b) {
+export async function taakOpslaan(b, base = "") {
   const soort = SOORTEN.includes(b.soort) ? b.soort : "static", formaat = FORMATEN.includes(b.formaat) ? b.formaat : "1x1";
   const kop = str(b.kop, 120), tekst = str(b.tekst, 1500);
   if (!kop || !tekst) fail(400, "kop en tekst zijn verplicht.");
@@ -33,7 +45,7 @@ export async function taakOpslaan(b) {
   const key = `ads/${a.id}.${TYPES[type]}`;
   await putFile(key, buf, { type, name: `sitemaker-ad-${a.id}.${TYPES[type]}` });
   await q("UPDATE ads SET bestand_key = $2 WHERE id = $1", [a.id, key]);
-  return { ok: true, id: a.id };
+  return { ok: true, id: a.id, bestandUrl: adPubliekUrl(base, a.id, type) };
 }
 // Wat Maxim eerder vond: zodat de designer leert (afgekeurd + feedback, goedgekeurd).
 export async function taakFeedback() {

@@ -1400,7 +1400,7 @@ ${p.body}</div>
         </div>
       </div></article>`;
     render(main, html`
-      <div class="hq-kop"><div><h1>Marketing</h1><p>Elke maandag maken Lisa en Milo 4 statics en 2 animaties met Kive. Keur ze hier, download ze en zet ze zelf in Meta. Wat je afkeurt (met een korte reden) neemt Milo mee in de volgende ronde.</p></div></div>
+      <div class="hq-kop"><div><h1>Marketing</h1><p>Elke maandag maken Lisa en Milo 4 statics en 2 animaties met Kive. Elke ad komt in 1:1 en in storyformaat (9:16), hier en in je Canva-map. Keur ze hier en zet ze zelf in Meta. Wat je afkeurt (met een korte reden) neemt Milo mee in de volgende ronde.</p></div><a class="knop knop-licht" href="https://www.canva.com/folder/FAHZTLqH6m0" target="_blank" rel="noopener">Open Canva-map</a></div>
       <div class="filters" role="group" aria-label="Filter">${filters.map(([k, tt]) => html`<button aria-pressed="${k === adFilter}" data-f="${k}">${tt}${k !== "alle" ? html`<span class="n">${t[k] || 0}</span>` : ""}</button>`)}</div>
       ${ads.length ? weken.map((w) => html`<section class="paneel"><h2>Week ${w.split("-W")[1]} · ${w.split("-W")[0]}</h2><div class="ad-raster">${ads.filter((a) => a.week === w).map(kaart)}</div></section>`)
         : html`<section class="paneel"><div class="leeg"><h3>${adFilter === "nieuw" ? "Niets te keuren" : "Nog niets hier"}</h3><p>De eerste advertenties komen maandag. ${adFilter === "nieuw" ? "" : "Kies een ander filter om de rest te zien."}</p></div></section>`}`);
