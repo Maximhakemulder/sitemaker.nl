@@ -1187,6 +1187,15 @@ console.log("Domeinen, klantvragen, reviews, opzeggen en kosten");
   assert.ok(r.verstuurd >= 1);
   assert.ok(!(await b.herstelLinkMails()).leads.some((x) => x.id === l.id), "niet nog een keer");
 });
+await test("media: upload en publiek ophalen", async () => {
+  const md = await import("../netlify/lib/media.mjs");
+  const png = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+  const r = await md.upload(new Request("http://x/api/taak/media?ext=png", { method: "PUT", body: png }), "http://x");
+  const key = r.url.split("/api/media/")[1];
+  const g = await md.serveer(key);
+  assert.equal(g.status, 200); assert.equal(g.headers.get("content-type"), "image/png");
+  assert.equal((await md.serveer("../../geheim.png")).status, 404);
+});
 await test("kosten invullen, winst per maand en export voor de boekhouder", async () => {
     assert.equal((await call("POST", "hq/kosten", { cookie: admin, body: { omschrijving: "Netlify", bedrag: "", datum: "2026-01-01" } })).status, 400);
     const vandaag = new Date().toISOString().slice(0, 10);
