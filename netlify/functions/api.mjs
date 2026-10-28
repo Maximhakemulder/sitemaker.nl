@@ -321,6 +321,7 @@ async function verwerk(req, context) {
         case "POST leads/:id/afwijzen": return json(await hq.rejectConcept(id, user));
         case "GET appointments": return json({ appointments: await hq.listAppointments() });
         case "PUT appointments/:id": return json(await hq.updateAppointment(id, await body(req), user));
+        case "POST customers/:id/verwijderen": if (user.role !== "admin") fail(403, "Alleen voor beheerders."); return json(await hq.verwijderKlant(id, await body(req), user));
         case "POST customers/:id/extra-website": return json(await websites.staffExtra(id, await body(req), user));
         case "GET b2b": return json(await b2bDashboard());
         case "GET leads": return json(await hq.listLeads({ status: url.searchParams.get("status") || "" }));

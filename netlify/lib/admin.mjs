@@ -88,7 +88,7 @@ export async function listCustomers() {
       (SELECT COUNT(*)::int FROM change_requests cr WHERE cr.customer_id = c.id AND cr.month = $1 AND cr.counts) AS used,
       (SELECT COUNT(*)::int FROM change_requests cr WHERE cr.customer_id = c.id AND cr.status IN ('ontvangen','in_behandeling')) AS open_changes,
       (SELECT COUNT(*)::int FROM invoices i WHERE i.customer_id = c.id AND i.status = 'open') AS open_invoices
-    FROM customers c ORDER BY c.site_status = 'opgezegd', c.company`, [monthKey()]);
+    FROM customers c WHERE c.gearchiveerd_at IS NULL ORDER BY c.site_status = 'opgezegd', c.company`, [monthKey()]);
   const groep = Object.fromEntries((await q(`SELECT a.customer_id, COUNT(DISTINCT b.customer_id)::int AS n FROM user_sites a JOIN user_sites b ON b.user_id = a.user_id GROUP BY a.customer_id`)).map((r) => [r.customer_id, r.n]));
   return rows.map((c) => ({ ...adminCustomer(c), usedThisMonth: c.used, openChanges: c.open_changes, openInvoices: c.open_invoices, websites: groep[c.id] || 1 }));
 }
@@ -403,7 +403,7 @@ export const incassoStarten = (customerId, b, user) => startIncasso(customerId, 
 
 // ---------------------------------------------------------------- sites
 export async function listSites() {
-  const rows = await q("SELECT * FROM customers WHERE site_status <> 'opgezegd' OR site_url <> '' ORDER BY site_status = 'live' DESC, company");
+  const rows = await q("SELECT * FROM customers WHERE gearchiveerd_at IS NULL AND (site_status <> 'opgezegd' OR site_url <> '') ORDER BY site_status = 'live' DESC, company");
   return rows.map(adminCustomer);
 }
 export const checkSiteNow = (id) => checkNow(id);
@@ -634,3 +634,37 @@ export async function testMail(user) {
 }
 
 export { euro };
+
+// Klant verwijderen (alleen beheerder, met de bedrijfsnaam als bevestiging).
+// - GitHub-repo en Netlify-project gaan alleen weg als WIJ ze hebben gemaakt (repo <org>/site-…), en nooit sitemaker.nl zelf.
+// - Zonder facturen en betalingen: de klant en alles van hem gaat echt weg. Met facturen (7 jaar bewaarplicht): gearchiveerd,
+//   abonnement en site stop, uit alle lijsten; de facturen blijven voor de boekhouding.
+export async function verwijderKlant(id, { bevestiging } = {}, user) {
+  const c = await one("SELECT * FROM customers WHERE id = $1", [id]);
+  if (!c) fail(404, "Klant niet gevonden.");
+  if (String(bevestiging || "").trim().toLowerCase() !== String(c.company).trim().toLowerCase()) fail(400, "Typ de bedrijfsnaam precies over om te bevestigen.", { field: "bevestiging" });
+  const opgeruimd = [];
+  const { githubOwner, deleteRepo } = await import("./github.mjs");
+  const vanOns = !!c.site_repo && c.site_repo.toLowerCase().startsWith(`${githubOwner().toLowerCase()}/site-`);
+  const eigenSite = [env("SITE_ID"), "41f248ba-d432-4e0d-9b0a-db427cb246b5"].filter(Boolean);
+  if (vanOns && c.site_netlify_id && !eigenSite.includes(c.site_netlify_id)) {
+    const { deleteSite } = await import("./netlifyapi.mjs");
+    try { await deleteSite(c.site_netlify_id); opgeruimd.push(`Netlify-project ${c.site_netlify_name}`); } catch (e) { if (e.status !== 404) fail(502, `Netlify-project verwijderen lukte niet: ${e.message}`); }
+  }
+  if (vanOns) { try { await deleteRepo(c.site_repo); opgeruimd.push(`GitHub-repo ${c.site_repo}`); } catch (e) { fail(502, `GitHub-repo verwijderen lukte niet: ${e.message}`); } }
+  const [{ n: facturen }] = await q("SELECT (SELECT COUNT(*) FROM invoices WHERE customer_id = $1) + (SELECT COUNT(*) FROM payments WHERE customer_id = $1) AS n", [id]);
+  await audit(user.id, null, "klant.verwijderd", { id, company: c.company, opgeruimd, archief: Number(facturen) > 0 });
+  if (Number(facturen) === 0) {
+    await tx(async (t) => {
+      await t.q("DELETE FROM users WHERE customer_id = $1 AND role = 'klant'", [id]);
+      await t.q("DELETE FROM customers WHERE id = $1", [id]);
+    });
+    return { ok: true, verwijderd: true, opgeruimd };
+  }
+  await q(`UPDATE customers SET gearchiveerd_at = NOW(), site_status = 'opgezegd', billing_status = 'opgezegd', site_url = '', preview_host = '',
+           site_repo = CASE WHEN $2 THEN NULL ELSE site_repo END, site_netlify_id = CASE WHEN $2 THEN NULL ELSE site_netlify_id END,
+           site_netlify_name = CASE WHEN $2 THEN NULL ELSE site_netlify_name END, onboarding = FALSE, updated_at = NOW() WHERE id = $1`, [id, vanOns]);
+  await q("UPDATE users SET active = FALSE WHERE customer_id = $1 AND role = 'klant'", [id]);
+  await q("UPDATE domains SET status = 'opgezegd', updated_at = NOW() WHERE customer_id = $1", [id]).catch(() => {});
+  return { ok: true, gearchiveerd: true, facturen: Number(facturen), opgeruimd };
+}

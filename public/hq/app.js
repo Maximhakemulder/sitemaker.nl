@@ -210,6 +210,7 @@
             <form novalidate id="vraag-form" class="vraag-form"><div class="veld"><label for="vraag">Vraag aan ${manager.person}</label><textarea id="vraag" name="vraag" rows="2" placeholder="${key === "b2b" ? "Bijv. welke branche reageert het best?" : key === "finance" ? "Bijv. hoeveel hebben we deze maand verdiend?" : "Stel een vraag over de afdeling"}"></textarea><div class="fout" data-fout-voor="vraag"></div></div>
               <button class="knop knop-klein" type="submit">Vraag stellen</button></form>
             <div id="vragen"></div></section>` : ""}
+          ${isAdmin() ? html`<section class="paneel gevaar-zone"><h2>Klant verwijderen</h2><p class="klein dempen">Voor testklanten of klanten die weg zijn. Is de website door ons gemaakt, dan verdwijnen ook de GitHub-repo en het Netlify-project. Heeft de klant facturen, dan blijven die voor je boekhouding bewaard (bewaarplicht) en wordt de klant gearchiveerd in plaats van gewist.</p><button class="knop knop-gevaar knop-klein" id="klant-weg">Klant verwijderen</button></section>` : ""}
           <section class="paneel"><h2>Logboek</h2>${logboek(st.feed || [])}</section>
         </div>
       </div>`);
@@ -412,6 +413,23 @@
         </div>
       </div>`);
 
+    main.querySelector("#klant-weg")?.addEventListener("click", () => {
+      const dlg = SM.dialoog("Klant verwijderen", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
+        <p>Dit kun je niet terugdraaien. ${c.siteRepo || c.site ? "De website gaat ook offline als wij hem gemaakt hebben." : ""}</p>
+        <div class="veld"><label for="kw-naam">Typ ter bevestiging: <b>${c.company}</b></label><input id="kw-naam" name="bevestiging" autocomplete="off"><div class="fout" data-fout-voor="bevestiging"></div></div>
+        <div class="knoppen"><button class="knop knop-gevaar" type="submit">Definitief verwijderen</button></div></form>`);
+      const form = dlg.querySelector("form");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault(); SM.wisFouten(form);
+        const knop = form.querySelector("button"); SM.bezig(knop, true, "Verwijderen…");
+        try {
+          const r = await api(`hq/customers/${id}/verwijderen`, { method: "POST", body: { bevestiging: form.elements.bevestiging.value } });
+          dlg.close();
+          toast(r.verwijderd ? `${c.company} is verwijderd${r.opgeruimd.length ? " (ook " + r.opgeruimd.join(" en ") + ")" : ""}.` : `${c.company} is gearchiveerd; ${r.facturen} factuur/betaling(en) blijven bewaard.`);
+          location.hash = "#klanten";
+        } catch (err) { SM.toonFouten(form, err); SM.bezig(knop, false); }
+      });
+    });
     main.querySelector("#bewerk").onclick = () => {
       const dlg = SM.dialoog("Gegevens bewerken", html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>${klantVelden(c)}<div class="knoppen"><button class="knop knop-actie" type="submit">Opslaan</button></div></form>`);
       const form = dlg.querySelector("form");
