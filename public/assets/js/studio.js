@@ -85,7 +85,7 @@
   const toon = ({ reviews, count, average }, voorbeeld) => {
     if (!reviews.length) return;
     document.getElementById("rv-voorbeeld").hidden = !voorbeeld;
-    document.getElementById("reviews-score").innerHTML = `${sterren(Math.round(average))}<b>${String(average).replace(".", ",")}</b> uit 5 · ${count} ${count === 1 ? "review" : "reviews"}`;
+    document.getElementById("reviews-score").innerHTML = `${sterren(Math.round(average))}<b>${Number(average).toFixed(1).replace(".", ",")}</b> uit 5<span class="rv-aantal"> · ${count} ${count === 1 ? "review" : "reviews"}</span>`;
     document.getElementById("reviews-rij").innerHTML = reviews.map((r) => `<article class="review">
       <div class="review-top">${sterren(r.rating, true)}<span class="review-datum">${datum(r.date)}</span></div>
       ${r.title ? `<h3>${esc(r.title)}</h3>` : ""}<p>${esc(r.body)}</p>
