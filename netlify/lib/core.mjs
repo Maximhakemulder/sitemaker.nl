@@ -75,8 +75,8 @@ export const DEFAULT_SETTINGS = {
   // Tracking op de website (alleen na toestemming via de cookiebanner).
   tracking: { metaPixelId: "" },
   company: {
-    name: "Sitemaker", legalName: "", address: "", postcode: "", city: "", kvk: "", vat: "", iban: "",
-    email: "", phone: "", website: "https://sitemaker.nl",
+    name: "Sitemaker", legalName: "MH Holding B.V.", address: "", postcode: "", city: "", kvk: "58436254", vat: "", iban: "",
+    email: "hallo@sitemaker.nl", phone: "085 200 92 05", website: "https://sitemaker.nl",
   },
   billing: {
     // De prijzen op de site (€299,95 / €69,95) zijn wat de klant betaalt; btw wordt alleen op de factuur uitgesplitst.

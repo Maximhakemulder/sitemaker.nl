@@ -88,7 +88,7 @@
         if (!r.ok) {
           if (res.errors) { Object.entries(res.errors).forEach(([k, v]) => bzet(k, v)); f[Object.keys(res.errors)[0]]?.focus(); }
           else if (res.slotGone) { await laad(true); gegevens.hidden = true; kies.hidden = false; bfout.hidden = true; const m = document.createElement("div"); m.className = "melding melding-fout"; m.setAttribute("role", "alert"); m.textContent = res.error; kies.prepend(m); setTimeout(() => m.remove(), 8000); }
-          else { bfout.textContent = res.error || "Dat lukte niet. Probeer het opnieuw of mail ons op info@sitemaker.nl."; bfout.hidden = false; bfout.focus(); }
+          else { bfout.textContent = res.error || "Dat lukte niet. Probeer het opnieuw of mail ons op hallo@sitemaker.nl."; bfout.hidden = false; bfout.focus(); }
           return;
         }
         gegevens.hidden = true; $("#b-alt").hidden = true;
@@ -143,7 +143,7 @@
       const res = await r.json().catch(() => ({}));
       if (!r.ok) {
         if (res.errors) { Object.entries(res.errors).forEach(([k, v]) => zetFout(k, v)); form.elements[Object.keys(res.errors)[0]]?.focus(); }
-        else { algemeen.textContent = res.error || "Versturen lukte niet. Probeer het opnieuw of mail ons op info@sitemaker.nl."; algemeen.hidden = false; algemeen.focus?.(); }
+        else { algemeen.textContent = res.error || "Versturen lukte niet. Probeer het opnieuw of mail ons op hallo@sitemaker.nl."; algemeen.hidden = false; algemeen.focus?.(); }
         return;
       }
       const vakje = $("#formulier-vak");
