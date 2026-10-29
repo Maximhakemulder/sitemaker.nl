@@ -231,7 +231,7 @@
     researcher: ["Info@-adres gevonden", "Openingszin staat klaar", "Deze site is van 2014..."],
     conceptmaker: ["Concept voor de hovenier is klaar", "Hun foto's zijn top", "Huisstijlkleur overgenomen"],
     postkamer: ["Mails gaan om 9:00 de deur uit", "Reactie binnen!", "Inbox gecheckt"],
-    projectmanager: ["Wijziging binnen 48 uur verwerkt", "Voorstel staat klaar voor Maxim", "Deadline in de gaten"],
+    projectmanager: ["Wijziging binnen 24 uur verwerkt", "Voorstel staat klaar voor Maxim", "Deadline in de gaten"],
     webbouwer: ["Openingstijden aangepast", "Voorbeeldversie staat klaar", "Nieuwe foto geplaatst"],
     opleveraar: ["Nieuwe site in aanbouw", "Informatie is binnen, we gaan bouwen", "Binnen 2 werkdagen online"],
     service: ["Klant hulp gegeven bij de start", "Iedereen is op weg", "Even bellen met een nieuwe klant"],

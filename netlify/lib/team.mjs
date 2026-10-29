@@ -77,13 +77,13 @@ async function projecten() {
   ]);
   return {
     metrics: [
-      { label: "open wijzigingen", value: open, alarm: telaat > 0, sub: telaat ? `${telaat} over de 48 uur` : "", href: "#wijzigingen" },
+      { label: "open wijzigingen", value: open, alarm: telaat > 0, sub: telaat ? `${telaat} over de ${OFFER.changeHours} uur` : "", href: "#wijzigingen" },
       { label: "voorstellen om goed te keuren", value: voorstellen, alarm: voorstellen > 0, href: "#wijzigingen/voorstel" },
       { label: "nieuwe sites in aanbouw", value: bouwen.length, alarm: bouwen.length > 0, href: "#klanten" },
       { label: "wijzigingen verwerkt deze maand", value: verwerktMaand, href: "#wijzigingen" },
     ],
     people: {
-      projectmanager: { text: telaat ? `${telaat} wijzigingen over de 48 uur!` : open ? `${nl(open, "open wijziging", "open wijzigingen")}, alles binnen de tijd` : "Geen open wijzigingen", busy: false },
+      projectmanager: { text: telaat ? `${telaat} wijzigingen over de ${OFFER.changeHours} uur!` : open ? `${nl(open, "open wijziging", "open wijzigingen")}, alles binnen de tijd` : "Geen open wijzigingen", busy: false },
       webbouwer: { text: bezig ? `Werkt aan ${nl(bezig, "wijziging", "wijzigingen")}` : voorstellen ? `${nl(voorstellen, "voorstel", "voorstellen")} klaar voor jou` : "Geen wijzigingen in behandeling", busy: bezig > 0 },
       opleveraar: { text: bouwen.length ? `Bouwt ${bouwen.length} nieuwe site${bouwen.length > 1 ? "s" : ""}: ${bouwen.slice(0, 2).map((b) => b.company).join(", ")}` : "Geen nieuwe sites in aanbouw", busy: bouwen.length > 0 },
     },

@@ -37,13 +37,13 @@ window.SM_ORG = [
   },
   {
     key: "projecten", floor: 4, name: "Projecten", color: "#0CC0DF", status: "live", manager: "projectmanager", page: "wijzigingen",
-    desc: "Nieuwe websites binnen 48 uur (2 werkdagen) opleveren en de 4 wijzigingen per maand binnen 48 uur verwerken.",
+    desc: "Nieuwe websites binnen 48 uur (2 werkdagen) opleveren en de 4 wijzigingen per maand binnen 24 uur verwerken.",
     people: [
-      { key: "projectmanager", person: "Iris", role: "Projectmanager", look: { hair: 0x7a3b22, acc: "bun" }, color: 2, does: ["Bewaakt alle wijzigingen en de 48 uur", "Zet voorstellen klaar om goed te keuren"] },
+      { key: "projectmanager", person: "Iris", role: "Projectmanager", look: { hair: 0x7a3b22, acc: "bun" }, color: 2, does: ["Bewaakt alle wijzigingen en de 24 uur", "Zet voorstellen klaar om goed te keuren"] },
       { key: "webbouwer", person: "Daan", role: "Webbouwer", look: { hair: 0x2b1d14, acc: "glasses" }, color: 6, does: ["Verwerkt wijzigingen in de site van de klant", "Maakt een voorbeeldversie om te keuren"] },
       { key: "opleveraar", person: "Lotte", role: "Oplevering nieuwe sites", look: { hair: 0xd9b26a, acc: "none" }, color: 5, does: ["Bouwt nieuwe sites zodra de klant zijn informatie aanlevert", "Bewaakt de 2 werkdagen"] },
     ],
-    tasks: ["Wijzigingen binnen 48 uur (Iris en Daan)", "Nieuwe sites binnen 2 werkdagen na aanleveren (Lotte)"],
+    tasks: ["Wijzigingen binnen 24 uur (Iris en Daan)", "Nieuwe sites binnen 2 werkdagen na aanleveren (Lotte)"],
   },
   {
     key: "domeinen", floor: 3, name: "Domeinen", color: "#D94F8A", status: "live", manager: "domeinen", page: "domeinen",
