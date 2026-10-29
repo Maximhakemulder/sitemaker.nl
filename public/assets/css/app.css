@@ -689,3 +689,4 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .ad-teksten dd{margin:0;font-size:14.5px;white-space:pre-line}
 .ad-feedback{background:#FFF4E5;border-radius:8px;padding:8px 10px}
 .klein.fout { color: var(--fout); font-weight: 600; }
+.live-stip { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; } .live-stip .punt.ok { box-shadow: 0 0 0 4px rgba(11,122,85,.18); }

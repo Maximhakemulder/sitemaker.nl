@@ -1376,8 +1376,25 @@ ${p.body}</div>
   // ================================================ ONTWERPAANVRAGEN (gratis ontwerp via sitemaker.nl/start)
   const AANVRAAG_FASE = { in_de_maak: ["Ontwerp in de maak", "s-let"], probleem: ["Lukt niet, kijk even", "s-fout"], verstuurd: ["Ontwerp verstuurd", "s-info"], bekeken: ["Ontwerp bekeken", "s-info"],
     reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Geen interesse", "s-grijs"] };
+  const BRON_NAAM = { meta: "Meta-ads", google: "Google", direct: "Direct", mail: "Mail", anders: "Anders" };
+  let bezoekTimer = null;
+  const bezoekBlok = (b) => html`<section class="paneel" id="bezoekers"><div class="paneel-kop"><h2>Bezoekers van sitemaker.nl/start</h2><span class="live-stip"><span class="punt ${b.live ? "ok" : ""}"></span><b>${b.live}</b> nu op de pagina</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="waarde">${b.vandaag.bezoekers}</div><div class="naam">bezoekers vandaag<br><span class="klein">${b.vandaag.formulier} begonnen · ${b.vandaag.aanvragen} aanvragen</span></div></div>
+        <div class="kpi"><div class="waarde">${b.week.bezoekers}</div><div class="naam">bezoekers 7 dagen<br><span class="klein">${b.week.mobiel} op mobiel</span></div></div>
+        <div class="kpi"><div class="waarde">${b.week.formulier}</div><div class="naam">begonnen aan het formulier<br><span class="klein">${b.week.bezoekers ? Math.round((b.week.formulier / b.week.bezoekers) * 100) : 0}% van de bezoekers</span></div></div>
+        <div class="kpi"><div class="waarde">${String(b.week.conversie).replace(".", ",")}%</div><div class="naam">conversie 7 dagen<br><span class="klein">${b.week.aanvragen} aanvragen</span></div></div>
+      </div>
+      ${b.bronnen.length ? html`<p class="klein dempen">Herkomst (7 dagen): ${b.bronnen.map((r, i) => html`${i ? " · " : ""}<b>${BRON_NAAM[r.bron] || r.bron}</b> ${r.bezoekers} bezoekers, ${r.aanvragen} aanvragen`)}</p>` : html`<p class="klein dempen">Nog geen bezoekers gemeten. Anoniem: geen cookies en geen IP-adressen, dus iedereen telt mee.</p>`}
+    </section>`;
   async function ontwerpaanvragen(main) {
-    const d = await api("hq/ontwerpaanvragen");
+    const [d, bz] = await Promise.all([api("hq/ontwerpaanvragen"), api("hq/bezoekers").catch(() => null)]);
+    if (bezoekTimer) clearInterval(bezoekTimer);
+    bezoekTimer = setInterval(async () => {
+      if (!location.hash.startsWith("#ontwerpaanvragen")) { clearInterval(bezoekTimer); bezoekTimer = null; return; }
+      const el = main.querySelector("#bezoekers"); if (!el || document.hidden) return;
+      try { const nieuw = await api("hq/bezoekers"); const tmp = document.createElement("div"); render(tmp, bezoekBlok(nieuw)); el.replaceWith(tmp.firstElementChild); } catch {}
+    }, 30000);
     const t = d.tellers || {};
     const uren = (a) => Math.floor((Date.now() - new Date(a).getTime()) / 3600000);
     render(main, html`
@@ -1388,6 +1405,7 @@ ${p.body}</div>
         <div class="kpi"><div class="waarde">${t.interesse || 0}</div><div class="naam">reactie, afspraak of klant</div></div>
         ${t.probleem ? html`<div class="kpi alarm"><div class="waarde">${t.probleem}</div><div class="naam">lukt niet, kijk even</div></div>` : ""}
       </div>
+      ${bz ? bezoekBlok(bz) : ""}
       <section class="paneel">${d.items.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Aangevraagd</th><th>Bedrijf</th><th>Contact</th><th>Website of omschrijving</th><th>Status</th><th></th></tr></thead><tbody>
         ${d.items.map((i) => html`<tr>
           <td class="nowrap">${datum(i.aangevraagd)} ${tijd(i.aangevraagd)}${i.fase === "in_de_maak" ? html`<br><span class="klein ${uren(i.aangevraagd) >= 20 ? "fout" : "dempen"}">${uren(i.aangevraagd)} uur geleden</span>` : ""}</td>

@@ -1250,6 +1250,21 @@ await test("gratis ontwerp: eigen kleur uit de kleurkiezer", async () => {
   assert.match(c.bron.tekst, /hoofdkleur: eigen kleur \(#12AB9C\)/);
 });
 
+await test("anonieme bezoekers van /start: view, formulier, aanvraag, live en conversie", async () => {
+  const s1 = "abcdef1234567890", s2 = "zyxwvu0987654321";
+  assert.equal((await call("POST", "t/l", { body: { s: s1, e: "view", b: "meta", m: true } })).status, 200);
+  await call("POST", "t/l", { body: { s: s1, e: "formulier" } });
+  await call("POST", "t/l", { body: { s: s1, e: "aanvraag" } });
+  await call("POST", "t/l", { body: { s: s2, e: "view", b: "direct" } });
+  await call("POST", "t/l", { body: { s: s2, e: "view", b: "direct" } });
+  await call("POST", "t/l", { body: { s: "kort", e: "view" } });
+  const { stats } = await import("../netlify/lib/bezoekers.mjs");
+  const st = await stats();
+  assert.equal(st.vandaag.bezoekers, 2); assert.equal(st.vandaag.formulier, 1); assert.equal(st.vandaag.aanvragen, 1);
+  assert.equal(st.live, 2); assert.equal(st.week.conversie, 50); assert.equal(st.week.mobiel, 1);
+  assert.ok(st.bronnen.some((b) => b.bron === "meta" && b.aanvragen === 1));
+});
+
 await test("lead verwijdert zijn voorstel: concept weg en afgemeld; verlopen voorstellen worden opgeruimd", async () => {
   const [c] = await q("SELECT c.token, c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status NOT IN ('klant','afspraak') ORDER BY c.id LIMIT 1");
   assert.ok(c, "er is een klaar concept");
