@@ -34,7 +34,7 @@ async function ronde(started) {
   await step("opzeggingen", () => runCancellations());
   await step("maandfacturen", () => runMaandfacturen({ max: 5 }));
   await step("klantvragen", () => retryDrafts());
-  if (!spaar) await step("concepten", () => runConcepts({ max: 2 }));
+  if (!spaar) await step("concepten", () => runConcepts({ max: 4 }));
   if (left() > 7000) await step("concepten-opruimen", () => ruimVerlopenOp({ max: 10 }));
   if (left() > 7000 && new Date().getMinutes() < 5) await step("bezoekers-opruimen", async () => (await import("../lib/bezoekers.mjs")).opruimen());
   if (left() > 7000) await step("ontwerpaanvragen", async () => (await import("../lib/aanvraag.mjs")).herstuurOntwerpen());
