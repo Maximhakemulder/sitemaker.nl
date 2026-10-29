@@ -354,11 +354,6 @@
 .lp-bewijs-reviews { display: inline-flex; align-items: center; gap: 10px; color: var(--wit); text-decoration: none; font-size: 14px; }
 .lp-bewijs-reviews:hover .lp-bewijs-tekst { text-decoration: underline; }
 .lp-bewijs .lp-sterren { color: #FFC24B; letter-spacing: 1px; }
-.lp-gezichten { display: inline-flex; }
-.lp-gezichten i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 13px; color: var(--paars); box-shadow: 0 0 0 2px var(--paars); }
-.lp-gezichten i + i { margin-left: -8px; }
-.lp-gezichten i:nth-child(4n+1) { background: var(--cyaan); } .lp-gezichten i:nth-child(4n+2) { background: #FFC24B; }
-.lp-gezichten i:nth-child(4n+3) { background: var(--koraal); } .lp-gezichten i:nth-child(4n+4) { background: var(--ijs); }
 .lp-bewijs-teller { margin: 0; display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: #E3DDF5; }
 .lp-bewijs-teller b { color: var(--wit); }
 .lp-bewijs-teller i { width: 8px; height: 8px; border-radius: 50%; background: #3DDC97; box-shadow: 0 0 0 4px rgba(61,220,151,.22); }

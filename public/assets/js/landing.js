@@ -40,7 +40,6 @@
     }
     const rs = (d.reviews || []).filter((r) => r.rating >= 4);
     if (bewijs && rs.length) {
-      $("#lp-gezichten").innerHTML = rs.slice(0, 4).map((r) => `<i>${esc1((r.name || "?").trim()[0].toUpperCase())}</i>`).join("");
       $("#lp-bewijs-score").textContent = gem;
       $("#lp-bewijs-reviews").setAttribute("aria-label", `Gemiddeld ${gem} uit 5 uit klantreviews, lees de reviews`);
       $("#lp-bewijs-reviews").hidden = false; bewijs.hidden = false;
