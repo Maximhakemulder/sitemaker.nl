@@ -236,3 +236,21 @@
 .lp-usp-raster { max-width: 1100px; margin-left: auto; margin-right: auto; }
 .lp-garantie .wrap { justify-content: center; }
 .lp-garantie .wrap > div:last-child { max-width: 640px; }
+
+/* Kleurkeuze zonder website (29-10-2026) */
+.lp-kleuren { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+.lp-kleuren legend { font-weight: 700; font-size: 15px; margin-bottom: 6px; padding: 0; }
+.lp-kleur-rij { display: flex; flex-wrap: wrap; gap: 8px 7px; }
+.lp-kleur { position: relative; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(0,0,0,.08); }
+.lp-kleur input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.lp-kleur:has(input:checked) { box-shadow: 0 0 0 3px var(--wit), 0 0 0 5px var(--paars); }
+.lp-kleur:has(input:focus-visible) { outline: 3px solid var(--cyaan); outline-offset: 4px; }
+.lp-kleur-blauw { background: #1E5AA8; }
+.lp-kleur-groen { background: #2E7D4F; }
+.lp-kleur-rood { background: #C62828; }
+.lp-kleur-oranje { background: #E8740C; }
+.lp-kleur-geel { background: #F2B705; }
+.lp-kleur-paars { background: #6A3FA0; }
+.lp-kleur-antraciet { background: #2B2B2B; }
+.lp-kleur-hout { background: #8B5A2B; }
+.lp-kaart .lp-kleur { margin: 0; }

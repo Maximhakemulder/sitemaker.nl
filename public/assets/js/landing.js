@@ -30,8 +30,8 @@
   // Gratis ontwerp aanvragen. Zonder website vragen we één ding: wat doe je en waar.
   const of = $("#ontwerp-form"), geopend = Date.now();
   if (of) {
-    const site = $("#o-site"), watVeld = $("#o-wat-veld");
-    const toonWat = () => { watVeld.hidden = site.value.trim().length > 3; };
+    const site = $("#o-site"), watVeld = $("#o-wat-veld"), kleurVeld = $("#o-kleur-veld");
+    const toonWat = () => { const heeft = site.value.trim().length > 3; watVeld.hidden = heeft; if (kleurVeld) kleurVeld.hidden = heeft; };
     site.addEventListener("input", toonWat); toonWat();
     const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const fouten = (errors) => {
