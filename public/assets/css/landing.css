@@ -219,7 +219,7 @@
 .lp-band .lp-rail li { width: 190px; max-width: none; margin-right: 14px; }
 .lp-band .lp-rail { gap: 0; }
 .lp-rail.loopt { animation: lp-band 70s linear infinite; }
-.lp-band:hover .lp-rail.loopt { animation-play-state: paused; }
+@media (hover: hover) and (pointer: fine) { .lp-band:hover .lp-rail.loopt { animation-play-state: paused; } }
 @keyframes lp-band { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (min-width: 960px) { .lp-band .lp-rail li { width: 220px; } .lp-band .lp-rail { padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .lp-band { overflow-x: auto; } }
@@ -260,3 +260,20 @@
 .lp-chip-eigen i { background: conic-gradient(#C62828, #E8740C, #F2B705, #2E7D4F, #1E5AA8, #6A3FA0, #C62828); }
 .lp-chip-eigen i.gekozen { box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
 .lp-chip-eigen input[type=color] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; cursor: pointer; z-index: 1; -webkit-appearance: none; appearance: none; }
+
+/* Stappen direct onder de kop + Jason (29-10-2026) */
+.lp-jason { margin: 22px 0 -32px; display: flex; align-items: flex-end; gap: 12px; }
+.lp-jason img { width: 118px; height: auto; flex: none; display: block; }
+.lp-jason figcaption { background: var(--wit); color: var(--paars); border-radius: 18px 18px 18px 4px; padding: 12px 14px 10px; margin-bottom: 64px; box-shadow: 0 14px 34px rgba(0,0,0,.25); max-width: 240px; }
+.lp-ballon { display: block; font-weight: 700; font-size: 15px; line-height: 1.3; }
+.lp-jason small { display: block; margin-top: 6px; font-size: 12.5px; color: var(--grijs); }
+.lp-jason small b { color: var(--paars); }
+@media (min-width: 960px) {
+  .lp-hero.hero .wrap { grid-template-rows: auto 1fr; align-content: start; }
+  .lp-hero .lp-meer { align-self: start; }
+  .lp-hero .lp-meer .lp-route { margin-top: 4px; }
+  .lp-jason { margin: 28px 0 -72px; }
+  .lp-jason img { width: 150px; }
+  .lp-jason figcaption { max-width: 280px; margin-bottom: 96px; }
+  .lp-ballon { font-size: 16px; }
+}
