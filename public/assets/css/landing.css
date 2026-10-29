@@ -256,3 +256,6 @@
 .lp-kaart .lp-kleur { margin: 0; }
 
 .lp-reviews .rv-aantal { display: none; }
+.lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: nowrap; }
+@media (max-width: 359px) { .lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: normal; } }
+.lp-kleur-hint { margin: -2px 0 8px; font-size: 13px; color: var(--grijs); }
