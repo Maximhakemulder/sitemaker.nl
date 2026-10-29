@@ -97,7 +97,7 @@ export const DEFAULT_SETTINGS = {
     scout: { active: false, perDay: 20, categories: ["installatiebedrijf", "loodgieter", "elektricien", "schilder", "stukadoor", "tegelzetter", "dakdekker", "timmerman", "aannemer", "bouwbedrijf", "klusbedrijf", "metselaar", "voegbedrijf", "vloerenlegger", "bestratingsbedrijf", "hovenier", "kozijnen", "glaszetter", "keukenmontage", "badkamerrenovatie", "zonnepanelen installateur", "warmtepomp installateur", "isolatiebedrijf", "grondwerk", "sloopbedrijf"], places: ["Rotterdam", "Den Haag", "Utrecht", "Breda", "Dordrecht", "Eindhoven"] },
     ai: { research: true },
     // Concept-websites: automatisch maken voor leads met een website (max. perDag), geldig voor geldigDagen.
-    concepten: { auto: true, perDag: 15, geldigDagen: 30, wachten: true, maker: "taak" },
+    concepten: { auto: true, perDag: 90, geldigDagen: 30, wachten: true, maker: "taak" },
     templates: {
       eerste: {
         subject: "Vraagje over {bedrijf}",
