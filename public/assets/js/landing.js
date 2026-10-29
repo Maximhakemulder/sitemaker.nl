@@ -20,18 +20,11 @@
     score.hidden = false;
   }).catch(() => {});
 
-  // Voorbeelden schuiven vanzelf door tot iemand zelf veegt.
+  // Voorbeelden: doorlopende band die langzaam blijft schuiven (de reeks staat er twee keer in, zodat hij naadloos rondgaat).
   const rail = $("#lp-rail");
   if (rail && !rustig) {
-    let zelf = false, zichtbaar = false;
-    ["pointerdown", "touchstart", "wheel", "keydown"].forEach((t) => rail.addEventListener(t, () => (zelf = true), { passive: true }));
-    new IntersectionObserver(([e]) => (zichtbaar = e.isIntersecting), { threshold: 0.4 }).observe(rail);
-    setInterval(() => {
-      if (zelf || !zichtbaar || document.hidden) return;
-      const stap = rail.querySelector("li")?.getBoundingClientRect().width + 14 || 200;
-      const eind = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 8;
-      rail.scrollTo({ left: eind ? 0 : rail.scrollLeft + stap, behavior: "smooth" });
-    }, 2600);
+    [...rail.children].forEach((li) => { const k = li.cloneNode(true); k.setAttribute("aria-hidden", "true"); k.querySelector("img")?.setAttribute("alt", ""); rail.appendChild(k); });
+    rail.classList.add("loopt");
   }
 
   // Gratis ontwerp aanvragen. Zonder website vragen we één ding: wat doe je en waar.
