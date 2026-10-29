@@ -368,3 +368,6 @@
   .lp-hero .lp-kaart { z-index: 1; }
 }
 @media (max-width: 959px) { .lp-bewijs-reviews { display: none !important; } }
+.lp-maker-foto { position: relative; flex: none; display: block; }
+.lp-online { position: absolute; right: -1px; bottom: -1px; width: 13px; height: 13px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 2.5px var(--wit); }
+.lp-online[hidden] { display: none; }

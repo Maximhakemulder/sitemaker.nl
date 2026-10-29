@@ -61,6 +61,9 @@
     }
   }).catch(() => {});
 
+  // Groen bolletje bij Jason: alleen tussen 8:00 en 22:00 (Nederlandse tijd), dan wordt er echt aan ontwerpen gewerkt.
+  try { const uur = Number(new Intl.DateTimeFormat("nl-NL", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Amsterdam" }).format(new Date())); const o = $("#lp-online"); if (o && uur >= 8 && uur < 22) { o.hidden = false; o.title = "Nu online"; } } catch {}
+
   // Teller: echte ontwerpen van de afgelopen 7 dagen (pas zichtbaar boven een minimum, zie /api/start/teller).
   fetch("/api/start/teller").then((r) => r.json()).then((d) => {
     if (!d?.toon || !bewijs) return;
