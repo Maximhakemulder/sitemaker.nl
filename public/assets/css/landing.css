@@ -277,3 +277,15 @@
   .lp-jason figcaption { max-width: 280px; margin-bottom: 96px; }
   .lp-ballon { font-size: 16px; }
 }
+
+/* Jason groter en precies op de onderrand van het paarse vlak (29-10-2026) */
+.lp-hero .lp-meer { display: flex; flex-direction: column; }
+.lp-jason { margin: 18px 0 -32px; }
+.lp-jason img { width: 150px; }
+.lp-jason figcaption { margin-bottom: 92px; }
+@media (min-width: 960px) {
+  .lp-hero .lp-meer { align-self: stretch; }
+  .lp-jason { margin: auto 0 -72px; padding-top: 24px; }
+  .lp-jason img { width: 210px; }
+  .lp-jason figcaption { margin-bottom: 150px; max-width: 300px; }
+}
