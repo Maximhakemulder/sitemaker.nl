@@ -688,3 +688,4 @@ details.anders[open] > summary { margin-bottom: 12px; }
 .ad-teksten dt{font-size:12.5px;font-weight:700;color:#5c577a;display:flex;align-items:center;justify-content:space-between;margin-top:6px}
 .ad-teksten dd{margin:0;font-size:14.5px;white-space:pre-line}
 .ad-feedback{background:#FFF4E5;border-radius:8px;padding:8px 10px}
+.klein.fout { color: var(--fout); font-weight: 600; }

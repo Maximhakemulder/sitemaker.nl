@@ -1219,6 +1219,30 @@ await test("kosten invullen, winst per maand en export voor de boekhouder", asyn
   delete process.env.DOMAIN_FAKE;
 }
 
+await test("gratis ontwerp via de landingspagina: zonder website, voorrang bij de ontwerper, automatische mail, HQ-lijst", async () => {
+  const fout = await call("POST", "start/ontwerp", { body: { naam: "Piet", bedrijf: "Jansen Schilders", email: "piet@jansen.test" } });
+  assert.equal(fout.status, 400); assert.ok(fout.data.errors?.wat, "zonder website vragen we wat ze doen");
+  const voor = captured.length;
+  const r = await call("POST", "start/ontwerp", { body: { naam: "Piet Jansen", bedrijf: "Jansen Schilders", email: "piet@jansen.test", wat: "Schilder in Breda" } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const [l] = await q("SELECT * FROM leads WHERE email = 'piet@jansen.test'");
+  assert.equal(l.status, "aanvraag"); assert.equal(l.source, "landing"); assert.equal(l.contact_name, "Piet Jansen");
+  const [c] = await q("SELECT * FROM concepts WHERE lead_id = $1", [l.id]);
+  assert.equal(c.status, "ontwerp"); assert.equal(c.bron.geenWebsite, true); assert.match(c.bron.tekst, /Schilder in Breda/);
+  assert.ok(captured.slice(voor).some((m) => m.to === "piet@jansen.test" && /gratis ontwerp/.test(m.subject)), "bevestiging aan de aanvrager");
+  const { claim } = await import("../netlify/lib/concepttaak.mjs");
+  const cl = await claim(1, { alleenAanvragen: true });
+  assert.equal(cl.concepten[0].id, c.id); assert.equal(cl.concepten[0].aanvraag.geenWebsite, true);
+  await q("UPDATE concepts SET status = 'klaar', content = '{}'::jsonb WHERE id = $1", [c.id]);
+  const { stuurOntwerpMail, lijst } = await import("../netlify/lib/aanvraag.mjs");
+  assert.ok((await stuurOntwerpMail(l.id)).ok);
+  const m = captured.find((x) => x.to === "piet@jansen.test" && /staat klaar/.test(x.subject));
+  assert.ok(m && String(m.text).includes(`/voorbeeld/${c.token}`), "mail met de link naar het ontwerp");
+  assert.equal((await q("SELECT status FROM leads WHERE id = $1", [l.id]))[0].status, "verstuurd");
+  assert.equal((await stuurOntwerpMail(l.id)).skipped, true, "niet twee keer");
+  const hq = await lijst(); assert.ok(hq.items.some((i) => i.id === l.id && i.fase === "verstuurd"));
+});
+
 await test("lead verwijdert zijn voorstel: concept weg en afgemeld; verlopen voorstellen worden opgeruimd", async () => {
   const [c] = await q("SELECT c.token, c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status NOT IN ('klant','afspraak') ORDER BY c.id LIMIT 1");
   assert.ok(c, "er is een klaar concept");

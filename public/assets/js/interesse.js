@@ -6,7 +6,7 @@
   const bedrijf = (qs.get("bedrijf") || "").slice(0, 120);
   const geopend = Date.now();
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  if (bedrijf) { $("#voor-bedrijf").textContent = ` in een nieuwe website voor ${bedrijf}`; $("#s-bedrijf").value = bedrijf; $("#a-bedrijf").value = bedrijf; }
+  if (bedrijf) { const vb = $("#voor-bedrijf"); if (vb) vb.textContent = ` in een nieuwe website voor ${bedrijf}`; ["#s-bedrijf", "#a-bedrijf", "#o-bedrijf"].forEach((k) => { const el = $(k); if (el) el.value = bedrijf; }); }
 
   if (!concept) document.querySelectorAll(".jason-zin").forEach((el) => (el.textContent = "Zullen we samen jouw nieuwe website maken?"));
   if (concept) document.querySelectorAll("[data-met-concept]").forEach((el) => (el.hidden = false));
@@ -49,7 +49,7 @@
 
   // ---------------- Direct starten
   const sf = $("#start-form");
-  sf.addEventListener("submit", async (e) => {
+  if (sf) sf.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fout = $("#s-fout"); fout.hidden = true;
     const d = Object.fromEntries(new FormData(sf)), err = {};

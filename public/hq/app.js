@@ -12,7 +12,7 @@
     site: { in_aanbouw: ["In aanbouw", "s-info"], live: ["Live", "s-ok"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"] },
     abo: { geen: ["Niet gestart", "s-grijs"], wacht_op_betaling: ["Wacht op 1e betaling", "s-let"], actief: ["Automatisch (Pay.nl)", "s-ok"], betaling_mislukt: ["Betaling mislukt", "s-fout"], gepauzeerd: ["Gepauzeerd", "s-let"], opgezegd: ["Opgezegd", "s-grijs"], handmatig: ["Handmatig gefactureerd", "s-info"] },
     aanvraag: { nieuw: ["Nieuw", "s-fout"], gepland: ["Gesproken", "s-info"], klant: ["Klant geworden", "s-ok"], geen_interesse: ["Geen interesse", "s-grijs"], niet_bereikbaar: ["Niet bereikbaar", "s-let"], geannuleerd: ["Geannuleerd", "s-grijs"] },
-    lead: { kandidaat: ["Te onderzoeken", "s-grijs"], nieuw: ["Klaar om te mailen", "s-info"], goedgekeurd: ["In de wachtrij", "s-let"], verstuurd: ["Verstuurd", "s-info"], opvolging_goedgekeurd: ["Opvolging in wachtrij", "s-let"], opgevolgd: ["Opgevolgd", "s-info"], reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Afgemeld", "s-grijs"], overgeslagen: ["Overgeslagen", "s-grijs"], fout: ["Fout", "s-fout"] },
+    lead: { kandidaat: ["Te onderzoeken", "s-grijs"], nieuw: ["Klaar om te mailen", "s-info"], goedgekeurd: ["In de wachtrij", "s-let"], verstuurd: ["Verstuurd", "s-info"], aanvraag: ["Ontwerpaanvraag", "s-let"], opvolging_goedgekeurd: ["Opvolging in wachtrij", "s-let"], opgevolgd: ["Opgevolgd", "s-info"], reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Afgemeld", "s-grijs"], overgeslagen: ["Overgeslagen", "s-grijs"], fout: ["Fout", "s-fout"] },
     betaling: { open: ["Open", "s-let"], pending: ["Bezig", "s-let"], authorized: ["Geautoriseerd", "s-info"], paid: ["Betaald", "s-ok"], failed: ["Mislukt", "s-fout"], canceled: ["Geannuleerd", "s-grijs"], expired: ["Verlopen", "s-grijs"] },
     soort: { eerste: "Bouw + machtiging", abonnement: "Maandtermijn", factuur: "Losse factuur" },
     ai: { wachtrij: ["Claude begint zo", "s-info"], bezig: ["Claude is bezig", "s-info"], voorstel: ["Voorstel klaar", "s-let"], handmatig: ["Zelf afhandelen", "s-grijs"], fout: ["Mislukt", "s-fout"], goedgekeurd: ["Live gezet", "s-ok"] },
@@ -54,7 +54,8 @@
     ["kosten", "Kosten en winst", '<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/>'],
     ["domeinen", "Domeinen", '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'],
     ["sites", "Sites", '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/>'],
-    ["b2b", "B2B", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>', "Acquisitie"],
+    ["ontwerpaanvragen", "Ontwerpaanvragen", '<path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/>', "Acquisitie"],
+    ["b2b", "B2B", '<path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/>'],
     ["concepten", "Concepten", '<rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 8h18M8 21h8M12 17v4"/>'],
     ["marketing", "Marketing", '<path d="M3 11l18-8v18L3 13z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>'],
     ["reviews", "Reviews", '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/>'],
@@ -85,7 +86,7 @@
   }
 
   function zetBadges(c) {
-    badges = { opdrachten: c.opdrachten_controle, concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, sites: c.offline, betalingen: c.betaling_mislukt, service: c.klantvragen, domeinen: c.domeinen_werk, reviews: c.reviews_nieuw };
+    badges = { opdrachten: c.opdrachten_controle, concepten: c.concepten_beoordelen, klanten: c.te_bouwen, wijzigingen: c.open_wijzigingen, aanvragen: c.nieuwe_aanvragen, b2b: c.leads_reactie, ontwerpaanvragen: c.ontwerp_in_de_maak, sites: c.offline, betalingen: c.betaling_mislukt, service: c.klantvragen, domeinen: c.domeinen_werk, reviews: c.reviews_nieuw };
     app.querySelectorAll("[data-badge]").forEach((el) => { const n = badges[el.dataset.badge]; el.hidden = !n; el.textContent = n || ""; });
   }
 
@@ -95,7 +96,7 @@
     app.querySelector(`[data-nav="${pagina === "klant" ? "klanten" : pagina === "afdeling" ? "bedrijf" : pagina}"]`)?.setAttribute("aria-current", "page");
     const main = app.querySelector("#inhoud");
     render(main, html`<p class="dempen">Laden…</p>`);
-    const fn = { bedrijf, afdeling, overzicht, klanten, klant, opdrachten, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten, marketing }[pagina] || bedrijf;
+    const fn = { ontwerpaanvragen, bedrijf, afdeling, overzicht, klanten, klant, opdrachten, wijzigingen, aanvragen, facturen, betalingen, sites, b2b, concepten, reviews, instellingen, team, mails, service, domeinen, kosten, marketing }[pagina] || bedrijf;
     if (vraagTimer) { clearTimeout(vraagTimer); vraagTimer = null; }
     try { await fn(main, id); zetBalk(main, pagina); } catch (e) { render(main, html`<div class="melding melding-fout">${raw(icon.let)}<p>${e.message}</p></div>`); }
     window.scrollTo(0, 0);
@@ -155,7 +156,7 @@
   }
 
   // Het team van de afdeling bovenaan elke werkpagina: wie er werkt, wat ze nu doen, en hun verdieping in 3D.
-  const PAGINA_AFD = { opdrachten: "projecten", b2b: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance", marketing: "marketing" };
+  const PAGINA_AFD = { opdrachten: "projecten", b2b: "b2b", ontwerpaanvragen: "b2b", concepten: "b2b", wijzigingen: "projecten", domeinen: "domeinen", service: "klantenservice", aanvragen: "klantenservice", sites: "incidenten", facturen: "finance", betalingen: "finance", kosten: "finance", marketing: "marketing" };
   let teamCache = null;
   const balkDicht = () => { try { return localStorage.getItem("sm_balk") === "dicht"; } catch { return false; } };
   async function zetBalk(main, pagina) {
@@ -1372,6 +1373,33 @@ ${p.body}</div>
   // ================================================ REVIEWS
   // ================================================ MARKETING (advertenties voor Meta, gemaakt met Kive)
   let adFilter = "nieuw";
+  // ================================================ ONTWERPAANVRAGEN (gratis ontwerp via sitemaker.nl/start)
+  const AANVRAAG_FASE = { in_de_maak: ["Ontwerp in de maak", "s-let"], probleem: ["Lukt niet, kijk even", "s-fout"], verstuurd: ["Ontwerp verstuurd", "s-info"], bekeken: ["Ontwerp bekeken", "s-info"],
+    reactie: ["Reactie!", "s-fout"], afspraak: ["Afspraak", "s-ok"], klant: ["Klant", "s-ok"], afgemeld: ["Geen interesse", "s-grijs"] };
+  async function ontwerpaanvragen(main) {
+    const d = await api("hq/ontwerpaanvragen");
+    const t = d.tellers || {};
+    const uren = (a) => Math.floor((Date.now() - new Date(a).getTime()) / 3600000);
+    render(main, html`
+      <div class="hq-kop"><div><h1>Ontwerpaanvragen</h1><p>Nieuwe klanten die via sitemaker.nl/start (Meta-ads) zelf een gratis ontwerp aanvroegen. De ontwerper maakt het binnen 24 uur en de mail met het ontwerp gaat automatisch.</p></div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="waarde">${t.in_de_maak || 0}</div><div class="naam">ontwerp in de maak</div></div>
+        <div class="kpi"><div class="waarde">${t.verstuurd || 0}</div><div class="naam">ontwerp verstuurd</div></div>
+        <div class="kpi"><div class="waarde">${t.interesse || 0}</div><div class="naam">reactie, afspraak of klant</div></div>
+        ${t.probleem ? html`<div class="kpi alarm"><div class="waarde">${t.probleem}</div><div class="naam">lukt niet, kijk even</div></div>` : ""}
+      </div>
+      <section class="paneel">${d.items.length ? html`<div class="tabel-wrap"><table class="tabel"><thead><tr><th>Aangevraagd</th><th>Bedrijf</th><th>Contact</th><th>Website of omschrijving</th><th>Status</th><th></th></tr></thead><tbody>
+        ${d.items.map((i) => html`<tr>
+          <td class="nowrap">${datum(i.aangevraagd)} ${tijd(i.aangevraagd)}${i.fase === "in_de_maak" ? html`<br><span class="klein ${uren(i.aangevraagd) >= 20 ? "fout" : "dempen"}">${uren(i.aangevraagd)} uur geleden</span>` : ""}</td>
+          <td><b>${i.bedrijf}</b></td>
+          <td>${i.naam}<br><a class="klein" href="mailto:${i.email}">${i.email}</a>${i.telefoon ? html`<br><a class="klein" href="tel:${i.telefoon}">${i.telefoon}</a>` : ""}</td>
+          <td>${i.website ? html`<a href="${i.website}" target="_blank" rel="noopener">${i.website.replace(/^https?:\/\//, "")}</a>` : html`<span class="klein">Geen website · ${i.wat}</span>`}</td>
+          <td>${chip(AANVRAAG_FASE, i.fase)}${i.fout ? html`<br><span class="klein fout">${i.fout}</span>` : ""}${i.bekeken ? html`<br><span class="klein dempen">bekeken ${geleden(i.bekeken)}</span>` : ""}</td>
+          <td class="nowrap">${i.link ? html`<a class="knop knop-licht knop-klein" href="${i.link}" target="_blank" rel="noopener">Ontwerp</a>` : ""} </td>
+        </tr>`)}
+      </tbody></table></div>` : html`<div class="leeg"><h3>Nog geen aanvragen</h3><p>Zodra iemand via sitemaker.nl/start een gratis ontwerp aanvraagt, staat hij hier. Je krijgt ook een mail.</p></div>`}</section>`);
+  }
+
   async function marketing(main) {
     const d = await api("hq/ads");
     const t = d.tellers || {};

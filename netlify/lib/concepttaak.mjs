@@ -29,10 +29,12 @@ export function instructies() {
 }
 
 // Pak tot max concepten op die op een ontwerp wachten.
-export async function claim(max = 5) {
+// Ontwerpaanvragen (landingspagina, binnen 24 uur beloofd) gaan altijd voor; met alleenAanvragen alleen die (dagrondes).
+export async function claim(max = 5, { alleenAanvragen = false } = {}) {
   const n = Math.min(10, Math.max(1, Number(max) || 5));
   const rows = await q(`UPDATE concepts SET status = 'ontwerpen', taak_at = NOW(), pogingen = pogingen + 1, updated_at = NOW()
-                        WHERE id IN (SELECT id FROM concepts WHERE status = 'ontwerp' ORDER BY created_at LIMIT $1 FOR UPDATE SKIP LOCKED) RETURNING *`, [n]);
+                        WHERE id IN (SELECT c.id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'ontwerp' ${alleenAanvragen ? "AND l.status = 'aanvraag'" : ""}
+                                     ORDER BY (l.status = 'aanvraag') DESC, c.created_at LIMIT $1 FOR UPDATE OF c SKIP LOCKED) RETURNING *`, [n]);
   const out = [];
   // ontwerp-DNA: elke site een andere opbouw, en niet wat de laatste concepten al hadden
   const recent = (await q("SELECT bron->'dna' AS dna FROM concepts WHERE bron ? 'dna' ORDER BY COALESCE(taak_at, updated_at) DESC LIMIT 12")).map((r) => r.dna);
@@ -41,12 +43,14 @@ export async function claim(max = 5) {
   for (const r of recentHtml) for (const f of new Set(lettertypenUit(r.html))) telF[f] = (telF[f] || 0) + 1;
   const vermijdFonts = Object.keys(telF).sort((a, b) => telF[b] - telF[a]);
   for (const c of rows) {
-    const l = await one("SELECT company, category, city, website, phone, email FROM leads WHERE id = $1", [c.lead_id]);
+    const l = await one("SELECT company, category, city, website, phone, email, status, aanvraag_tekst FROM leads WHERE id = $1", [c.lead_id]);
+    const aanvraag = l.status === "aanvraag" ? { geenWebsite: !l.website, omschrijving: l.aanvraag_tekst || "" } : null;
+    delete l.status; delete l.aanvraag_tekst;
     const dna = maakDNA(recent, c.id);
     recent.unshift(dna);
     await q("UPDATE concepts SET bron = COALESCE(bron, '{}'::jsonb) || jsonb_build_object('dna', $2::jsonb) WHERE id = $1", [c.id, JSON.stringify(dna)]);
     const tekst = dnaTekst(dna) + (vermijdFonts.length ? `\nLettertypen: deze zijn recent veel gebruikt: ${vermijdFonts.join(", ")}. Kies liever iets anders op Bunny Fonts dat bij de richting past; gebruik er één alleen als die echt het beste bij dit bedrijf past (bijv. hun eigen huisletter), en schrijf in plan.md waarom.` : "");
-    out.push({ id: c.id, token: c.token, bedrijf: l, instructie: c.instructie || "", ontwerpDNA: tekst, dna, bron: c.bron || {}, analyse: c.analysis || {},
+    out.push({ id: c.id, token: c.token, bedrijf: l, aanvraag, instructie: c.instructie || "", ontwerpDNA: tekst, dna, bron: c.bron || {}, analyse: c.analysis || {},
       afbeeldingen: (c.images || []).map((i) => ({ naam: i.name, w: i.w, h: i.h, logo: !!i.logo, alt: i.alt || "", sfeerbeeld: !!i.stock })) });
   }
   return { concepten: out };
@@ -158,6 +162,8 @@ export async function opslaan(id, { content, html }) {
   await q(`UPDATE concepts SET status = 'klaar', content = $2, html = $3, ontwerp_fout = '', reden = '', ready_at = NOW(), expires_at = NOW() + ($4 || ' days')::interval, updated_at = NOW() WHERE id = $1`,
     [id, JSON.stringify(schoon), h, String(dagen)]);
   await audit(null, "concept_taak_klaar", "concept", id, { bytes: h.length });
+  // Ontwerpaanvraag via de landingspagina: de mail gaat meteen (besluit Maxim), binnen de beloofde 24 uur.
+  if (lead?.status === "aanvraag") { const { stuurOntwerpMail } = await import("./aanvraag.mjs"); await stuurOntwerpMail(lead.id).catch((e) => console.log("[aanvraag]", e.message)); }
   return { ok: true, url: `${conceptUrl(c.token)}?hq=1`, waarschuwingen: kleurcheck(h, [schoon.kleuren?.primair, schoon.kleuren?.accent].filter(Boolean)) };
 }
 
