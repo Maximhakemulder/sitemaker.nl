@@ -15,8 +15,8 @@
   if (score) fetch("/api/reviews").then((r) => r.json()).then((d) => {
     if (!d?.count) return;
     const gem = Number(d.average).toFixed(1).replace(".", ",");
-    score.innerHTML = `<span class="lp-sterren" aria-hidden="true">★★★★★</span><b>${gem}</b><span>· ${d.count} ${d.count === 1 ? "review" : "reviews"}</span>`;
-    score.setAttribute("aria-label", `Gemiddeld ${gem} uit 5, ${d.count} reviews`);
+    score.innerHTML = `<span class="lp-sterren" aria-hidden="true">★★★★★</span><b>${gem}</b>`;
+    score.setAttribute("aria-label", `Gemiddeld ${gem} uit 5`);
     score.hidden = false;
   }).catch(() => {});
 

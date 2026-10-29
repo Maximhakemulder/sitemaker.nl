@@ -254,3 +254,5 @@
 .lp-kleur-antraciet { background: #2B2B2B; }
 .lp-kleur-hout { background: #8B5A2B; }
 .lp-kaart .lp-kleur { margin: 0; }
+
+.lp-reviews .rv-aantal { display: none; }
