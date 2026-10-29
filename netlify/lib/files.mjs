@@ -36,6 +36,15 @@ export async function deleteFile(key) {
   await store().delete(key);
 }
 
+// Alles onder een map weg (bijv. concepts/<id>/): ook bestanden die niet (meer) in een lijst staan.
+export async function deletePrefix(prefix) {
+  if (!prefix || !prefix.endsWith("/")) return 0;
+  if (localDir()) { await fs.rm(path.join(localDir(), prefix), { recursive: true, force: true }); return 1; }
+  const { blobs } = await store().list({ prefix });
+  for (const b of blobs) await store().delete(b.key);
+  return blobs.length;
+}
+
 export const ALLOWED_UPLOADS = {
   "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif", "image/svg+xml": "svg",
   "application/pdf": "pdf", "text/plain": "txt",

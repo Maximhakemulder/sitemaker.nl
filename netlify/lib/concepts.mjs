@@ -5,7 +5,7 @@
 // 4. Wordt het een klant, dan start "Website aanmaken" vanuit dit concept.
 import crypto from "node:crypto";
 import { q, one, str, env, fail, escH, publicBase, getSettings, audit, OFFER } from "./core.mjs";
-import { putFile, getFile, deleteFile } from "./files.mjs";
+import { putFile, getFile, deleteFile, deletePrefix } from "./files.mjs";
 import { claude, aiReady, parseJson } from "./ai.mjs";
 import { notifyStaff } from "./mail.mjs";
 import { render } from "../../templates/klantsite/render.mjs";
@@ -566,7 +566,10 @@ function beter(a) {
 // wel de verkoop: eerst laten zien dat het voorstel privé en tijdelijk is, dan meteen door naar het ontwerp.
 const PRIVE_CSS = `.sm-balk-knoppen{display:flex;gap:8px;align-items:center;flex:none}.sm-weg-knop{background:#D93636;border:0;color:#fff;font-weight:700;font:inherit;font-size:13px;padding:7px 11px;border-radius:9px;cursor:pointer}
 .sm-weg-link{background:none;border:0;padding:0;color:#FF8A8A;font-weight:700;font:inherit;text-decoration:underline;cursor:pointer}
-@media(max-width:700px){.sm-weg-knop{display:none}}
+@media(max-width:700px){.sm-balk-knoppen{gap:6px}.sm-weg-knop{padding:7px 9px}}
+@media(max-width:380px){.sm-balk{font-size:12px!important;padding:8px 10px!important}.sm-balk a,.sm-weg-knop{font-size:12px!important;padding:7px 8px!important}}
+.sm-eind-knoppen{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.sm-eind .sm-eind-weg{background:#D93636}
+@media(max-width:420px){.sm-eind-knoppen{display:grid;grid-template-columns:1fr 1fr}.sm-eind-knoppen a,.sm-eind-knoppen button{padding:14px 10px!important;font-size:15px}}
 html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-intro{position:fixed;inset:0;z-index:2147483600;background:rgba(14,3,40,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#1C0747;overflow-y:auto}
 .sm-intro[hidden]{display:none}
@@ -586,7 +589,7 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
 `;
-function priveScript(token, naam, datum) {
+function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
   const intro = `<div class="sm-intro" role="dialog" aria-modal="true" aria-labelledby="sm-intro-t"><div class="sm-intro-kaart">
 <div class="sm-intro-kop"><img class="sm-intro-foto" src="/assets/brand/jason.webp" alt=""><p class="sm-intro-van">Privé ontwerpvoorstel voor<b>${n}</b></p></div>
@@ -598,7 +601,7 @@ function priveScript(token, naam, datum) {
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we halen het ontwerp, de teksten en de foto's direct weg en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch bewaren</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
-  const weg = `<div class="sm-intro sm-weg-klaar" role="status"><div class="sm-intro-kaart"><h2>Je bent afgemeld</h2><p>Het ontwerp, de teksten en de foto's zijn verwijderd en je hoort niets meer van ons. Later toch zin in een website die klanten oplevert? Je bent altijd welkom.</p><a href="${publicBase()}">Naar sitemaker.nl</a></div></div>`;
+  const weg = `<div class="sm-intro sm-weg-klaar" role="status"><div class="sm-intro-kaart"><h2>Alles is verwijderd</h2><p>Het ontwerp, de teksten en de foto's zijn verwijderd en je ontvangt geen berichten meer van ons. Bedankt dat je even hebt gekeken.</p><p>Wil je in de toekomst toch een nieuwe website? Dan horen we het graag.</p><a href="${publicBase()}">Naar sitemaker.nl</a></div></div>`;
   return `<script>(function(){var d=document,T=${JSON.stringify(token)},K="sm-intro-"+T;
 function maak(h){var t=d.createElement("div");t.innerHTML=h;return t.firstElementChild}
 var intro=maak(${JSON.stringify(intro)}),dlg=maak(${JSON.stringify(dlg)});d.body.appendChild(dlg);
@@ -611,7 +614,7 @@ d.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest(
 dlg.querySelector("[data-sm-bewaar]").addEventListener("click",function(){dlg.hidden=true;vast(false);try{sessionStorage.setItem(K,"1")}catch(e){}});
 d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else if(intro.parentNode)sluit()});
 var ja=dlg.querySelector("[data-sm-ja]"),fout=dlg.querySelector(".sm-dlg-fout");
-ja.addEventListener("click",function(){ja.disabled=true;ja.textContent="Bezig…";fout.hidden=true;
+ja.addEventListener("click",function(){if(${hq ? "true" : "false"}){fout.textContent="HQ-weergave: hier wordt niemand afgemeld. Zo ziet de lead dit.";fout.hidden=false;return}ja.disabled=true;ja.textContent="Bezig…";fout.hidden=true;
 fetch("/api/voorbeeld/"+T+"/verwijderen",{method:"POST",headers:{"x-sm":"1"}}).then(function(r){if(!r.ok)throw 0;
 Array.prototype.slice.call(d.body.children).forEach(function(el){if(el.tagName!=="STYLE")el.remove()});d.body.appendChild(maak(${JSON.stringify(weg)}));vast(true)})
 .catch(function(){ja.disabled=false;ja.textContent="Meld me af en verwijder alles";fout.textContent="Dat lukte niet. Probeer het opnieuw of antwoord op onze mail, dan doen wij het.";fout.hidden=false})});
@@ -652,7 +655,7 @@ export async function conceptPage(token, { hq = false } = {}) {
   const datum = eindDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "long", timeZone: "Europe/Amsterdam" });
   const balk = `<style>${PRIVE_CSS}.sm-balk{position:sticky;top:0;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
 .sm-balk b{color:#0CC0DF}.sm-balk a{background:#146C43;color:#fff;font-weight:700;padding:8px 14px;border-radius:9px;text-decoration:none;white-space:nowrap}
-.sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:inline}.sm-balk a{padding:7px 11px;font-size:13px}}
+.sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:block}.sm-balk>span:first-child{white-space:nowrap;line-height:1.25}.sm-balk a{padding:7px 11px;font-size:13px}}
 .sm-eind{background:#1C0747;color:#fff;padding:48px 20px;text-align:center;font-family:inherit}.sm-eind h3,.sm-eind li,.sm-eind small,.sm-eind a,.sm-eind figcaption{font-family:inherit}.sm-eind h2{font-size:28px;margin:0 0 10px;font-family:inherit;color:#fff}.sm-eind p{max-width:560px;margin:0 auto 20px;color:#E3DDF5}
 .sm-beter{list-style:none;padding:0;margin:0 auto 26px;max-width:560px;text-align:left;display:grid;gap:8px}.sm-beter li{background:rgba(255,255,255,.07);border-radius:10px;padding:10px 14px 10px 40px;position:relative;color:#fff}.sm-beter li::before{content:"✓";position:absolute;left:14px;color:#0CC0DF;font-weight:700}.sm-beter small{display:block;margin:2px 0 0;color:#B8AEDB}
 .sm-eind h3{font-size:18px;margin:6px 0 12px;color:#fff}
@@ -660,7 +663,7 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-jason figcaption{background:#fff;color:#1C0747;border-radius:20px 20px 20px 6px;padding:14px 18px 12px;text-align:left;box-shadow:0 14px 40px rgba(0,0,0,.25);margin-bottom:110px}.sm-ballon{display:block;font-size:19px;font-weight:700;line-height:1.25}.sm-jason small{display:block;margin-top:6px;font-size:13px;color:#6B6585}.sm-jason small b{color:#1C0747}
 @media(max-width:520px){.sm-jason img{width:130px}.sm-ballon{font-size:17px}.sm-jason figcaption{margin-bottom:80px}}
 .sm-eind a{display:inline-block;background:#146C43;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
-<div class="sm-balk" role="note"><span><b>Privé voorstel</b><span class="sm-lang"> voor ${escH(naam)} · ${nogDagen} te bekijken · Mooi? Dan maken we hem samen helemaal af.</span><span class="sm-kort"> · ${nogDagen}</span></span><span class="sm-balk-knoppen">${hq ? "" : '<button type="button" class="sm-weg-knop" data-sm-weg>Geen interesse</button>'}<a href="${kennis}">Ik heb interesse</a></span></div>`;
+<div class="sm-balk" role="note"><span><b>Privé voorstel</b><span class="sm-lang"> voor ${escH(naam)} · ${nogDagen} te bekijken · Mooi? Dan maken we hem samen helemaal af.</span><span class="sm-kort">${nogDagen}</span></span><span class="sm-balk-knoppen"><button type="button" class="sm-weg-knop" data-sm-weg>Geen interesse</button><a href="${kennis}">Ik heb interesse</a></span></div>`;
   // De balk staat vast bovenaan; vaste/plakkende koppen van het ontwerp schuiven eronder (nooit eroverheen).
   const balkScript = `<script>(function(){var b=document.querySelector(".sm-balk");if(!b)return;var r=document.createElement("div");r.className="sm-balk-ruimte";b.after(r);var H=0,lijst=[];
 function hoog(){H=b.offsetHeight;r.style.height=H+"px";document.documentElement.style.setProperty("--sm-balk",H+"px")}
@@ -673,8 +676,8 @@ addEventListener("resize",function(){lijst.forEach(function(e){delete e.dataset.
 koppen();alles();addEventListener("load",function(){koppen();alles()});setTimeout(alles,1200)})()</script>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit is een eerste opzet op basis van jullie huidige website. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
-${beter(c.analysis)}<a href="${kennis}">Ik heb interesse</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Ze staan alleen in dit privévoorstel, dat alleen via jouw link te zien is, en verdwijnen vanzelf op ${datum}.${hq ? "" : ' Geen interesse? <button type="button" class="sm-weg-link" data-sm-weg>Meld je af</button>'}</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
-${hq ? "" : priveScript(token, naam, datum)}
+${beter(c.analysis)}<div class="sm-eind-knoppen"><a href="${kennis}">Ik heb interesse</a><a href="#" class="sm-eind-weg" data-sm-weg>Geen interesse</a></div><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Ze staan alleen in dit privévoorstel, dat alleen via jouw link te zien is, en verdwijnen vanzelf op ${datum}.</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
+${priveScript(token, naam, datum, hq)}
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   // Versie in het pad: bij een nieuw concept met dezelfde bestandsnamen geen oude foto's uit de cache.
   const imgBase = `/api/voorbeeld/${token}/a${c.ready_at ? new Date(c.ready_at).getTime().toString(36) : "0"}/`;
@@ -747,8 +750,10 @@ export async function rejectConcept(leadId, user) {
   return { ok: true };
 }
 export async function deleteConcept(leadId) {
-  const c = await one("DELETE FROM concepts WHERE lead_id = $1 RETURNING images", [leadId]);
+  // Hard delete: de rij (teksten, ontwerp, scan van hun site) en alle bestanden, ook kandidaat-foto's die niet in de lijst staan.
+  const c = await one("DELETE FROM concepts WHERE lead_id = $1 RETURNING id, images", [leadId]);
   for (const i of c?.images || []) await deleteFile(i.key).catch(() => {});
+  if (c) await deletePrefix(`concepts/${c.id}/`).catch(() => {});
   return { ok: !!c };
 }
 // Voor "Website aanmaken": content en afbeeldingen van het concept van deze klant.
