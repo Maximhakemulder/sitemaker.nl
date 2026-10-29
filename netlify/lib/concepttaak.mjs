@@ -188,7 +188,8 @@ export async function status() {
   const { spaarstand } = await import("./credits.mjs");
   const pulse = (await one("SELECT value FROM settings WHERE key = 'team_pulse'"))?.value || {};
   const kies = (k) => pulse[k] || null;
-  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag,
+  const { voorraad } = await import("./b2b.mjs");
+  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag, voorraadVannacht: await voorraad(),
     diagnose: { concepten: s.b2b?.concepten || {}, scout: { categorieen: (s.b2b?.scout?.categories || s.scout?.categories || []).length }, gestartVandaag, spaarstand: await spaarstand().catch(() => null),
       aanvoer, leads: Object.fromEntries(leads.map((r) => [r.status, r.n])), tick: { concepten: kies("concepten"), scout: kies("scout"), research: kies("research") } } };
 }

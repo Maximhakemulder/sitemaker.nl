@@ -521,7 +521,8 @@ export async function runConcepts({ max = 2 } = {}) {
   const cfg = s.b2b.concepten || {};
   const taak = cfg.maker !== "netlify";
   if (!taak && !aiReady()) return { skipped: "ai" };
-  const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  // Overgeslagen sites (webshop, te weinig tekst) tellen niet mee: perDag = zoveel echte concepten per dag.
+  const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE status <> 'overgeslagen' AND started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   const room = Math.max(0, Number(cfg.perDag ?? 20) - vandaag);
   if (cfg.auto !== false && room) {
     await q(`INSERT INTO concepts (lead_id, token) SELECT l.id, md5(random()::text || l.id::text || clock_timestamp()::text) FROM leads l
