@@ -369,3 +369,4 @@
   .lp-tel figcaption { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%) rotate(7deg); font-size: 12px; color: #B9AEDB; white-space: nowrap; }
   .lp-hero .lp-kaart { z-index: 1; }
 }
+@media (max-width: 959px) { .lp-bewijs-reviews { display: none !important; } }
