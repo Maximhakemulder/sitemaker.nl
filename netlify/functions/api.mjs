@@ -184,6 +184,7 @@ async function verwerk(req, context) {
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
     if (path === "contact" && m === "POST") return json(await submitContact(await body(req), ipOf(req, context)));
+    if (path === "t/l" && m === "POST") { const { meet } = await import("../lib/bezoekers.mjs"); return json(await meet(await body(req), req.headers.get("user-agent") || "")); }
     if (path === "start/ontwerp" && m === "POST") { const { ontwerpAanvragen } = await import("../lib/aanvraag.mjs"); return json(await ontwerpAanvragen(await body(req), ipOf(req, context))); }
     if (path === "start/aanmelden" && m === "POST") { const { zelfStarten } = await import("../lib/site.mjs"); return json(await zelfStarten(await body(req), ipOf(req, context))); }
 
@@ -338,6 +339,7 @@ async function verwerk(req, context) {
         case "GET b2b": return json(await b2bDashboard());
         case "GET ads": return json(await (await import("../lib/ads.mjs")).lijst());
         case "GET ontwerpaanvragen": return json(await (await import("../lib/aanvraag.mjs")).lijst());
+        case "GET bezoekers": return json(await (await import("../lib/bezoekers.mjs")).stats());
         case "PUT ads/:id": return json(await (await import("../lib/ads.mjs")).bijwerken(id, await body(req), user));
         case "DELETE ads/:id": return json(await (await import("../lib/ads.mjs")).verwijder(id));
         case "GET ads/:id/bestand": return await (await import("../lib/ads.mjs")).bestand(id, { download: url.searchParams.has("download") });

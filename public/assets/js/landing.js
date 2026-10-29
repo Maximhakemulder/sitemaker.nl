@@ -4,6 +4,23 @@
   const meet = (...a) => { try { window.fbq && window.fbq(...a); } catch {} };
   const rustig = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Anonieme bezoekersstatistiek voor HQ (geen cookies, geen IP): een willekeurige code per bezoek in sessionStorage.
+  const stuur = (() => {
+    let sessie = "";
+    try { sessie = sessionStorage.getItem("sm_lp") || ""; } catch {}
+    if (!/^[a-z0-9]{12,40}$/.test(sessie)) { sessie = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()) + Date.now()).replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 32); try { sessionStorage.setItem("sm_lp", sessie); } catch {} }
+    const qs = new URLSearchParams(location.search), ref = document.referrer || "", utm = (qs.get("utm_source") || "").toLowerCase();
+    const bron = qs.get("fbclid") || /facebook|instagram|meta|fb|ig/.test(utm) || /facebook\.|instagram\.|fb\.me/.test(ref) ? "meta"
+      : /google/.test(utm) || /google\./.test(ref) || qs.get("gclid") ? "google"
+      : /mail|nieuwsbrief/.test(utm + (qs.get("utm_medium") || "")) ? "mail"
+      : !ref || ref.startsWith(location.origin) ? "direct" : "anders";
+    const mobiel = window.matchMedia("(max-width: 900px)").matches;
+    return (e) => { try { fetch("/api/t/l", { method: "POST", headers: { "content-type": "application/json", "x-sm": "1" }, body: JSON.stringify({ s: sessie, e, b: bron, m: mobiel }), keepalive: true }).catch(() => {}); } catch {} };
+  })();
+  stuur("view");
+  let pings = 0;
+  const pingTimer = setInterval(() => { if (document.hidden) return; if (++pings > 30) return clearInterval(pingTimer); stuur("ping"); }, 60000);
+
   // Startbalk onderin: zichtbaar zodra het formulier uit beeld is.
   const balk = $("#landing-cta"), kaart = $("#keuzes");
   if (balk && kaart && "IntersectionObserver" in window) {
@@ -30,6 +47,7 @@
   // Gratis ontwerp aanvragen. Zonder website vragen we één ding: wat doe je en waar.
   const of = $("#ontwerp-form"), geopend = Date.now();
   if (of) {
+    of.addEventListener("focusin", () => stuur("formulier"), { once: true });
     // Eerst één vraag: heb je al een website? Ja = alleen het adres, nee = wat doe je en waar + kleur.
     const site = $("#o-site"), siteVeld = $("#o-site-veld"), watVeld = $("#o-wat-veld"), kleurVeld = $("#o-kleur-veld");
     const heeft = () => of.querySelector("input[name=heeft]:checked")?.value || "";
@@ -68,6 +86,7 @@
         const res = await r.json().catch(() => ({}));
         if (!r.ok) { if (res.errors) fouten(res.errors); else { fout.textContent = res.error || "Dat lukte niet. Probeer het opnieuw."; fout.hidden = false; fout.focus(); } return; }
         meet("track", "Lead", { content_name: "gratis ontwerp" });
+        stuur("aanvraag");
         const vak = $("#vak-start"), div = document.createElement("div");
         div.className = "bedankt"; div.setAttribute("role", "status"); div.tabIndex = -1;
         div.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>`
