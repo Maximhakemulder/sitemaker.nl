@@ -60,7 +60,7 @@ de aanvrager: maak het dus net zo goed als altijd, maar laat het niet liggen.
   "schilder in Breda") en `bron.tekst`. Kies altijd sfeerfoto's met `stock` die bij hun vak passen. Verzin geen feiten: geen
   adres, prijzen, jaartallen, keurmerken, reviews of klantaantallen; telefoon en e-mail alleen zoals ze in `bron.tekst` staan.
   Diensten mag je algemeen houden zoals elk bedrijf in dat vak ze heeft (bijv. "Binnen schilderwerk", "Buiten schilderwerk").
-  Kies een eigen kleur die bij het vak past (`kleurBron: "gekozen"`). Afmelden bij een aanvraag alleen als het echt geen bedrijf
+  Staat er in `bron.tekst` een "Gewenste hoofdkleur", gebruik die als primaire kleur (`kleurBron: "gekozen"`); anders kies je een kleur die bij het vak past. Afmelden bij een aanvraag alleen als het echt geen bedrijf
   is of een webshop; dan krijgt Maxim een melding in HQ.
 
 ## Per concept
