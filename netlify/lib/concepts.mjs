@@ -562,6 +562,82 @@ function beter(a) {
   return `<h3>Wat dit voorbeeld beter doet</h3><ul class="sm-beter">${p.slice(0, 5).map(([t, u]) => `<li>${escH(t)}<small>${escH(u)}</small></li>`).join("")}</ul>`;
 }
 
+// Privé-scherm, verwijderen en aftellen op de conceptpagina (besluit Maxim 29-10-2026): geen "ze kopiëren mijn site"-gevoel,
+// wel de verkoop: eerst laten zien dat het voorstel privé en tijdelijk is, dan meteen door naar het ontwerp.
+const PRIVE_CSS = `.sm-balk-knoppen{display:flex;gap:8px;align-items:center;flex:none}.sm-weg-knop{background:none;border:1px solid rgba(255,255,255,.35);color:#E3DDF5;font:inherit;font-size:13px;padding:7px 11px;border-radius:9px;cursor:pointer}
+.sm-weg-link{background:none;border:0;padding:0;color:#B8AEDB;font:inherit;text-decoration:underline;cursor:pointer}
+@media(max-width:700px){.sm-weg-knop{display:none}}
+html.sm-vast,html.sm-vast body{overflow:hidden!important}
+.sm-intro{position:fixed;inset:0;z-index:2147483600;background:rgba(14,3,40,.82);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:#1C0747;overflow-y:auto}
+.sm-intro[hidden]{display:none}
+.sm-intro-kaart{background:#fff;border-radius:22px;max-width:460px;width:100%;padding:26px 22px 22px;box-shadow:0 30px 80px rgba(0,0,0,.4);text-align:left;margin:auto}
+.sm-intro-kop{display:flex;align-items:center;gap:12px;margin-bottom:14px}.sm-intro-foto{width:52px;height:52px;border-radius:50%;object-fit:cover;object-position:50% 12%;background:#E7F4FF;flex:none}
+.sm-intro-van{margin:0;font-size:14px;color:#575170;line-height:1.35}.sm-intro-van b{color:#1C0747;display:block;font-size:15px}
+.sm-intro h1,.sm-intro h2{font:800 26px/1.15 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.01em;margin:0 0 10px;color:#1C0747}
+.sm-intro p{margin:0 0 14px;color:#575170}
+.sm-intro ul{list-style:none;padding:0;margin:0 0 20px;display:grid;gap:8px}
+.sm-intro li{position:relative;padding-left:30px;font-size:15px;color:#1C0747;line-height:1.4}
+.sm-intro li::before{content:"";position:absolute;left:0;top:1px;width:20px;height:20px;border-radius:50%;background:#0CC0DF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C0747' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/12px no-repeat}
+.sm-intro-actie{display:flex;width:100%;align-items:center;justify-content:center;min-height:54px;border:0;border-radius:13px;background:#D93636;color:#fff;font:700 17px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;box-shadow:0 4px 0 #A82424}
+.sm-intro-actie:active{transform:translateY(3px);box-shadow:0 1px 0 #A82424}
+.sm-intro small{display:block;text-align:center;margin-top:14px;font-size:13px;color:#6B6585}
+.sm-intro small button{background:none;border:0;padding:0;font:inherit;color:#6B6585;text-decoration:underline;cursor:pointer}
+.sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#fff;color:#1C0747;border:2px solid #DCE2EE;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+.sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
+.sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
+`;
+function priveScript(token, naam, datum) {
+  const n = escH(naam), d = escH(datum);
+  const intro = `<div class="sm-intro" role="dialog" aria-modal="true" aria-labelledby="sm-intro-t"><div class="sm-intro-kaart">
+<div class="sm-intro-kop"><img class="sm-intro-foto" src="/assets/brand/jason.webp" alt=""><p class="sm-intro-van">Privé ontwerpvoorstel voor<b>${n}</b></p></div>
+<h1 id="sm-intro-t">Jullie nieuwe website staat klaar.</h1>
+<p>Speciaal voor ${n} gemaakt, op basis van wat jullie nu online hebben. Bekijk rustig hoe hij meer telefoontjes, mails en klanten kan opleveren.</p>
+<ul><li>Alleen te zien via jouw persoonlijke link</li><li>Niet openbaar en niet vindbaar in Google</li><li>Verdwijnt vanzelf op ${d}, inclusief jullie teksten en foto's</li><li>Jullie huidige website blijft gewoon zoals hij is</li></ul>
+<button type="button" class="sm-intro-actie" data-sm-bekijk>Bekijk mijn nieuwe website</button>
+<small>Liever niet? <button type="button" data-sm-weg>Verwijder dit voorstel direct</button></small></div></div>`;
+  const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
+<h2 id="sm-dlg-t">Voorstel verwijderen?</h2><p>We halen het ontwerp, de teksten en de foto's direct weg, en je hoort daarna niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
+<div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch bewaren</button><button type="button" class="sm-dlg-nee" data-sm-ja>Ja, verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
+  const weg = `<div class="sm-intro sm-weg-klaar" role="status"><div class="sm-intro-kaart"><h2>Je voorstel is verwijderd</h2><p>Het ontwerp, de teksten en de foto's zijn weg, en je hoort niets meer van ons. Later toch zin in een website die klanten oplevert? Je bent altijd welkom.</p><a href="${publicBase()}">Naar sitemaker.nl</a></div></div>`;
+  return `<script>(function(){var d=document,T=${JSON.stringify(token)},K="sm-intro-"+T;
+function maak(h){var t=d.createElement("div");t.innerHTML=h;return t.firstElementChild}
+var intro=maak(${JSON.stringify(intro)}),dlg=maak(${JSON.stringify(dlg)});d.body.appendChild(dlg);
+var gezien=false;try{gezien=sessionStorage.getItem(K)==="1"}catch(e){}
+function vast(a){d.documentElement.classList.toggle("sm-vast",a)}
+if(!gezien){d.body.appendChild(intro);vast(true);setTimeout(function(){var b=intro.querySelector("[data-sm-bekijk]");b&&b.focus()},50)}
+function sluit(){if(intro.parentNode)intro.remove();vast(false);try{sessionStorage.setItem(K,"1")}catch(e){}}
+intro.querySelector("[data-sm-bekijk]").addEventListener("click",sluit);
+d.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-sm-weg]");if(!t)return;e.preventDefault();if(intro.parentNode)intro.remove();dlg.hidden=false;vast(true);dlg.querySelector("[data-sm-bewaar]").focus()});
+dlg.querySelector("[data-sm-bewaar]").addEventListener("click",function(){dlg.hidden=true;vast(false);try{sessionStorage.setItem(K,"1")}catch(e){}});
+d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else if(intro.parentNode)sluit()});
+var ja=dlg.querySelector("[data-sm-ja]"),fout=dlg.querySelector(".sm-dlg-fout");
+ja.addEventListener("click",function(){ja.disabled=true;ja.textContent="Bezig…";fout.hidden=true;
+fetch("/api/voorbeeld/"+T+"/verwijderen",{method:"POST",headers:{"x-sm":"1"}}).then(function(r){if(!r.ok)throw 0;
+Array.prototype.slice.call(d.body.children).forEach(function(el){if(el.tagName!=="STYLE")el.remove()});d.body.appendChild(maak(${JSON.stringify(weg)}));vast(true)})
+.catch(function(){ja.disabled=false;ja.textContent="Ja, verwijder alles";fout.textContent="Dat lukte niet. Probeer het opnieuw of antwoord op onze mail, dan doen wij het.";fout.hidden=false})});
+})()</script>`;
+}
+
+// "Verwijder dit voorstel": concept met teksten en foto's weg en geen mails meer. Klanten houden hun account.
+export async function verwijderVoorbeeld(token) {
+  const c = await conceptByToken(token);
+  if (!c) fail(404, "Dit voorstel bestaat niet (meer).");
+  if (["klant", "afspraak"].includes(c.lead_status)) await deleteConcept(c.lead_id);
+  else { const { unsubscribe } = await import("./b2b.mjs"); await unsubscribe(c.lead_id); }
+  await audit(null, null, "concept.verwijderd_door_lead", { lead: c.lead_id, bedrijf: c.company });
+  return { ok: true };
+}
+
+// Verlopen voorstellen echt opruimen (teksten en foto's), zoals op de pagina staat. Niet bij leads die
+// gereageerd hebben, een afspraak hebben of klant zijn: daar is het voorstel de basis voor het gesprek.
+export async function ruimVerlopenOp({ max = 15 } = {}) {
+  const rows = await q(`SELECT c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id
+    WHERE c.status = 'klaar' AND c.expires_at < NOW() AND l.sent_at IS NOT NULL AND l.status NOT IN ('reactie', 'afspraak', 'klant')
+    ORDER BY c.expires_at LIMIT $1`, [max]);
+  for (const r of rows) await deleteConcept(r.lead_id);
+  return { done: rows.length };
+}
+
 export async function conceptPage(token, { hq = false } = {}) {
   const c = await conceptByToken(token);
   // "Ik heb interesse": kiezen tussen direct starten, videomeeting of belafspraak.
@@ -569,7 +645,12 @@ export async function conceptPage(token, { hq = false } = {}) {
   if (!c || c.status !== "klaar" || c.lead_status === "afgemeld") return page("Voorbeeld niet beschikbaar", `<h1>Dit voorbeeld is niet (meer) beschikbaar</h1><p>Benieuwd hoe jouw nieuwe website eruit kan zien? Plan een kennismaking van 15 minuten.</p><a class="k" href="${publicBase()}/#kennismaking">Plan een kennismaking</a>`);
   if (c.expires_at && new Date(c.expires_at) < new Date() && !hq) return page("Voorbeeld verlopen", `<h1>Dit voorbeeld is verlopen</h1><p>We maken graag een nieuw voorbeeld voor ${escH(c.company)}. Plan een kennismaking van 15 minuten.</p><a class="k" href="${kennis}">Plan een kennismaking</a>`);
   const naam = c.content?.bedrijf?.naam || c.company;
-  const balk = `<style>.sm-balk{position:sticky;top:0;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
+  // Privé en tijdelijk: hoeveel dagen nog, en op welke datum alles (ook teksten en foto's) verdwijnt.
+  const eindDatum = c.expires_at ? new Date(c.expires_at) : new Date(Date.now() + 7 * 86400000);
+  const dagen = Math.max(1, Math.ceil((eindDatum - Date.now()) / 86400000));
+  const nogDagen = dagen === 1 ? "nog 1 dag" : `nog ${dagen} dagen`;
+  const datum = eindDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "long", timeZone: "Europe/Amsterdam" });
+  const balk = `<style>${PRIVE_CSS}.sm-balk{position:sticky;top:0;z-index:99;background:#1C0747;color:#fff;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;padding:10px 16px;display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
 .sm-balk b{color:#0CC0DF}.sm-balk a{background:#D93636;color:#fff;font-weight:700;padding:8px 14px;border-radius:9px;text-decoration:none;white-space:nowrap}
 .sm-kort{display:none}@media(max-width:700px){.sm-balk{justify-content:space-between;flex-wrap:nowrap;font-size:13px;padding:8px 12px}.sm-lang{display:none}.sm-kort{display:inline}.sm-balk a{padding:7px 11px;font-size:13px}}
 .sm-eind{background:#1C0747;color:#fff;padding:48px 20px;text-align:center;font-family:inherit}.sm-eind h3,.sm-eind li,.sm-eind small,.sm-eind a,.sm-eind figcaption{font-family:inherit}.sm-eind h2{font-size:28px;margin:0 0 10px;font-family:inherit;color:#fff}.sm-eind p{max-width:560px;margin:0 auto 20px;color:#E3DDF5}
@@ -579,7 +660,7 @@ export async function conceptPage(token, { hq = false } = {}) {
 .sm-jason figcaption{background:#fff;color:#1C0747;border-radius:20px 20px 20px 6px;padding:14px 18px 12px;text-align:left;box-shadow:0 14px 40px rgba(0,0,0,.25);margin-bottom:110px}.sm-ballon{display:block;font-size:19px;font-weight:700;line-height:1.25}.sm-jason small{display:block;margin-top:6px;font-size:13px;color:#6B6585}.sm-jason small b{color:#1C0747}
 @media(max-width:520px){.sm-jason img{width:130px}.sm-ballon{font-size:17px}.sm-jason figcaption{margin-bottom:80px}}
 .sm-eind a{display:inline-block;background:#D93636;color:#fff;font-weight:700;padding:14px 22px;border-radius:12px;text-decoration:none}.sm-eind small{display:block;margin-top:16px;color:#B8AEDB}</style>
-<div class="sm-balk" role="note"><span><b>Voorbeeld</b><span class="sm-lang"> · Een eerste opzet voor ${escH(naam)}. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen.</span><span class="sm-kort"> · Mooi? Wij maken hem helemaal af</span></span><a href="${kennis}">Ik heb interesse</a></div>`;
+<div class="sm-balk" role="note"><span><b>Privé voorstel</b><span class="sm-lang"> voor ${escH(naam)} · ${nogDagen} te bekijken · Mooi? Dan maken we hem samen helemaal af.</span><span class="sm-kort"> · ${nogDagen}</span></span><span class="sm-balk-knoppen">${hq ? "" : '<button type="button" class="sm-weg-knop" data-sm-weg>Verwijderen</button>'}<a href="${kennis}">Ik heb interesse</a></span></div>`;
   // De balk staat vast bovenaan; vaste/plakkende koppen van het ontwerp schuiven eronder (nooit eroverheen).
   const balkScript = `<script>(function(){var b=document.querySelector(".sm-balk");if(!b)return;var r=document.createElement("div");r.className="sm-balk-ruimte";b.after(r);var H=0,lijst=[];
 function hoog(){H=b.offsetHeight;r.style.height=H+"px";document.documentElement.style.setProperty("--sm-balk",H+"px")}
@@ -592,7 +673,8 @@ addEventListener("resize",function(){lijst.forEach(function(e){delete e.dataset.
 koppen();alles();addEventListener("load",function(){koppen();alles()});setTimeout(alles,1200)})()</script>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
 <p>Dit is een eerste opzet op basis van jullie huidige website. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
-${beter(c.analysis)}<a href="${kennis}">Ik heb interesse</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit voorbeeld is alleen via deze link te zien.</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
+${beter(c.analysis)}<a href="${kennis}">Ik heb interesse</a><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Ze staan alleen in dit privévoorstel, dat alleen via jouw link te zien is, en verdwijnen vanzelf op ${datum}.${hq ? "" : ' <button type="button" class="sm-weg-link" data-sm-weg>Nu verwijderen</button>'}</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
+${hq ? "" : priveScript(token, naam, datum)}
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   // Versie in het pad: bij een nieuw concept met dezelfde bestandsnamen geen oude foto's uit de cache.
   const imgBase = `/api/voorbeeld/${token}/a${c.ready_at ? new Date(c.ready_at).getTime().toString(36) : "0"}/`;

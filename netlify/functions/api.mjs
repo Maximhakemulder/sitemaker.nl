@@ -180,6 +180,7 @@ async function verwerk(req, context) {
 
     // ------------------------------------------------ website
     if (seg[0] === "voorbeeld" && seg[2] === "gezien" && m === "POST") return json(await concepts.markViewed(seg[1]));
+    if (seg[0] === "voorbeeld" && seg[2] === "verwijderen" && m === "POST") return json(await concepts.verwijderVoorbeeld(seg[1]));
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
     if (path === "contact" && m === "POST") return json(await submitContact(await body(req), ipOf(req, context)));
