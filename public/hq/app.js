@@ -248,7 +248,7 @@
         ${kpi(c.klanten, `klanten (${c.live} live, ${c.in_aanbouw} in aanbouw)`, "#klanten")}
         ${kpi(euro(c.mrr_basis), "aan abonnementen per maand", "#betalingen")}
         ${c.voorstellen ? kpi(c.voorstellen, "voorstellen van Claude klaar om goed te keuren", "#wijzigingen/voorstel", true) : ""}
-        ${kpi(c.open_wijzigingen, c.te_laat ? `open wijzigingen, ${c.te_laat} over de 48 uur` : "open wijzigingen", "#wijzigingen", c.te_laat > 0)}
+        ${kpi(c.open_wijzigingen, c.te_laat ? `open wijzigingen, ${c.te_laat} over de 24 uur` : "open wijzigingen", "#wijzigingen", c.te_laat > 0)}
         ${kpi(c.nieuwe_aanvragen, "nieuwe afspraken en terugbelverzoeken", "#aanvragen", c.nieuwe_aanvragen > 0)}
         ${kpi(euro(c.ontvangen_maand), "ontvangen deze maand", "#facturen")}
         ${kpi(`${c.open_facturen} · ${euro(c.open_bedrag)}`, "openstaande facturen", "#facturen")}
@@ -273,7 +273,7 @@
     const over = SM.over(w.dueAt);
     return html`<li><div class="wijziging-kop"><a href="#klant/${w.customerId}"><b>${w.company}</b></a>${w.ai?.status ? chip(L.ai, w.ai.status) : chip(L.wijziging, w.status)}</div>
       <p class="wijziging-tekst">${w.description.length > 160 ? w.description.slice(0, 160) + "…" : w.description}</p>
-      <div class="wijziging-meta"><span>${tijd(w.createdAt)}</span>${over ? html`<span>Nog ${over}</span>` : html`<span class="status s-fout">Over de 48 uur</span>`}<a href="#wijzigingen${w.ai?.status === "voorstel" ? "/voorstel" : ""}">${w.ai?.status === "voorstel" ? "Bekijken en goedkeuren" : "Afhandelen"}</a></div></li>`;
+      <div class="wijziging-meta"><span>${tijd(w.createdAt)}</span>${over ? html`<span>Nog ${over}</span>` : html`<span class="status s-fout">Over de 24 uur</span>`}<a href="#wijzigingen${w.ai?.status === "voorstel" ? "/voorstel" : ""}">${w.ai?.status === "voorstel" ? "Bekijken en goedkeuren" : "Afhandelen"}</a></div></li>`;
   }
 
   // ================================================ KLANTEN
@@ -636,7 +636,7 @@
       <div class="wijziging-kop"><div>${metKlant ? html`<a href="#klant/${w.customerId}"><b>${w.company}</b></a> · ` : ""}<b>${w.page || "Wijziging"}</b></div>${chip(L.wijziging, w.status)}</div>
       <p class="wijziging-tekst">${w.description}</p>
       <div class="wijziging-meta"><span>Doorgegeven ${tijd(w.createdAt)}${w.byEmail ? " door " + w.byEmail : ""}</span>
-        ${open ? (over ? html`<span>Deadline over ${over}</span>` : html`<span class="status s-fout">Over de 48 uur</span>`) : ""}
+        ${open ? (over ? html`<span>Deadline over ${over}</span>` : html`<span class="status s-fout">Over de 24 uur</span>`) : ""}
         ${w.attachment ? html`<a href="/api/hq/changes/${w.id}/bijlage">${raw(icon.download)} ${w.attachment.name} (${SM.bytes(w.attachment.size)})</a>` : ""}
         ${!w.counts ? html`<span>Telt niet mee</span>` : ""}</div>
       ${aiBlok(w, open)}
