@@ -260,9 +260,9 @@ export async function voorraad() {
   const doel = Number(s.b2b.concepten?.perDag ?? 20);
   const [r] = await q(`SELECT COUNT(*) FILTER (WHERE l.status = 'kandidaat')::int AS kandidaten,
     COUNT(*) FILTER (WHERE l.website <> '' AND l.status IN ('nieuw','goedgekeurd') AND NOT EXISTS (SELECT 1 FROM concepts c WHERE c.lead_id = l.id))::int AS leads FROM leads l`);
-  const [c] = await q(`SELECT COUNT(*) FILTER (WHERE status IN ('ontwerp','ontwerpen'))::int AS klaarVoorTaak, COUNT(*) FILTER (WHERE status IN ('wachtrij','bezig'))::int AS scannen FROM concepts`);
-  const verwacht = Math.floor(c.klaarVoorTaak + 0.7 * (c.scannen + r.leads) + 0.25 * 0.7 * r.kandidaten);
-  return { doel, verwacht, tekort: Math.max(0, doel - verwacht), ...r, ...c };
+  const [c] = await q(`SELECT COUNT(*) FILTER (WHERE status IN ('ontwerp','ontwerpen'))::int AS taak, COUNT(*) FILTER (WHERE status IN ('wachtrij','bezig'))::int AS scannen FROM concepts`);
+  const verwacht = Math.floor(c.taak + 0.7 * (c.scannen + r.leads) + 0.25 * 0.7 * r.kandidaten);
+  return { doel, verwacht, tekort: Math.max(0, doel - verwacht), klaarVoorTaak: c.taak, scannen: c.scannen, leads: r.leads, kandidaten: r.kandidaten };
 }
 
 export async function runScout({ force = false } = {}) {

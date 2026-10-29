@@ -1218,6 +1218,13 @@ await test("kosten invullen, winst per maand en export voor de boekhouder", asyn
   delete process.env.DOMAIN_FAKE;
 }
 
+await test("voorraad voor vannacht geeft echte getallen", async () => {
+  const { voorraad } = await import("../netlify/lib/b2b.mjs");
+  const v = await voorraad();
+  for (const k of ["doel", "verwacht", "tekort", "klaarVoorTaak", "scannen", "leads", "kandidaten"]) assert.ok(Number.isFinite(v[k]), `${k} is geen getal`);
+  assert.equal(v.tekort, Math.max(0, v.doel - v.verwacht));
+});
+
 console.log(`\n${passed} tests geslaagd.`);
 await closeDb();
 await db.stop().catch(() => {});
