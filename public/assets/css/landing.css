@@ -237,25 +237,22 @@
 .lp-garantie .wrap { justify-content: center; }
 .lp-garantie .wrap > div:last-child { max-width: 640px; }
 
-/* Kleurkeuze zonder website (29-10-2026) */
+/* Kleurkeuze zonder website: gedempte huisstijltinten als labels (29-10-2026) */
 .lp-kleuren { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
-.lp-kleuren legend { font-weight: 700; font-size: 15px; margin-bottom: 6px; padding: 0; }
-.lp-kleur-rij { display: flex; flex-wrap: wrap; gap: 8px 7px; }
-.lp-kleur { position: relative; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 2px rgba(0,0,0,.08); }
-.lp-kleur input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-.lp-kleur:has(input:checked) { box-shadow: 0 0 0 3px var(--wit), 0 0 0 5px var(--paars); }
-.lp-kleur:has(input:focus-visible) { outline: 3px solid var(--cyaan); outline-offset: 4px; }
-.lp-kleur-blauw { background: #1E5AA8; }
-.lp-kleur-groen { background: #2E7D4F; }
-.lp-kleur-rood { background: #C62828; }
-.lp-kleur-oranje { background: #E8740C; }
-.lp-kleur-geel { background: #F2B705; }
-.lp-kleur-paars { background: #6A3FA0; }
-.lp-kleur-antraciet { background: #2B2B2B; }
-.lp-kleur-hout { background: #8B5A2B; }
-.lp-kaart .lp-kleur { margin: 0; }
-
+.lp-kleuren legend { font-weight: 700; font-size: 15px; margin-bottom: 2px; padding: 0; }
+.lp-kleur-hint { margin: 0 0 8px; font-size: 13px; color: var(--grijs); }
+.lp-kleur-rij { display: flex; flex-wrap: wrap; gap: 6px; }
+.lp-kaart .lp-chip { position: relative; display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 6px 11px 6px 8px; border: 1.5px solid var(--lijn); border-radius: 999px; background: var(--wit); font-size: 13.5px; font-weight: 600; color: var(--paars); cursor: pointer; line-height: 1.2; transition: border-color .15s, background-color .15s; }
+.lp-chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.lp-chip i { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.lp-chip:hover { border-color: #B9B3D3; }
+.lp-chip:has(input:checked) { border-color: var(--paars); background: var(--t-lila); }
+.lp-chip:has(input:focus-visible) { outline: 3px solid var(--cyaan); outline-offset: 2px; }
+.lp-chip-marineblauw { background: #1F3A5F; }
+.lp-chip-bosgroen { background: #2F5D46; }
+.lp-chip-terracotta { background: #B5573B; }
+.lp-chip-oker { background: #C8962E; }
+.lp-chip-antraciet { background: #33363B; }
 .lp-reviews .rv-aantal { display: none; }
 .lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: nowrap; }
 @media (max-width: 359px) { .lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: normal; } }
-.lp-kleur-hint { margin: -2px 0 8px; font-size: 13px; color: var(--grijs); }

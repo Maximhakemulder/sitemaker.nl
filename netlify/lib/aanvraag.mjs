@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { q, one, str, cleanEmail, EMAIL_RE, sha256, env, fail, getSettings, domainOf, normUrl, publicBase, OFFER } from "./core.mjs";
 import { notifyStaff, sendMail } from "./mail.mjs";
 
-const KLEUREN = { blauw: "#1E5AA8", groen: "#2E7D4F", rood: "#C62828", oranje: "#E8740C", geel: "#F2B705", paars: "#6A3FA0", antraciet: "#2B2B2B", hout: "#8B5A2B" };
+const KLEUREN = { marineblauw: "#1F3A5F", bosgroen: "#2F5D46", terracotta: "#B5573B", oker: "#C8962E", antraciet: "#33363B" };
 const voornaam = (n) => String(n || "").trim().split(/\s+/)[0] || "";
 const datumNl = (d) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "long", timeZone: "Europe/Amsterdam" });
 

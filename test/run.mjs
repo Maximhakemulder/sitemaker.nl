@@ -1223,12 +1223,12 @@ await test("gratis ontwerp via de landingspagina: zonder website, voorrang bij d
   const fout = await call("POST", "start/ontwerp", { body: { naam: "Piet", bedrijf: "Jansen Schilders", email: "piet@jansen.test" } });
   assert.equal(fout.status, 400); assert.ok(fout.data.errors?.wat, "zonder website vragen we wat ze doen");
   const voor = captured.length;
-  const r = await call("POST", "start/ontwerp", { body: { naam: "Piet Jansen", bedrijf: "Jansen Schilders", email: "piet@jansen.test", wat: "Schilder in Breda", kleur: "groen" } });
+  const r = await call("POST", "start/ontwerp", { body: { naam: "Piet Jansen", bedrijf: "Jansen Schilders", email: "piet@jansen.test", wat: "Schilder in Breda", kleur: "bosgroen" } });
   assert.equal(r.status, 200, JSON.stringify(r.data));
   const [l] = await q("SELECT * FROM leads WHERE email = 'piet@jansen.test'");
   assert.equal(l.status, "aanvraag"); assert.equal(l.source, "landing"); assert.equal(l.contact_name, "Piet Jansen");
   const [c] = await q("SELECT * FROM concepts WHERE lead_id = $1", [l.id]);
-  assert.equal(c.status, "ontwerp"); assert.equal(c.bron.geenWebsite, true); assert.match(c.bron.tekst, /Schilder in Breda/); assert.match(c.bron.tekst, /hoofdkleur: groen \(#2E7D4F\)/);
+  assert.equal(c.status, "ontwerp"); assert.equal(c.bron.geenWebsite, true); assert.match(c.bron.tekst, /Schilder in Breda/); assert.match(c.bron.tekst, /hoofdkleur: bosgroen \(#2F5D46\)/);
   assert.ok(captured.slice(voor).some((m) => m.to === "piet@jansen.test" && /gratis ontwerp/.test(m.subject)), "bevestiging aan de aanvrager");
   const { claim } = await import("../netlify/lib/concepttaak.mjs");
   const cl = await claim(1, { alleenAanvragen: true });
