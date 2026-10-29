@@ -179,7 +179,18 @@ export async function afmelden(id, { reden, overslaan }) {
 export async function status() {
   const rows = await q("SELECT status, COUNT(*)::int AS n FROM concepts GROUP BY status");
   const [{ n: vandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE status = 'klaar' AND ready_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
-  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag };
+  // Waarom staan er (te) weinig klaar? Instellingen, spaarstand, aanvoer van leads en wat tick laatst deed.
+  const s = await getSettings();
+  const [aanvoer] = await q(`SELECT COUNT(*) FILTER (WHERE l.website <> '' AND l.status IN ('nieuw','goedgekeurd') AND NOT EXISTS (SELECT 1 FROM concepts c WHERE c.lead_id = l.id))::int AS wachtOpConcept,
+    COUNT(*) FILTER (WHERE l.status = 'kandidaat')::int AS kandidaten, COUNT(*) FILTER (WHERE l.created_at > NOW() - INTERVAL '24 hours')::int AS nieuw24u FROM leads l`);
+  const leads = await q("SELECT status, COUNT(*)::int AS n FROM leads GROUP BY status");
+  const [{ n: gestartVandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  const { spaarstand } = await import("./credits.mjs");
+  const pulse = (await one("SELECT value FROM settings WHERE key = 'team_pulse'"))?.value || {};
+  const kies = (k) => pulse[k] || null;
+  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag,
+    diagnose: { concepten: s.b2b?.concepten || {}, scout: { categorieen: (s.b2b?.scout?.categories || s.scout?.categories || []).length }, gestartVandaag, spaarstand: await spaarstand().catch(() => null),
+      aanvoer, leads: Object.fromEntries(leads.map((r) => [r.status, r.n])), tick: { concepten: kies("concepten"), scout: kies("scout"), research: kies("research") } } };
 }
 
 // Lead op verzoek helemaal stoppen (concept offline, afgemeld, geen mails meer), gezocht op domein van hun website.
