@@ -132,6 +132,11 @@ async function verwerk(req, context) {
       return htmlPage("Afmelden", "Wil je geen berichten meer van Sitemaker ontvangen?", `<form method="post"><button type="submit">Ja, meld mij af</button></form>`);
     }
 
+    if (path === "start/teller" && m === "GET") {
+      // Echte ontwerpen die de afgelopen 7 dagen klaar kwamen (verwijderde voorbeelden tellen niet mee, dus eerder te laag dan te hoog).
+      const [{ n }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE ready_at >= NOW() - INTERVAL '7 days'");
+      return json({ ontwerpen: n, toon: n >= 25 }, 200, { "cache-control": "public, max-age=600" });
+    }
     if (path === "reviews" && m === "GET") return json(await publishedReviews(), 200, { "cache-control": "public, max-age=300" });
 
     // ------------------------------------------------ voorbeeld van de echte website (opdracht), via geheime link
