@@ -46,7 +46,7 @@ async function ronde(started) {
       [JSON.stringify({ at: new Date().toISOString(), ...(res || {}) })]).catch(() => {});
   }
   if (!spaar && left() > 6000) await step("scout", () => runScout());
-  if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 2, budgetMs: left() - 3000 }));
+  if (!spaar && left() > 6000) await step("research", () => runResearch({ max: 5, budgetMs: left() - 3000 }));
   // Nachtelijke back-up (na 3:00 Amsterdamse tijd, één keer per dag), in de achtergrondfunctie.
   if (left() > 4000) await step("backup", async () => {
     const { hourAms, dayKey } = await import("../lib/core.mjs");
