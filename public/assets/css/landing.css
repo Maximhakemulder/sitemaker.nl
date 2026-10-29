@@ -223,3 +223,16 @@
 @keyframes lp-band { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (min-width: 960px) { .lp-band .lp-rail li { width: 220px; } .lp-band .lp-rail { padding-left: 0; } }
 @media (prefers-reduced-motion: reduce) { .lp-band { overflow-x: auto; } }
+
+/* Inhoud gecentreerd (29-10-2026) */
+.lp-sectie > .wrap > h2, .lp-sectie > .wrap > .lp-intro, .lp-voorbeelden .wrap { text-align: center; }
+.lp-sectie > .wrap > h2, .lp-sectie > .wrap > .lp-intro { max-width: 760px; margin-left: auto; margin-right: auto; }
+.lp-faq .faq { max-width: 820px; margin-left: auto; margin-right: auto; }
+.lp-reviews .reviews-kop { flex-direction: column; align-items: center; text-align: center; }
+.lp-reviews .reviews-score { justify-content: center; }
+.lp-stappen { max-width: 1000px; margin-left: auto; margin-right: auto; }
+.lp-sectie .lp-midden-knop { display: flex; width: fit-content; margin-left: auto; margin-right: auto; }
+@media (max-width: 559px) { .lp-sectie .lp-midden-knop { width: 100%; } }
+.lp-usp-raster { max-width: 1100px; margin-left: auto; margin-right: auto; }
+.lp-garantie .wrap { justify-content: center; }
+.lp-garantie .wrap > div:last-child { max-width: 640px; }
