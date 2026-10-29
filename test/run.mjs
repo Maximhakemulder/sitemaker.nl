@@ -176,7 +176,7 @@ await test("eerste mail heeft altijd de knop naar het voorbeeld, ook als de link
   const lead = { id: 9, company: "Test BV", concept_token: "tok123", concept_status: "klaar", concept_expires: new Date(Date.now() + 3 * 86400000).toISOString() };
   const { body } = b.compose(lead, "eerste", s);
   assert.ok(body.includes("/voorbeeld/tok123"), body);
-  assert.ok(b.textToHtml(body).includes("Bekijk mijn ontwerp"));
+  assert.ok(b.textToHtml(body).includes("Bekijk jouw privé ontwerp"));
 });
 await test("marketing: taak levert een ad aan, HQ keurt en serveert het bestand", async () => {
   const ads = await import("../netlify/lib/ads.mjs");
