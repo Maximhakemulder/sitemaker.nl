@@ -741,7 +741,7 @@ console.log("Concept-websites voor leads");
   await test("concept-pagina: noindex, eigen foto's, balk en knop naar de kennismaking", async () => {
     const p = await call("GET", "voorbeeld/" + token);
     assert.equal(p.status, 200); const h = String(p.data);
-    assert.ok(h.includes("noindex") && h.includes("Privé voorstel") && h.includes("voor Bakkerij Zon") && h.includes("helemaal af") && h.includes("sm-intro") && h.includes("data-sm-weg") && /verdwijnen vanzelf op \d+ \w+/.test(h) && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
+    assert.ok(h.includes("noindex") && h.includes("Privé voorstel") && h.includes("voor Bakkerij Zon") && h.includes("helemaal af") && h.includes("sm-strook") && h.includes("data-sm-weg") && /verdwijnen vanzelf op \d+ \w+/.test(h) && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
     assert.ok(h.includes(`/interesse?concept=${token}&bedrijf=Bakkerij%20Zon`) && h.includes("Ik heb interesse") && h.includes("/gezien"));
     const hqH = String((await call("GET", "voorbeeld/" + token + "?hq=1")).data);
     assert.ok(!hqH.includes("/gezien"), "HQ telt niet mee"); assert.ok(hqH.includes("data-sm-weg") && hqH.includes("HQ-weergave: hier wordt niemand afgemeld"), "HQ toont wat de lead ziet, zonder af te melden");
