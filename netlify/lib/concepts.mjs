@@ -588,11 +588,11 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
-.sm-strook{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,0);z-index:2147482999;width:max-content;max-width:calc(100% - 20px);display:flex;align-items:center;gap:10px;background:#fff;color:#1C0747;border-radius:14px;padding:9px 8px 9px 14px;box-shadow:0 12px 34px rgba(14,3,40,.28);font:14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .4s ease,transform .4s ease}
+.sm-strook{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,0);z-index:2147482999;width:max-content;max-width:calc(100% - 20px);display:flex;align-items:center;gap:10px;background:#1C0747;color:#fff;border-radius:14px;padding:10px 8px 10px 14px;box-shadow:0 12px 34px rgba(14,3,40,.35);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .4s ease,transform .4s ease}
 .sm-strook.weg{opacity:0;transform:translate(-50%,16px);pointer-events:none}
-.sm-strook svg{flex:none;width:18px;height:18px;color:#146C43}.sm-strook b{font-weight:700}
-.sm-strook button{flex:none;width:30px;height:30px;border:0;border-radius:8px;background:#F3F0FF;color:#1C0747;font:700 16px/1 system-ui,sans-serif;cursor:pointer}
-@media(max-width:700px){.sm-strook{font-size:13px;width:calc(100% - 20px);bottom:calc(96px + env(safe-area-inset-bottom))}}
+.sm-strook svg{flex:none;width:18px;height:18px;color:#0CC0DF}.sm-strook b{font-weight:700;color:#0CC0DF}
+.sm-strook button{flex:none;width:30px;height:30px;border:0;border-radius:8px;background:rgba(255,255,255,.14);color:#fff;font:700 16px/1 system-ui,sans-serif;cursor:pointer}
+@media(max-width:700px){.sm-strook{font-size:14px;width:calc(100% - 20px);bottom:calc(96px + env(safe-area-inset-bottom))}}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
