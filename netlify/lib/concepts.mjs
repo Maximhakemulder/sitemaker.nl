@@ -588,31 +588,29 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
+.sm-strook{position:fixed;top:calc(var(--sm-balk,46px) + 10px);left:50%;transform:translate(-50%,0);z-index:2147482999;width:max-content;max-width:calc(100% - 20px);display:flex;align-items:center;gap:10px;background:#fff;color:#1C0747;border-radius:14px;padding:9px 8px 9px 14px;box-shadow:0 12px 34px rgba(14,3,40,.28);font:14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .4s ease,transform .4s ease}
+.sm-strook.weg{opacity:0;transform:translate(-50%,-12px);pointer-events:none}
+.sm-strook svg{flex:none;width:18px;height:18px;color:#146C43}.sm-strook b{font-weight:700}
+.sm-strook button{flex:none;width:30px;height:30px;border:0;border-radius:8px;background:#F3F0FF;color:#1C0747;font:700 16px/1 system-ui,sans-serif;cursor:pointer}
+@media(max-width:700px){.sm-strook{font-size:13px;width:calc(100% - 20px)}}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
-  const intro = `<div class="sm-intro" role="dialog" aria-modal="true" aria-labelledby="sm-intro-t"><div class="sm-intro-kaart">
-<div class="sm-intro-kop"><img class="sm-intro-foto" src="/assets/brand/jason.webp" alt=""><p class="sm-intro-van">Privé ontwerpvoorstel voor<b>${n}</b></p></div>
-<h1 id="sm-intro-t">Jullie nieuwe website staat klaar.</h1>
-<p>Speciaal voor ${n} gemaakt, op basis van wat jullie nu online hebben. Bekijk rustig hoe hij meer telefoontjes, mails en klanten kan opleveren.</p>
-<ul><li>Alleen te zien via jouw persoonlijke link</li><li>Niet openbaar en niet vindbaar in Google</li><li>Verdwijnt vanzelf op ${d}, inclusief jullie teksten en foto's</li><li>Jullie huidige website blijft gewoon zoals hij is</li></ul>
-<button type="button" class="sm-intro-actie" data-sm-bekijk>Bekijk mijn nieuwe website</button>
-<small>Geen interesse? <button type="button" data-sm-weg>Meld je af en verwijder dit voorstel</button></small></div></div>`;
+  const strook = `<div class="sm-strook" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span><b>Alleen voor jullie gemaakt.</b> Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}, met jullie teksten en foto's.</span><button type="button" aria-label="Sluiten">×</button></div>`;
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we halen het ontwerp, de teksten en de foto's direct weg en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch bewaren</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
   const weg = `<div class="sm-intro sm-weg-klaar" role="status"><div class="sm-intro-kaart"><h2>Alles is verwijderd</h2><p>Het ontwerp, de teksten en de foto's zijn verwijderd en je ontvangt geen berichten meer van ons. Bedankt dat je even hebt gekeken.</p><p>Wil je in de toekomst toch een nieuwe website? Dan horen we het graag.</p><a href="${publicBase()}">Naar sitemaker.nl</a></div></div>`;
   return `<script>(function(){var d=document,T=${JSON.stringify(token)},K="sm-intro-"+T;
 function maak(h){var t=d.createElement("div");t.innerHTML=h;return t.firstElementChild}
-var intro=maak(${JSON.stringify(intro)}),dlg=maak(${JSON.stringify(dlg)});d.body.appendChild(dlg);
+var dlg=maak(${JSON.stringify(dlg)});d.body.appendChild(dlg);
 var gezien=false;try{gezien=sessionStorage.getItem(K)==="1"}catch(e){}
 function vast(a){d.documentElement.classList.toggle("sm-vast",a)}
-if(!gezien){d.body.appendChild(intro);vast(true);setTimeout(function(){var b=intro.querySelector("[data-sm-bekijk]");b&&b.focus()},50)}
-function sluit(){if(intro.parentNode)intro.remove();vast(false);try{sessionStorage.setItem(K,"1")}catch(e){}}
-intro.querySelector("[data-sm-bekijk]").addEventListener("click",sluit);
-d.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-sm-weg]");if(!t)return;e.preventDefault();if(intro.parentNode)intro.remove();dlg.hidden=false;vast(true);dlg.querySelector("[data-sm-bewaar]").focus()});
-dlg.querySelector("[data-sm-bewaar]").addEventListener("click",function(){dlg.hidden=true;vast(false);try{sessionStorage.setItem(K,"1")}catch(e){}});
-d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else if(intro.parentNode)sluit()});
+var strook=null;function sluit(){if(!strook)return;strook.classList.add("weg");var s=strook;strook=null;setTimeout(function(){s.remove()},450);try{sessionStorage.setItem(K,"1")}catch(e){}}
+if(!gezien){strook=maak(${JSON.stringify(strook)});d.body.appendChild(strook);strook.querySelector("button").addEventListener("click",sluit);setTimeout(sluit,9000)}
+d.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-sm-weg]");if(!t)return;e.preventDefault();sluit();dlg.hidden=false;vast(true);dlg.querySelector("[data-sm-bewaar]").focus()});
+dlg.querySelector("[data-sm-bewaar]").addEventListener("click",function(){dlg.hidden=true;vast(false)});
+d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else sluit()});
 var ja=dlg.querySelector("[data-sm-ja]"),fout=dlg.querySelector(".sm-dlg-fout");
 ja.addEventListener("click",function(){if(${hq ? "true" : "false"}){fout.textContent="HQ-weergave: hier wordt niemand afgemeld. Zo ziet de lead dit.";fout.hidden=false;return}ja.disabled=true;ja.textContent="Bezig…";fout.hidden=true;
 fetch("/api/voorbeeld/"+T+"/verwijderen",{method:"POST",headers:{"x-sm":"1"}}).then(function(r){if(!r.ok)throw 0;
