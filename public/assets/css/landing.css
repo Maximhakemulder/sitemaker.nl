@@ -294,3 +294,19 @@
 .lp-tegel span { display: block; margin-top: 4px; font-size: 14px; color: var(--cyaan); font-weight: 700; }
 .lp-plus { font-size: 24px; font-weight: 800; color: var(--paars); flex: none; }
 @media (min-width: 960px) { .lp-tegel b { font-size: 34px; } .lp-prijs-tegels { max-width: 440px; } }
+
+/* Stappen als eigen blok: op mobiel boven het formulier (29-10-2026) */
+.lp-stappen-hero { grid-area: stappen; }
+.lp-hero.hero .wrap { grid-template-areas: "kop" "stappen" "kaart" "meer"; }
+.lp-stappen-hero .lp-route { margin: 0; }
+@media (max-width: 959px) {
+  .lp-stappen-hero .lp-route { gap: 8px; }
+  .lp-stappen-hero .lp-route li { padding-left: 42px; }
+  .lp-stappen-hero .lp-route li::before { width: 28px; height: 28px; font-size: 14px; }
+  .lp-stappen-hero .lp-route li:not(:last-child) span { display: none; }
+  .lp-stappen-hero .lp-route li { min-height: 28px; align-content: center; }
+}
+@media (min-width: 960px) {
+  .lp-hero.hero .wrap { grid-template-areas: "kop kaart" "stappen kaart" "meer kaart"; grid-template-rows: auto auto 1fr; }
+  .lp-stappen-hero .lp-route { margin-top: 4px; }
+}
