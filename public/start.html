@@ -32,22 +32,23 @@
 </header>
 
 <main id="inhoud">
-  <section class="lp-hero" aria-labelledby="titel">
+  <section class="lp-hero hero" aria-labelledby="titel">
+    <div class="hero-blokken" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="wrap">
-      <div class="lp-hero-tekst">
+      <div class="lp-kop">
         <h1 id="titel">Maak van je website je beste verkoper.</h1>
-        <p class="lp-sub">Vraag gratis een ontwerp aan. Binnen 24 uur zie je hoe jouw nieuwe website eruit kan zien.</p>
-        <ol class="lp-route">
-          <li><b>Vraag je gratis ontwerp aan</b><span>Duurt een minuut</span></li>
-          <li><b>Binnen 24 uur in je mail</b><span>Een eigen ontwerp voor jouw bedrijf</span></li>
-          <li><b>Bevalt het? Binnen 48 uur online</b><span>€299,95 eenmalig + €69,95 per maand</span></li>
-        </ol>
-        <p class="lp-zeker">Gratis en vrijblijvend <span aria-hidden="true">·</span> 30 dagen geld terug <span aria-hidden="true">·</span> Maandelijks opzegbaar</p>
+        <p class="lp-sub">Vraag gratis een ontwerp aan en zie binnen 24 uur hoe jouw nieuwe website eruit kan zien.</p>
+        <ul class="lp-pillen" aria-label="Zekerheden">
+          <li>Gratis ontwerp</li>
+          <li>Geen extra kosten</li>
+          <li>30 dagen geld terug</li>
+        </ul>
       </div>
 
       <div class="lp-kaart" id="keuzes" data-scroll-doel>
         <div class="formulier keuze-vak" id="vak-start">
           <h2 class="lp-kaart-titel">Ontvang je gratis ontwerp<span id="voor-bedrijf" hidden></span></h2>
+          <p class="lp-kaart-sub">Binnen 24 uur in je mail. Vind je het niks? Dan betaal je niks.</p>
           <form id="ontwerp-form" novalidate>
             <div class="melding melding-fout" id="o-fout" role="alert" tabindex="-1" hidden></div>
             <div class="lp-rij">
@@ -59,7 +60,7 @@
             <div class="veld" id="o-wat-veld"><label for="o-wat">Nog geen website? Wat doe je en waar?</label><input id="o-wat" name="wat" placeholder="Bijv. schilder in Breda" aria-describedby="oe-wat"><div class="fout" id="oe-wat"></div></div>
             <div class="hp" aria-hidden="true"><label for="o-hp">Laat dit veld leeg</label><input id="o-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
             <button class="knop knop-actie" type="submit">Ontvang mijn gratis ontwerp</button>
-            <p class="lp-gerust">Gratis en vrijblijvend. Binnen 24 uur in je mail.</p>
+            <p class="lp-gerust">Geen betaalgegevens nodig. Je zit nergens aan vast.</p>
           </form>
           <p class="lp-praten">Liever eerst even praten? <button type="button" class="optie" data-keuze="video">Videobellen</button> of <button type="button" class="optie" data-keuze="telefoon">bel mij</button></p>
         </div>
@@ -84,6 +85,26 @@
             <button class="knop knop-actie" type="submit">Afspraak bevestigen</button>
           </form>
         </div>
+      </div>
+
+      <div class="lp-garanties">
+        <p class="garantie"><b>Gratis</b><span>Vind je het ontwerp niks? Dan betaal je niks.</span></p>
+        <p class="garantie"><b>Eén prijs</b><span>Alles inbegrepen, geen extra kosten.</span></p>
+        <p class="garantie"><b>30 dagen</b><span>geld terug na livegang. Maandelijks opzegbaar.</span></p>
+      </div>
+
+      <div class="lp-meer">
+        <ol class="lp-route">
+          <li><b>Vraag je gratis ontwerp aan</b><span>Duurt een minuut</span></li>
+          <li><b>Binnen 24 uur in je mail</b><span>Een eigen ontwerp voor jouw bedrijf</span></li>
+          <li><b>Bevalt het? Binnen 48 uur online</b><span>Wij maken hem samen met jou af</span></li>
+        </ol>
+        <p class="hero-prijs"><b>€299,95</b> eenmalig <span aria-hidden="true">+</span><span class="sr">plus</span> <b>€69,95</b> per maand</p>
+        <ul class="feiten">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Hosting en onderhoud inbegrepen</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>4 wijzigingen per maand</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Geen opstartkosten of kleine lettertjes</li>
+        </ul>
       </div>
     </div>
   </section>
