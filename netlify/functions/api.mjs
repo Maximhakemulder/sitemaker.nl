@@ -149,7 +149,7 @@ async function verwerk(req, context) {
       if (path === "taak/status" && m === "GET") return json(await taak.status());
       if (path === "taak/b2b/herstel" && m === "POST") { const b2b = await import("../lib/b2b.mjs"); const b = await body(req); return json(await b2b.herstelLinkMails({ verstuur: b.verstuur === true, max: Math.min(15, Number(b.max) || 12) })); }
       if (path === "taak/leads/afmelden" && m === "POST") return json(await taak.leadAfmelden(await body(req)));
-      if (path === "taak/claim" && m === "POST") return json(await taak.claim((await body(req)).max));
+      if (path === "taak/claim" && m === "POST") { const b = await body(req); return json(await taak.claim(b.max, { alleenAanvragen: b.aanvragen === true })); }
       if (seg[1] === "klanten" && seg[2] && seg[3] === "voorbeeldadres" && m === "POST") { const { previewAlias } = await import("../lib/sites.mjs"); return json(await previewAlias(Number(seg[2]))); }
       if (path === "taak/backup" && m === "POST") { const { trigger } = await import("../lib/team.mjs"); await trigger({ kind: "backup" }); return json({ ok: true }); }
       if (path === "taak/backup" && m === "GET") { const { backupStatus } = await import("../lib/backup.mjs"); return json(await backupStatus()); }
@@ -184,6 +184,7 @@ async function verwerk(req, context) {
     if (path === "agenda/boek" && m === "POST") return json(await agenda.book(await body(req), ipOf(req, context)));
     if (path === "aanvraag" && m === "POST") return json(await submitAppointment(await body(req), ipOf(req, context)));
     if (path === "contact" && m === "POST") return json(await submitContact(await body(req), ipOf(req, context)));
+    if (path === "start/ontwerp" && m === "POST") { const { ontwerpAanvragen } = await import("../lib/aanvraag.mjs"); return json(await ontwerpAanvragen(await body(req), ipOf(req, context))); }
     if (path === "start/aanmelden" && m === "POST") { const { zelfStarten } = await import("../lib/site.mjs"); return json(await zelfStarten(await body(req), ipOf(req, context))); }
 
     // ------------------------------------------------ inloggen
@@ -336,6 +337,7 @@ async function verwerk(req, context) {
         case "POST customers/:id/extra-website": return json(await websites.staffExtra(id, await body(req), user));
         case "GET b2b": return json(await b2bDashboard());
         case "GET ads": return json(await (await import("../lib/ads.mjs")).lijst());
+        case "GET ontwerpaanvragen": return json(await (await import("../lib/aanvraag.mjs")).lijst());
         case "PUT ads/:id": return json(await (await import("../lib/ads.mjs")).bijwerken(id, await body(req), user));
         case "DELETE ads/:id": return json(await (await import("../lib/ads.mjs")).verwijder(id));
         case "GET ads/:id/bestand": return await (await import("../lib/ads.mjs")).bestand(id, { download: url.searchParams.has("download") });

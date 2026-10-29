@@ -51,6 +51,18 @@ Maxim krijgt een mail en zet de site in HQ › Opdrachten live.
 ## Daarna: concepten
 `node scripts/concept-taak/werk.mjs claim <5 min het aantal opdrachten>` en dan per concept:
 
+**Ontwerpaanvragen gaan voor** (besluit Maxim 29-10-2026). Iemand vroeg via sitemaker.nl/start zelf een gratis ontwerp aan en
+kreeg "binnen 24 uur in je mail" beloofd. `claim` geeft die altijd eerst; in `bron.json` staat dan `aanvraag`. In een dagronde
+claim je alleen deze: `werk.mjs claim 9 --aanvragen`. Zodra je het concept opslaat, gaat de mail met de link automatisch naar
+de aanvrager: maak het dus net zo goed als altijd, maar laat het niet liggen.
+- **Met website**: precies zoals een gewoon concept (hun site is gescand).
+- **Zonder website** (`aanvraag.geenWebsite`): er is niets gescand. Werk vanuit `aanvraag.omschrijving` (hun eigen woorden, bijv.
+  "schilder in Breda") en `bron.tekst`. Kies altijd sfeerfoto's met `stock` die bij hun vak passen. Verzin geen feiten: geen
+  adres, prijzen, jaartallen, keurmerken, reviews of klantaantallen; telefoon en e-mail alleen zoals ze in `bron.tekst` staan.
+  Diensten mag je algemeen houden zoals elk bedrijf in dat vak ze heeft (bijv. "Binnen schilderwerk", "Buiten schilderwerk").
+  Kies een eigen kleur die bij het vak past (`kleurBron: "gekozen"`). Afmelden bij een aanvraag alleen als het echt geen bedrijf
+  is of een webshop; dan krijgt Maxim een melding in HQ.
+
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
    foto's in `afbeeldingen/` met de Read-tool. Kijk echt: wat doet dit bedrijf, welke foto's zijn goed, welke kleuren heeft het logo?

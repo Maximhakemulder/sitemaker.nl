@@ -41,12 +41,13 @@ try {
   } else if (cmd === "status") {
     console.log(JSON.stringify(await api("GET", "status"), null, 1));
   } else if (cmd === "claim") {
-    const d = await api("POST", "claim", { max: Number(args[0] || 5) });
+    // claim [n] [--aanvragen]: --aanvragen = alleen ontwerpaanvragen van de landingspagina (dagrondes; binnen 24 uur beloofd).
+    const d = await api("POST", "claim", { max: Number(args.find((x) => /^\d+$/.test(x)) || 5), aanvragen: args.includes("--aanvragen") });
     for (const c of d.concepten) {
       schrijf(dir(c.id, "bron.json"), JSON.stringify(c, null, 1));
       schrijf(dir(c.id, "ontwerp-dna.md"), `# Ontwerp-DNA voor ${c.bedrijf.company} (bindend)\n\nDeze opbouw is gekozen zodat deze site anders wordt dan de vorige. Volg hem; vul hem in met een idee uit hun vak.\n\n${c.ontwerpDNA}\n`);
       for (const a of c.afbeeldingen) schrijf(dir(c.id, "afbeeldingen", a.naam), await api("GET", `concepten/${c.id}/afbeeldingen/${encodeURIComponent(a.naam)}`, null, { raw: true }));
-      console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen · DNA: ${Object.entries(c.dna || {}).map(([k, v]) => `${k}=${v}`).join(" ")}${c.instructie ? ` · wens: ${c.instructie}` : ""}`);
+      console.log(`#${c.id} ${c.bedrijf.company} (${c.bedrijf.category || "?"}, ${c.bedrijf.city || "?"}) ${c.bedrijf.website} → ${dir(c.id)} · ${c.afbeeldingen.length} afbeeldingen · DNA: ${Object.entries(c.dna || {}).map(([k, v]) => `${k}=${v}`).join(" ")}${c.instructie ? ` · wens: ${c.instructie}` : ""}${c.aanvraag ? ` · AANVRAAG (voorrang, mail gaat automatisch)${c.aanvraag.geenWebsite ? " · GEEN WEBSITE: werk vanuit de omschrijving + sfeerbeelden" : ""}` : ""}`);
     }
     if (!d.concepten.length) console.log("Geen concepten die op een ontwerp wachten.");
   } else if (cmd === "opdracht-claim") {
@@ -127,6 +128,6 @@ try {
     await api("POST", `concepten/${id}/afmelden`, { reden, overslaan: vlag === "--overslaan" });
     console.log("Afgemeld.");
   } else {
-    console.log("Gebruik: werk.mjs instructies | status | opdracht-claim [n] | opdracht-opslaan <id> | opdracht-afmelden <id> \"reden\" | claim [n] | stock <id> <term>... | kies <id> <n>... | opslaan <id> | afmelden <id> \"reden\" [--overslaan]");
+    console.log("Gebruik: werk.mjs instructies | status | opdracht-claim [n] | opdracht-opslaan <id> | opdracht-afmelden <id> \"reden\" | claim [n] [--aanvragen] | stock <id> <term>... | kies <id> <n>... | opslaan <id> | afmelden <id> \"reden\" [--overslaan]");
   }
 } catch (e) { console.error("FOUT:", e.message); process.exit(1); }

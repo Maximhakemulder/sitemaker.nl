@@ -484,6 +484,8 @@ ${site.text}
 
 const triggerKey = (id) => crypto.createHash("sha256").update(`${env("AUTH_SECRET", "x")}:concept:${id}`).digest("hex");
 export const checkTriggerKey = (id, key) => { const a = Buffer.from(String(key || "")), b = Buffer.from(triggerKey(id)); return a.length === b.length && crypto.timingSafeEqual(a, b); };
+// Direct laten scannen (bijv. een ontwerpaanvraag via de landingspagina).
+export const startConcept = (id) => trigger(id);
 async function trigger(id) {
   if (env("SM_INLINE_AI") === "1") return processConcept(id).catch((e) => console.log("[concept]", e.message));
   const base = env("URL") || publicBase();
@@ -541,7 +543,7 @@ export async function runConcepts({ max = 2 } = {}) {
 // ---------------------------------------------------------------- de voorbeeldpagina
 export async function conceptByToken(token) {
   if (!/^[\w-]{8,40}$/.test(token || "")) return null;
-  return one("SELECT c.*, l.company, l.email AS lead_email, l.status AS lead_status FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.token = $1", [token]);
+  return one("SELECT c.*, l.company, l.email AS lead_email, l.status AS lead_status, l.website AS lead_website FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.token = $1", [token]);
 }
 
 const page = (title, body) => new Response(`<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${escH(title)}</title>
@@ -673,8 +675,8 @@ var t=0;addEventListener("scroll",function(){if(t)return;t=requestAnimationFrame
 addEventListener("resize",function(){lijst.forEach(function(e){delete e.dataset.smTop;e.style.removeProperty("top")});lijst=[];alles()});
 koppen();alles();addEventListener("load",function(){koppen();alles()});setTimeout(alles,1200)})()</script>`;
   const eind = `<section class="sm-eind"><h2>Zo kan de website van ${escH(naam)} eruitzien</h2>
-<p>Dit is een eerste opzet op basis van jullie huidige website. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
-${beter(c.analysis)}<div class="sm-eind-knoppen"><a href="${kennis}">Ik heb interesse</a><a href="#" class="sm-eind-weg" data-sm-weg>Geen interesse</a></div><small>${c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit privévoorstel is alleen via jouw link te zien en verdwijnt vanzelf op ${datum}.</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
+<p>Dit is een eerste opzet ${c.lead_website ? "op basis van jullie huidige website" : "voor jullie nieuwe website"}. Mooi? Dan maken we hem samen helemaal af, naar jullie wensen: jullie eigen teksten, foto's, kleuren en pagina's. Hij staat binnen ${OFFER.deliveryText} online, voor €299,95 eenmalig en €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand. Maandelijks opzegbaar, en de eerste 30 dagen na livegang niet tevreden? Dan krijg je je geld terug.</p>
+${beter(c.analysis)}<div class="sm-eind-knoppen"><a href="${kennis}">Ik heb interesse</a><a href="#" class="sm-eind-weg" data-sm-weg>Geen interesse</a></div><small>${!c.lead_website ? "De foto's zijn sfeerbeelden; die vervangen we graag door jullie eigen foto's." : c.content?.sfeerbeelden ? "Teksten komen van jullie eigen website; een deel van de foto's zijn sfeerbeelden, die vervangen we graag door jullie eigen foto's." : "Teksten en foto's komen van jullie eigen website."} Dit privévoorstel is alleen via jouw link te zien en verdwijnt vanzelf op ${datum}.</small><figure class="sm-jason"><img src="/assets/brand/jason.webp" alt="Jason, webdesigner bij Sitemaker" width="502" height="720"><figcaption><span class="sm-ballon">&ldquo;Zullen we jouw ontwerp afronden?&rdquo;</span><small><b>Jason</b>, jouw webdesigner</small></figcaption></figure></section>
 ${priveScript(token, naam, datum, hq)}
 ${hq ? "" : `<script>setTimeout(function(){try{fetch(${JSON.stringify(`/api/voorbeeld/${token}/gezien`)},{method:"POST",headers:{"x-sm":"1"},keepalive:true})}catch(e){}},2500)</script>`}`;
   // Versie in het pad: bij een nieuw concept met dezelfde bestandsnamen geen oude foto's uit de cache.

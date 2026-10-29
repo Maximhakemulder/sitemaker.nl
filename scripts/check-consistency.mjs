@@ -13,7 +13,7 @@ let bad = 0;
 for (const f of files) {
   const t = fs.readFileSync(f, "utf8");
   for (const m of t.matchAll(/€\s?\d+(?:[.,]\d+)?/g)) if (!ALLOWED.has(m[0]) && !/(84,64|362,94)/.test(m[0])) { console.log(`${f}: onverwacht bedrag ${m[0]}`); bad++; }
-  for (const m of t.matchAll(/(\d+)\s*(?:werkdagen|uur)\b/g)) if (!["48", "2", "15", "1", "8"].includes(m[1])) { console.log(`${f}: onverwachte termijn "${m[0]}"`); bad++; }
+  for (const m of t.matchAll(/(\d+)\s*(?:werkdagen|uur)\b/g)) if (!["48", "2", "15", "1", "8", "24"].includes(m[1])) // 24 = gratis ontwerp via /start (besluit Maxim 29-10-2026) { console.log(`${f}: onverwachte termijn "${m[0]}"`); bad++; }
   if (/webshop/i.test(t) && /webshop (bouwen|maken) we wel/i.test(t)) { console.log(`${f}: webshop-belofte`); bad++; }
 }
 console.log(bad ? `${bad} afwijkingen gevonden.` : `Prijzen en termijnen consistent in ${files.length} bestanden.`);
