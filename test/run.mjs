@@ -741,9 +741,10 @@ console.log("Concept-websites voor leads");
   await test("concept-pagina: noindex, eigen foto's, balk en knop naar de kennismaking", async () => {
     const p = await call("GET", "voorbeeld/" + token);
     assert.equal(p.status, 200); const h = String(p.data);
-    assert.ok(h.includes("noindex") && h.includes("Een eerste opzet voor Bakkerij Zon") && h.includes("helemaal af") && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
+    assert.ok(h.includes("noindex") && h.includes("Privé voorstel") && h.includes("voor Bakkerij Zon") && h.includes("helemaal af") && h.includes("sm-intro") && h.includes("data-sm-weg") && /verdwijnen vanzelf op \d+ \w+/.test(h) && new RegExp(`/api/voorbeeld/${token}/a[0-9a-z]+/foto-1\\.png`).test(h));
     assert.ok(h.includes(`/interesse?concept=${token}&bedrijf=Bakkerij%20Zon`) && h.includes("Ik heb interesse") && h.includes("/gezien"));
-    assert.ok(!String((await call("GET", "voorbeeld/" + token + "?hq=1")).data).includes("/gezien"), "HQ telt niet mee");
+    const hqH = String((await call("GET", "voorbeeld/" + token + "?hq=1")).data);
+    assert.ok(!hqH.includes("/gezien"), "HQ telt niet mee"); assert.ok(!hqH.includes("data-sm-weg") && !hqH.includes("sm-intro-t"), "geen privé-scherm of verwijderknop in HQ");
     const direct = await api(new Request("https://sitemaker.test/voorbeeld/" + token + "?hq=1"), { ip: "10.0.0.1" });
     assert.equal(direct.status, 200, "ook via /voorbeeld/<token> zonder /api"); assert.match(await direct.text(), /Bakkerij Zon/);
     const img = await call("GET", `voorbeeld/${token}/afbeeldingen/foto-1.png`, { raw: true });
@@ -1217,6 +1218,23 @@ await test("kosten invullen, winst per maand en export voor de boekhouder", asyn
   });
   delete process.env.DOMAIN_FAKE;
 }
+
+await test("lead verwijdert zijn voorstel: concept weg en afgemeld; verlopen voorstellen worden opgeruimd", async () => {
+  const [c] = await q("SELECT c.token, c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status NOT IN ('klant','afspraak') ORDER BY c.id LIMIT 1");
+  assert.ok(c, "er is een klaar concept");
+  assert.equal((await call("POST", `voorbeeld/${c.token}/verwijderen`, { body: {} })).status, 200);
+  assert.equal((await q("SELECT COUNT(*)::int AS n FROM concepts WHERE lead_id = $1", [c.lead_id]))[0].n, 0);
+  assert.equal((await q("SELECT status FROM leads WHERE id = $1", [c.lead_id]))[0].status, "afgemeld");
+  assert.equal((await call("POST", `voorbeeld/${c.token}/verwijderen`, { body: {} })).status, 404);
+  const { ruimVerlopenOp } = await import("../netlify/lib/concepts.mjs");
+  const [v] = await q("SELECT c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status NOT IN ('reactie','afspraak','klant') LIMIT 1");
+  if (v) {
+    await q("UPDATE leads SET sent_at = COALESCE(sent_at, NOW() - interval '8 days') WHERE id = $1", [v.lead_id]);
+    await q("UPDATE concepts SET expires_at = NOW() - interval '1 hour' WHERE lead_id = $1", [v.lead_id]);
+    assert.ok((await ruimVerlopenOp()).done >= 1);
+    assert.equal((await q("SELECT COUNT(*)::int AS n FROM concepts WHERE lead_id = $1", [v.lead_id]))[0].n, 0);
+  }
+});
 
 await test("voorraad voor vannacht geeft echte getallen", async () => {
   const { voorraad } = await import("../netlify/lib/b2b.mjs");

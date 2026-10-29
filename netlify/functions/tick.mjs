@@ -6,7 +6,7 @@ import { sendBatch, scanInbox, runScout, runResearch, controleerBureaus } from "
 import { runChecks } from "../lib/uptime.mjs";
 import { retryStuck, autoReady } from "../lib/sites.mjs";
 import { sendReminders } from "../lib/agenda.mjs";
-import { runConcepts, vulFormulierenAan } from "../lib/concepts.mjs";
+import { runConcepts, vulFormulierenAan, ruimVerlopenOp } from "../lib/concepts.mjs";
 import { pulse, maybeBriefings, trigger as teamTrigger } from "../lib/team.mjs";
 import { runDomainChecks } from "../lib/domains.mjs";
 import { runCancellations, retryDrafts } from "../lib/service.mjs";
@@ -35,6 +35,7 @@ async function ronde(started) {
   await step("maandfacturen", () => runMaandfacturen({ max: 5 }));
   await step("klantvragen", () => retryDrafts());
   if (!spaar) await step("concepten", () => runConcepts({ max: 2 }));
+  if (left() > 7000) await step("concepten-opruimen", () => ruimVerlopenOp({ max: 10 }));
   if (!spaar && left() > 9000) await step("concept-formulieren", () => vulFormulierenAan());
   if (!spaar) await step("briefings", () => maybeBriefings());
   await step("start-herinnering", () => startHerinnering());
