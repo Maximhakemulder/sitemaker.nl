@@ -30,9 +30,12 @@
   // Gratis ontwerp aanvragen. Zonder website vragen we één ding: wat doe je en waar.
   const of = $("#ontwerp-form"), geopend = Date.now();
   if (of) {
-    const site = $("#o-site"), watVeld = $("#o-wat-veld"), kleurVeld = $("#o-kleur-veld");
-    const toonWat = () => { const heeft = site.value.trim().length > 3; watVeld.hidden = heeft; if (kleurVeld) kleurVeld.hidden = heeft; };
-    site.addEventListener("input", toonWat); toonWat();
+    // Eerst één vraag: heb je al een website? Ja = alleen het adres, nee = wat doe je en waar + kleur.
+    const site = $("#o-site"), siteVeld = $("#o-site-veld"), watVeld = $("#o-wat-veld"), kleurVeld = $("#o-kleur-veld");
+    const heeft = () => of.querySelector("input[name=heeft]:checked")?.value || "";
+    const toon = () => { const h = heeft(); siteVeld.hidden = h !== "ja"; watVeld.hidden = h !== "nee"; if (kleurVeld) kleurVeld.hidden = h !== "nee"; };
+    of.querySelectorAll("input[name=heeft]").forEach((r) => r.addEventListener("change", () => { toon(); $("#oe-heeft").textContent = ""; const veld = heeft() === "ja" ? site : $("#o-wat"); setTimeout(() => veld.focus({ preventScroll: true }), 30); }));
+    toon();
     // "Eigen kleur": opent de kleurkiezer van het apparaat; de gekozen kleur kleurt het bolletje.
     const kiezer = $("#o-kleur-kiezer"), eigen = $("#o-kleur-eigen"), bol = $("#o-eigen-bol");
     if (kiezer && eigen) {
@@ -44,8 +47,8 @@
     const fouten = (errors) => {
       of.querySelectorAll(".fout").forEach((el) => (el.textContent = ""));
       of.querySelectorAll("[aria-invalid]").forEach((el) => el.setAttribute("aria-invalid", "false"));
-      for (const [k, v] of Object.entries(errors || {})) { const el = $(`#oe-${k}`), input = of.elements[k]; if (el) el.textContent = v; if (input) input.setAttribute("aria-invalid", "true"); }
-      const eerste = Object.keys(errors || {})[0]; if (eerste && of.elements[eerste]) of.elements[eerste].focus();
+      for (const [k, v] of Object.entries(errors || {})) { const el = $(`#oe-${k}`), input = of.elements[k]; if (el) el.textContent = v; if (input?.setAttribute) input.setAttribute("aria-invalid", "true"); }
+      const eerste = Object.keys(errors || {})[0], el1 = eerste && of.elements[eerste]; if (el1) (el1.focus ? el1 : el1[0])?.focus();
     };
     of.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -54,7 +57,10 @@
       if ((d.naam || "").trim().length < 2) err.naam = "Vul je naam in.";
       if ((d.bedrijf || "").trim().length < 2) err.bedrijf = "Vul de naam van je bedrijf in.";
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((d.email || "").trim())) err.email = "Vul een geldig e-mailadres in, bijvoorbeeld naam@bedrijf.nl.";
-      if ((d.site || "").trim().length <= 3 && (d.wat || "").trim().length < 4) err.wat = "Vertel kort wat je doet en waar, bijvoorbeeld: schilder in Breda.";
+      if (!d.heeft) err.heeft = "Kies ja of nee.";
+      else if (d.heeft === "ja" && (d.site || "").trim().length <= 3) err.site = "Vul het adres van je website in, bijvoorbeeld jouwbedrijf.nl.";
+      else if (d.heeft === "nee" && (d.wat || "").trim().length < 4) err.wat = "Vertel kort wat je doet en waar, bijvoorbeeld: schilder in Breda.";
+      if (d.heeft === "ja") { delete d.wat; delete d.kleur; delete d.kleurEigen; } else d.site = "";
       if (Object.keys(err).length) return fouten(err);
       const knop = of.querySelector("[type=submit]"), label = knop.textContent; knop.disabled = true; knop.textContent = "Bezig…";
       try {

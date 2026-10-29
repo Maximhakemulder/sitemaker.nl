@@ -310,3 +310,12 @@
   .lp-hero.hero .wrap { grid-template-areas: "kop kaart" "stappen kaart" "meer kaart"; grid-template-rows: auto auto 1fr; }
   .lp-stappen-hero .lp-route { margin-top: 4px; }
 }
+
+/* Heb je al een website? Ja/nee (29-10-2026) */
+.lp-keuze { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+.lp-keuze legend { font-weight: 700; font-size: 15px; margin-bottom: 6px; padding: 0; }
+.lp-jn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lp-kaart .lp-jn-knop { position: relative; display: flex; align-items: center; justify-content: center; min-height: 48px; margin: 0; border: 2px solid #C6CDDE; border-radius: var(--r-klein); background: var(--wit); font-size: 16px; font-weight: 700; color: var(--paars); cursor: pointer; transition: border-color .15s, background-color .15s; }
+.lp-jn-knop input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.lp-jn-knop:has(input:checked) { border-color: var(--paars); background: var(--paars); color: var(--wit); }
+.lp-jn-knop:has(input:focus-visible) { outline: 3px solid var(--cyaan); outline-offset: 2px; }
