@@ -1243,6 +1243,13 @@ await test("gratis ontwerp via de landingspagina: zonder website, voorrang bij d
   const hq = await lijst(); assert.ok(hq.items.some((i) => i.id === l.id && i.fase === "verstuurd"));
 });
 
+await test("gratis ontwerp: eigen kleur uit de kleurkiezer", async () => {
+  const r = await call("POST", "start/ontwerp", { body: { naam: "Anna de Vries", bedrijf: "De Vries Tegels", email: "anna@devries.test", wat: "Tegelzetter in Delft", kleur: "eigen", kleurEigen: "#12ab9c" } });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  const [c] = await q("SELECT c.bron FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE l.email = 'anna@devries.test'");
+  assert.match(c.bron.tekst, /hoofdkleur: eigen kleur \(#12AB9C\)/);
+});
+
 await test("lead verwijdert zijn voorstel: concept weg en afgemeld; verlopen voorstellen worden opgeruimd", async () => {
   const [c] = await q("SELECT c.token, c.lead_id FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.status NOT IN ('klant','afspraak') ORDER BY c.id LIMIT 1");
   assert.ok(c, "er is een klaar concept");

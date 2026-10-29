@@ -256,3 +256,7 @@
 .lp-reviews .rv-aantal { display: none; }
 .lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: nowrap; }
 @media (max-width: 359px) { .lp-gerust, .lp-praten, .lp-route b, .lp-route span { white-space: normal; } }
+
+.lp-chip-eigen i { background: conic-gradient(#C62828, #E8740C, #F2B705, #2E7D4F, #1E5AA8, #6A3FA0, #C62828); }
+.lp-chip-eigen i.gekozen { box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+.lp-chip-eigen input[type=color] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; cursor: pointer; z-index: 1; -webkit-appearance: none; appearance: none; }

@@ -15,7 +15,9 @@ export async function ontwerpAanvragen(b, ip) {
   const errors = {};
   const naam = str(b.naam, 120), bedrijf = str(b.bedrijf, 160), email = cleanEmail(b.email), telefoon = str(b.telefoon, 30);
   const siteIn = str(b.site, 200), wat = str(b.wat, 300);
-  const kleur = !b.site && KLEUREN[b.kleur] ? b.kleur : "";
+  const eigenHex = /^#[0-9a-f]{6}$/i.test(String(b.kleurEigen || "")) ? String(b.kleurEigen).toUpperCase() : "";
+  const kleur = !b.site && KLEUREN[b.kleur] ? b.kleur : !b.site && b.kleur === "eigen" && eigenHex ? "eigen kleur" : "";
+  const kleurHex = kleur === "eigen kleur" ? eigenHex : KLEUREN[kleur];
   const site = siteIn ? normUrl(siteIn) : "", domein = site ? domainOf(site) : "";
   if (naam.length < 2) errors.naam = "Vul je naam in.";
   if (bedrijf.length < 2) errors.bedrijf = "Vul de naam van je bedrijf in.";
@@ -46,12 +48,12 @@ export async function ontwerpAanvragen(b, ip) {
     lead = await one(`UPDATE leads SET status = 'aanvraag', company = $2, email = $3, contact_name = $4, phone = COALESCE(NULLIF($5, ''), phone),
       website = CASE WHEN $6 <> '' THEN $6 ELSE website END, domain = CASE WHEN $7 <> '' THEN $7 ELSE domain END, source = 'landing',
       aanvraag_at = NOW(), aanvraag_tekst = $8, error = '', reject_reason = '', unsub_at = NULL, updated_at = NOW() WHERE id = $1 RETURNING *`,
-      [lead.id, bedrijf, email, naam, telefoon, site, domein, kleur ? `${wat} · kleur: ${kleur}` : wat]);
+      [lead.id, bedrijf, email, naam, telefoon, site, domein, kleur ? `${wat} · kleur: ${kleur === "eigen kleur" ? kleurHex : kleur}` : wat]);
   } else {
     lead = await one(`INSERT INTO leads (company, email, website, domain, phone, source, status, contact_name, aanvraag_at, aanvraag_tekst)
-      VALUES ($1,$2,$3,$4,$5,'landing','aanvraag',$6,NOW(),$7) RETURNING *`, [bedrijf, email, site, domein, telefoon, naam, kleur ? `${wat} · kleur: ${kleur}` : wat]);
+      VALUES ($1,$2,$3,$4,$5,'landing','aanvraag',$6,NOW(),$7) RETURNING *`, [bedrijf, email, site, domein, telefoon, naam, kleur ? `${wat} · kleur: ${kleur === "eigen kleur" ? kleurHex : kleur}` : wat]);
   }
-  const instructie = `Gratis ontwerpaanvraag via sitemaker.nl/start (warme lead: ${naam} vroeg zelf om een ontwerp, binnen 24 uur). Bedrijf: ${bedrijf}.${wat ? ` Over het bedrijf (eigen woorden): ${wat}.` : ""}${kleur ? ` Gewenste hoofdkleur: ${kleur} (${KLEUREN[kleur]}).` : ""}`;
+  const instructie = `Gratis ontwerpaanvraag via sitemaker.nl/start (warme lead: ${naam} vroeg zelf om een ontwerp, binnen 24 uur). Bedrijf: ${bedrijf}.${wat ? ` Over het bedrijf (eigen woorden): ${wat}.` : ""}${kleur ? ` Gewenste hoofdkleur: ${kleur} (${kleurHex}).` : ""}`;
   const token = crypto.randomBytes(16).toString("hex");
   if (site) {
     const nieuw = await one("INSERT INTO concepts (lead_id, token, status, instructie) VALUES ($1,$2,'wachtrij',$3) RETURNING id", [lead.id, token, instructie]);
@@ -59,7 +61,7 @@ export async function ontwerpAanvragen(b, ip) {
     await startConcept(nieuw.id).catch(() => {}); // anders pakt tick hem op
   } else {
     // Geen website: niets te scannen. De ontwerper werkt vanuit hun omschrijving en kiest sfeerbeelden.
-    const tekst = [`Bedrijf: ${bedrijf}`, `Wat ze doen (eigen woorden): ${wat}`, `Contactpersoon: ${naam}`, `E-mail: ${email}`, telefoon ? `Telefoon: ${telefoon}` : "", kleur ? `Gewenste hoofdkleur: ${kleur} (${KLEUREN[kleur]})` : ""].filter(Boolean).join("\n");
+    const tekst = [`Bedrijf: ${bedrijf}`, `Wat ze doen (eigen woorden): ${wat}`, `Contactpersoon: ${naam}`, `E-mail: ${email}`, telefoon ? `Telefoon: ${telefoon}` : "", kleur ? `Gewenste hoofdkleur: ${kleur} (${kleurHex})` : ""].filter(Boolean).join("\n");
     await q("INSERT INTO concepts (lead_id, token, status, instructie, bron, analysis) VALUES ($1,$2,'ontwerp',$3,$4,'{}'::jsonb)",
       [lead.id, token, instructie, JSON.stringify({ url: "", tekst, geenWebsite: true })]);
   }

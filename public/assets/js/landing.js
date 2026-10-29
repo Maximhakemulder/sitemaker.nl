@@ -33,6 +33,13 @@
     const site = $("#o-site"), watVeld = $("#o-wat-veld"), kleurVeld = $("#o-kleur-veld");
     const toonWat = () => { const heeft = site.value.trim().length > 3; watVeld.hidden = heeft; if (kleurVeld) kleurVeld.hidden = heeft; };
     site.addEventListener("input", toonWat); toonWat();
+    // "Eigen kleur": opent de kleurkiezer van het apparaat; de gekozen kleur kleurt het bolletje.
+    const kiezer = $("#o-kleur-kiezer"), eigen = $("#o-kleur-eigen"), bol = $("#o-eigen-bol");
+    if (kiezer && eigen) {
+      // De (onzichtbare) kleurkiezer ligt over het hele label: een tik opent direct de kiezer van de telefoon of computer.
+      const kies = () => { eigen.checked = true; bol.classList.add("gekozen"); bol.style.background = kiezer.value; };
+      kiezer.addEventListener("input", kies); kiezer.addEventListener("change", kies);
+    }
     const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     const fouten = (errors) => {
       of.querySelectorAll(".fout").forEach((el) => (el.textContent = ""));
