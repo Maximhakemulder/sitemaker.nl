@@ -38,6 +38,10 @@
       <div class="lp-kop">
         <h1 id="titel">Een website die klanten oplevert. Zonder gedoe.</h1>
         <p class="lp-sub">Vraag gratis een ontwerp aan en zie binnen 24 uur hoe jouw nieuwe website eruit kan zien.</p>
+        <div class="lp-bewijs" id="lp-bewijs" hidden>
+          <a class="lp-bewijs-reviews" id="lp-bewijs-reviews" href="#reviews" hidden><span class="lp-gezichten" id="lp-gezichten" aria-hidden="true"></span><span class="lp-bewijs-tekst"><span class="lp-sterren" aria-hidden="true">★★★★★</span> <b id="lp-bewijs-score"></b> uit klantreviews</span></a>
+          <p class="lp-bewijs-teller" id="lp-teller" hidden><i aria-hidden="true"></i><b id="lp-teller-n"></b> ontwerpen gemaakt deze week</p>
+        </div>
         <ul class="lp-pillen" aria-label="Zekerheden">
           <li>Gratis en vrijblijvend ontwerp</li>
           <li>Binnen 24 uur in je mail</li>
@@ -45,8 +49,10 @@
         </ul>
       </div>
 
+      <figure class="lp-tel" aria-hidden="true"><img src="/assets/img/landing/hovenier.jpg" alt="" width="540" height="1169"><figcaption>Voorbeeld</figcaption></figure>
       <div class="lp-kaart" id="keuzes" data-scroll-doel>
         <div class="formulier keuze-vak" id="vak-start">
+          <div class="lp-maker"><img src="/assets/brand/jason.webp" alt="" width="44" height="44"><p><b>Jason</b> maakt jouw ontwerp persoonlijk<span>Webdesigner bij Sitemaker</span></p></div>
           <h2 class="lp-kaart-titel">Ontvang je gratis professionele websiteontwerp<span id="voor-bedrijf" hidden></span></h2>
           <p class="lp-kaart-sub">We maken een eigen ontwerp voor jouw bedrijf. Alles kan later nog aangepast worden.</p>
           <form id="ontwerp-form" novalidate>
@@ -62,7 +68,12 @@
             <fieldset class="veld lp-kleuren" id="o-kleur-veld" hidden><legend>Welke kleur past bij je bedrijf? <span class="opt">(optioneel)</span></legend><p class="lp-kleur-hint">Later altijd nog aan te passen</p><div class="lp-kleur-rij"><label class="lp-chip"><input type="radio" name="kleur" value="marineblauw"><i class="lp-chip-marineblauw" aria-hidden="true"></i>Marineblauw</label><label class="lp-chip"><input type="radio" name="kleur" value="bosgroen"><i class="lp-chip-bosgroen" aria-hidden="true"></i>Bosgroen</label><label class="lp-chip"><input type="radio" name="kleur" value="terracotta"><i class="lp-chip-terracotta" aria-hidden="true"></i>Terracotta</label><label class="lp-chip"><input type="radio" name="kleur" value="oker"><i class="lp-chip-oker" aria-hidden="true"></i>Oker</label><label class="lp-chip"><input type="radio" name="kleur" value="antraciet"><i class="lp-chip-antraciet" aria-hidden="true"></i>Antraciet</label><label class="lp-chip lp-chip-eigen"><input type="radio" name="kleur" value="eigen" id="o-kleur-eigen"><i id="o-eigen-bol" aria-hidden="true"></i>Eigen kleur<input type="color" name="kleurEigen" id="o-kleur-kiezer" value="#1C0747" aria-label="Kies je eigen kleur"></label><label class="lp-chip"><input type="radio" name="kleur" value="" checked>Geen voorkeur</label></div></fieldset>
             <div class="hp" aria-hidden="true"><label for="o-hp">Laat dit veld leeg</label><input id="o-hp" name="website_url" tabindex="-1" autocomplete="off"></div>
             <button class="knop knop-actie" type="submit">Ontvang mijn gratis ontwerp</button>
-            <p class="lp-gerust">Geen betaalgegevens nodig</p>
+            <ul class="lp-zeker" aria-label="Zekerheden">
+              <li class="z-slot">Geen betaalgegevens</li>
+              <li class="z-prive">Privé, niet in Google</li>
+              <li class="z-vast">Nergens aan vast</li>
+            </ul>
+            <figure class="lp-quote" id="lp-quote" hidden><span class="lp-sterren" id="lp-quote-sterren" aria-hidden="true"></span><blockquote id="lp-quote-tekst"></blockquote><figcaption id="lp-quote-wie"></figcaption></figure>
           </form>
           <p class="lp-praten">Liever eerst even praten? <button type="button" class="optie" data-keuze="video">Videobellen</button> of <button type="button" class="optie" data-keuze="telefoon">bel mij</button></p>
         </div>
@@ -93,7 +104,7 @@
         <ol class="lp-route">
           <li><b>Vraag je gratis ontwerp aan</b><span>Duurt een minuut</span></li>
           <li><b>Binnen 24 uur in je mail</b><span>Privé en vrijblijvend</span></li>
-          <li><b>Bevalt het? Binnen 48 uur online</b><span>€299,95 eenmalig + €69,95 per maand</span></li>
+          <li><b>Bevalt het? Binnen 48 uur online</b><span>€299,95 eenmalig + €69,95 per maand</span><em class="lp-mini-zegel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>30 dagen geld terug</em></li>
         </ol>
       </div>
 

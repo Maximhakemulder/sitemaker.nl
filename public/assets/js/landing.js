@@ -27,14 +27,43 @@
     new IntersectionObserver(([e]) => balk.classList.toggle("zichtbaar", !e.isIntersecting), { threshold: 0 }).observe(kaart);
   }
 
-  // Reviewscore bovenin (alleen echte, gepubliceerde reviews).
-  const score = $("#lp-score");
-  if (score) fetch("/api/reviews").then((r) => r.json()).then((d) => {
+  // Reviewscore bovenin, reviewbalk in de hero en één echte review onder de knop (alleen gepubliceerde reviews uit HQ).
+  const score = $("#lp-score"), bewijs = $("#lp-bewijs");
+  const esc1 = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  fetch("/api/reviews").then((r) => r.json()).then((d) => {
     if (!d?.count) return;
     const gem = Number(d.average).toFixed(1).replace(".", ",");
-    score.innerHTML = `<span class="lp-sterren" aria-hidden="true">★★★★★</span><b>${gem}</b>`;
-    score.setAttribute("aria-label", `Gemiddeld ${gem} uit 5`);
-    score.hidden = false;
+    if (score) {
+      score.innerHTML = `<span class="lp-sterren" aria-hidden="true">★★★★★</span><b>${gem}</b>`;
+      score.setAttribute("aria-label", `Gemiddeld ${gem} uit 5`);
+      score.hidden = false;
+    }
+    const rs = (d.reviews || []).filter((r) => r.rating >= 4);
+    if (bewijs && rs.length) {
+      $("#lp-gezichten").innerHTML = rs.slice(0, 4).map((r) => `<i>${esc1((r.name || "?").trim()[0].toUpperCase())}</i>`).join("");
+      $("#lp-bewijs-score").textContent = gem;
+      $("#lp-bewijs-reviews").setAttribute("aria-label", `Gemiddeld ${gem} uit 5 uit klantreviews, lees de reviews`);
+      $("#lp-bewijs-reviews").hidden = false; bewijs.hidden = false;
+    }
+    // Onder de knop: de eerste hele zin(nen) van een review, maximaal ±150 tekens; nooit midden in een zin afknippen.
+    const kort = (t, max) => { const zinnen = String(t || "").match(/[^.!?]+[.!?]+/g) || []; let u = ""; for (const z of zinnen) { if ((u + z).trim().length > max) break; u += z; } return u.trim(); };
+    // Alleen 5 sterren; de titel van de reviewer als kop, daarna de eerste hele zin(nen).
+    const kandidaten = rs.filter((r) => r.rating >= 5 && String(r.title || "").trim().length >= 8).map((r) => ({ r, t: kort(r.body, 120) })).filter((x) => x.t.length >= 30);
+    const q = $("#lp-quote");
+    if (q && kandidaten.length) {
+      const { r, t } = kandidaten[Math.floor(Math.random() * kandidaten.length)];
+      $("#lp-quote-sterren").textContent = "★".repeat(Math.round(r.rating));
+      $("#lp-quote-tekst").innerHTML = `<b>${esc1(r.title.trim())}</b>“${esc1(t)}”`;
+      $("#lp-quote-wie").innerHTML = `<b>${esc1(r.name)}</b>${r.company ? `, ${esc1(r.company)}` : ""}`;
+      q.hidden = false;
+    }
+  }).catch(() => {});
+
+  // Teller: echte ontwerpen van de afgelopen 7 dagen (pas zichtbaar boven een minimum, zie /api/start/teller).
+  fetch("/api/start/teller").then((r) => r.json()).then((d) => {
+    if (!d?.toon || !bewijs) return;
+    $("#lp-teller-n").textContent = Number(d.ontwerpen).toLocaleString("nl-NL");
+    $("#lp-teller").hidden = false; bewijs.hidden = false;
   }).catch(() => {});
 
   // Voorbeelden: doorlopende band die langzaam blijft schuiven (de reeks staat er twee keer in, zodat hij naadloos rondgaat).
