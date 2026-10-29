@@ -49,6 +49,9 @@
     // Alleen 5 sterren; de titel van de reviewer als kop, daarna de eerste hele zin(nen).
     const kandidaten = rs.filter((r) => r.rating >= 5 && String(r.title || "").trim().length >= 8).map((r) => ({ r, t: kort(r.body, 120) })).filter((x) => x.t.length >= 30);
     const q = $("#lp-quote");
+    // Voorkeur: een review over hoe snel en mooi het was (de zin met "binnen twee dagen" plus de zin ervoor, letterlijk).
+    const snel = rs.find((r) => r.rating >= 5 && /binnen twee dagen/i.test(r.body || ""));
+    if (snel) { const z = String(snel.body).match(/[^.!?]+[.!?]+/g) || []; const i = z.findIndex((x) => /binnen twee dagen/i.test(x)); const t = z.slice(Math.max(0, i - 1), i + 1).join("").trim(); if (t) kandidaten.splice(0, kandidaten.length, { r: snel, t }); }
     if (q && kandidaten.length) {
       const { r, t } = kandidaten[Math.floor(Math.random() * kandidaten.length)];
       $("#lp-quote-sterren").textContent = "★".repeat(Math.round(r.rating));

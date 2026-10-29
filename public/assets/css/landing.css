@@ -358,13 +358,13 @@
 .lp-bewijs-teller i { width: 8px; height: 8px; border-radius: 50%; background: #3DDC97; box-shadow: 0 0 0 4px rgba(61,220,151,.22); }
 
 .lp-mini-zegel { display: inline-flex; align-items: center; gap: 5px; justify-self: start; color: #7CE8B5; font-style: normal; font-weight: 700; font-size: 15px; line-height: 1.35; }
-.lp-mini-zegel svg { width: 16px; height: 16px; flex: none; fill: none; stroke: #3DDC97; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.lp-mini-zegel svg { width: 13px; height: 13px; flex: none; fill: none; stroke: #3DDC97; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 
 .lp-tel { display: none; }
 @media (min-width: 1100px) {
   .lp-tel { display: block; position: absolute; z-index: 0; grid-area: none; width: 150px; margin: 0; right: 450px; top: 470px; transform: rotate(-7deg); border-radius: 26px; padding: 7px; background: #0E0326; box-shadow: 0 30px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.12); }
   .lp-tel img { display: block; width: 100%; height: auto; border-radius: 20px; }
-  .lp-tel figcaption { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%) rotate(7deg); font-size: 12px; color: #B9AEDB; white-space: nowrap; }
+  .lp-tel-r { right: -96px; top: 210px; transform: rotate(7deg); }
   .lp-hero .lp-kaart { z-index: 1; }
 }
 @media (max-width: 959px) { .lp-bewijs-reviews { display: none !important; } }
