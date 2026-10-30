@@ -590,18 +590,18 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
-.sm-slot{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147482999;width:48px;height:48px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
-.sm-slot svg{width:21px;height:21px}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
-@media(max-width:700px){.sm-slot{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:44px;height:44px}}
+.sm-slot{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147482999;width:60px;height:60px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
+.sm-slot span{font-size:28px;line-height:1}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
+@media(max-width:700px){.sm-slot{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:56px;height:56px}.sm-slot span{font-size:26px}}
 .sm-prive .sm-intro-kaart{position:relative;max-width:400px;text-align:center;padding:30px 24px 24px}
-.sm-prive-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#1C0747;color:#0CC0DF;display:grid;place-items:center}.sm-prive-ic svg{width:24px;height:24px}
+.sm-prive-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#1C0747;color:#0CC0DF;display:grid;place-items:center}.sm-prive-ic span{font-size:26px;line-height:1}
 .sm-prive h2{margin:0 0 8px;font-size:21px}.sm-prive p{margin:0!important}
-.sm-x{position:absolute;top:10px;right:10px;width:38px;height:38px;border:0;border-radius:50%;background:#EEF0F6;color:#1C0747;font:700 22px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}.sm-x:hover{background:#E1E4EE}
+.sm-x{position:absolute;top:12px;right:12px;width:40px;height:40px;border:0;border-radius:50%;background:#1C0747;color:#fff;font:700 22px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}.sm-x:hover{background:#2E1466}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
-  const slot = `<button type="button" class="sm-slot" aria-label="Privé ontwerp: meer informatie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
-  const prive = `<div class="sm-intro sm-prive" role="dialog" aria-modal="true" aria-labelledby="sm-prive-t" hidden><div class="sm-intro-kaart"><button type="button" class="sm-x" aria-label="Sluiten">×</button><div class="sm-prive-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h2 id="sm-prive-t">Alleen voor jullie gemaakt</h2><p>Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</p></div></div>`;
+  const slot = `<button type="button" class="sm-slot" aria-label="Privé ontwerp: meer informatie"><span aria-hidden="true">🔒</span></button>`;
+  const prive = `<div class="sm-intro sm-prive" role="dialog" aria-modal="true" aria-labelledby="sm-prive-t" hidden><div class="sm-intro-kaart"><button type="button" class="sm-x" aria-label="Sluiten">×</button><div class="sm-prive-ic"><span aria-hidden="true">🔒</span></div><h2 id="sm-prive-t">Alleen voor jullie gemaakt</h2><p>Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</p></div></div>`;
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we verwijderen dit voorstel direct en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch interesse</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
