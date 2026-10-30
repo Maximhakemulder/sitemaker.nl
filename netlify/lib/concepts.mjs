@@ -590,8 +590,8 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
-.sm-slot{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147482999;width:60px;height:60px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
-.sm-slot span{font-size:28px;line-height:1}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
+.sm-slot{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:2147482999;width:84px;height:84px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
+.sm-slot span{font-size:40px;line-height:1}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
 @media(max-width:700px){.sm-slot{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:56px;height:56px}.sm-slot span{font-size:26px}}
 .sm-prive .sm-intro-kaart{position:relative;max-width:400px;text-align:center;padding:30px 24px 24px}
 .sm-prive-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#1C0747;color:#0CC0DF;display:grid;place-items:center}.sm-prive-ic span{font-size:26px;line-height:1}
