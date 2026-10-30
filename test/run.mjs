@@ -298,7 +298,7 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   assert.equal(zk.status, 200); assert.ok(zk.data.leads.some((l) => l.company === "Hovenier Groen"), "snel zoeken op domein/e-mail");
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
-  assert.match(prev.data.body, /Is dit de richting die bij/); assert.match(prev.data.body, /afmelden\?l=/);
+  assert.match(prev.data.body, /Vragen, of zin om even kort te bellen/); assert.match(prev.data.body, /afmelden\?l=/);
   // Zonder website geen voorbeeldwebsite, dus geen eerste mail.
   assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } })).data.changed, 0);
   for (const id of ids) {
