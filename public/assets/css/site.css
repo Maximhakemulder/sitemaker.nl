@@ -800,5 +800,6 @@ p { margin: 0 0 1em; }
 .ik-pillen li::before { content: ""; width: 15px; height: 15px; border-radius: 50%; background: var(--cyaan) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C0747' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 9px no-repeat; }
 @media (max-width: 900px) { .ik-score { display: none !important; } .ik-bewijs { margin-top: 10px; } .ik-pillen { margin-top: 10px; } }
 .pagina-interesse .rv-aantal { display: none; }
-.optie b { display: inline-flex; align-items: center; gap: 10px; }
-.optie-nr { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--paars); color: var(--cyaan); font-style: normal; font-size: 16px; font-weight: 800; line-height: 1; }
+.optie { position: relative; }
+.optie .optie-nr { position: absolute; top: -15px; left: -15px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--paars); color: var(--cyaan); font-style: normal; font-size: 17px; font-weight: 800; line-height: 1; box-shadow: 0 0 0 3px var(--wit), 0 6px 14px rgba(28,7,71,.25); }
+@media (max-width: 900px) { .optie .optie-nr { top: -13px; left: -10px; width: 30px; height: 30px; font-size: 15px; } .optie .optie-label { left: 30px !important; } }
