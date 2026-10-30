@@ -40,6 +40,8 @@ export function fillTemplate(tpl, lead, s, kind = "eerste") {
     intro: lead.intro ? lead.intro.trim() + "\n\n" : "", link: `${publicBase()}/#kennismaking`,
     concept: klaar ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
     conceptlink: klaar ? conceptUrl(lead.concept_token) : "",
+    // Zelf een belafspraak inplannen (Maxim belt niet zelf rond; besluit 30-10-2026): interessepagina met "Bel mij" open.
+    belafspraak: `${publicBase()}/interesse?${lead.concept_token ? `concept=${encodeURIComponent(lead.concept_token)}&` : ""}bedrijf=${encodeURIComponent(lead.company || "")}&keuze=telefoon`,
     dagen: String(conceptDagen(s)),
     verloopt: lead.concept_expires ? datumNl(lead.concept_expires) : datumNl(Date.now() + conceptDagen(s) * 86400000),
   };
@@ -103,6 +105,13 @@ ${hoofd.split(/\n\n/).map((p) => {
     const knop = regels.findIndex((r) => /^https?:\/\/\S+\/voorbeeld\/\S+$/.test(r.trim()));
     // Kopje boven een opsomming ("Alles in één, zonder verrassingen:") vetgedrukt.
     if (knop < 0 && regels.length > 1 && /:$/.test(regels[0].trim()) && regels.slice(1).every((r) => /^[•-] /.test(r.trim()))) return `<p style="margin:0 0 12px"><b>${linkify(regels[0])}</b><br>${regels.slice(1).map(linkify).join("<br>")}</p>`;
+    // Een regel met alleen de link om een belafspraak in te plannen wordt een tweede, rustige knop.
+    const bel = regels.findIndex((r) => /^https?:\/\/\S+\/interesse\?\S*keuze=telefoon\S*$/.test(r.trim()));
+    if (knop < 0 && bel >= 0) {
+      const url = regels[bel].trim(), href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
+      const tekst = regels.filter((_, i) => i !== bel).join("\n");
+      return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#FFFFFF;color:#1C0747;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:8px;border:2px solid #1C0747">Plan een belafspraak</a></p>`;
+    }
     if (knop < 0) return `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`;
     const url = regels[knop].trim();
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
