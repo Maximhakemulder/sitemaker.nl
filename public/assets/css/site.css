@@ -785,3 +785,18 @@ p { margin: 0 0 1em; }
   .landing-keuzekop { margin-bottom: 24px; }
   .landing .hero .acties .knop-rand { display: none; }
 }
+
+/* Interessepagina: social proof in de hero (zoals /start), rustig en geordend */
+.ik-bewijs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 14px 0 0; }
+.ik-score { display: inline-flex; align-items: center; gap: 6px; color: var(--wit); text-decoration: none; font-size: 14px; }
+.ik-score[hidden], .ik-teller[hidden] { display: none; }
+.ik-score:hover { text-decoration: underline; }
+.ik-sterren { color: #FFC24B; letter-spacing: 1px; }
+.ik-teller { margin: 0; display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: #E3DDF5; }
+.ik-teller b { color: var(--wit); }
+.ik-teller i { width: 8px; height: 8px; border-radius: 50%; background: #3DDC97; box-shadow: 0 0 0 4px rgba(61,220,151,.22); }
+.ik-pillen { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 6px; max-width: 40em; }
+.ik-pillen li { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--wit); background: rgba(12,192,223,.14); box-shadow: inset 0 0 0 1px rgba(12,192,223,.5); border-radius: 999px; padding: 5px 10px 5px 7px; white-space: nowrap; }
+.ik-pillen li::before { content: ""; width: 15px; height: 15px; border-radius: 50%; background: var(--cyaan) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231C0747' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 9px no-repeat; }
+@media (max-width: 900px) { .ik-score { display: none !important; } .ik-bewijs { margin-top: 10px; } .ik-pillen { margin-top: 10px; } }
+.pagina-interesse .rv-aantal { display: none; }
