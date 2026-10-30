@@ -105,7 +105,7 @@ export const DEFAULT_SETTINGS = {
       },
       opvolging: {
         subject: "Re: Vraagje over {bedrijf}",
-        body: "Hoi,\n\nEen paar dagen geleden stuurde ik je een ontwerp voor de nieuwe website van {bedrijf}. Misschien is mijn mail tussen het werk door ondergesneeuwd, dus hier is hij nog een keer:\n{conceptlink}\n\nHet ontwerp staat nog tot {verloopt} voor jullie klaar. Daarna verdwijnt het vanzelf.\n\nBevalt het? Dan staat jullie nieuwe website binnen 48 uur (2 werkdagen) live, voor €99,95 startkosten en daarna €69,95 per maand, maandelijks opzegbaar.\n\nLiever eerst even bellen? Laat me weten wanneer het je uitkomt, dan bel ik je.\n\nGroet,",
+        body: "Hoi,\n\nEen paar dagen geleden stuurde ik je een ontwerp voor de nieuwe website van {bedrijf}. Misschien is mijn mail tussen het werk door ondergesneeuwd, dus hier is hij nog een keer:\n{conceptlink}\n\nHet ontwerp is gemaakt om meer uit jullie website te halen: bezoekers zien meteen wat jullie doen en kunnen met één tik bellen, mailen of een afspraak maken. Zo levert je website meer telefoontjes en aanvragen op.\n\nHet ontwerp staat nog tot {verloopt} voor jullie klaar. Daarna verdwijnt het vanzelf.\n\nBevalt het? Dan staat jullie nieuwe website binnen 48 uur (2 werkdagen) live, voor €99,95 startkosten en daarna €69,95 per maand, maandelijks opzegbaar.\n\nLiever eerst even bellen? Laat me weten wanneer het je uitkomt, dan bel ik je.\n\nGroet,",
       },
     },
   },
