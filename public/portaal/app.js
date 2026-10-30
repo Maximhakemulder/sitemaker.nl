@@ -257,7 +257,7 @@
       <p class="dempen">Na deze stap gaan we voor je aan de slag. Je website staat binnen ${state.offer.deliveryText} online zodra je je informatie hebt aangeleverd.</p>
       ${st.paymentPending && terug ? html`<div class="melding melding-info" role="status">${raw(icon.let)}<div><p><b>We wachten op de bevestiging van je betaling.</b> Dat duurt meestal een paar seconden.</p><button class="knop knop-licht knop-klein" type="button" id="check">Opnieuw controleren</button></div></div>` : ""}
       <div class="prijs-blok">
-        <div class="regel"><span>Bouw van je website <small>eenmalig, nu te betalen</small></span><b class="nummers">${euro(p.buildCents)}</b></div>
+        <div class="regel"><span>Startkosten <small>eenmalig, nu te betalen</small></span><b class="nummers">${euro(p.buildCents)}</b></div>
         <div class="regel"><span>Abonnement <small>hosting en ${state.offer.changesPerMonth} wijzigingen per maand, automatisch vanaf ${datumLang(p.firstMonthly)}</small></span><b class="nummers">${euro(p.monthlyCents)} <small>per maand</small></b></div>
       </div>
       <div class="zekerheden">

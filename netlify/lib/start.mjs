@@ -127,7 +127,7 @@ async function startHandmatig(c, user) {
   const s = await getSettings();
   const parts = priceParts(c.build_cents, s.billing);
   if (!parts) fail(400, "De btw-instelling ontbreekt nog. We nemen contact met je op.");
-  const inv = await createInvoice({ customerId: c.id, description: "Bouw van je website (eenmalig)", parts, source: "start" });
+  const inv = await createInvoice({ customerId: c.id, description: "Startkosten website (eenmalig)", parts, source: "start" });
   await generateInvoicePdf(inv.id).catch((e) => console.log("[start] pdf", e.message));
   await mailInvoice(inv.id).catch((e) => console.log("[start] factuurmail", e.message));
   await q("UPDATE customers SET billing_status = 'handmatig', subscription_start = COALESCE(subscription_start, $2::date), updated_at = NOW() WHERE id = $1", [c.id, addMonths(dayKey(), 1)]);

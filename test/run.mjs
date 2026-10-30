@@ -259,8 +259,8 @@ await test("eerste betaling → machtiging (incasso) → factuur met PDF", async
   const fout = await call("POST", `hq/customers/${c2}/payment`, { cookie: admin, body: { iban: "NL00 FOUT 0000 0000 00" } });
   assert.equal(fout.status, 400);
   const r = await call("POST", `hq/customers/${c2}/payment`, { cookie: admin, body: { sendMail: true, iban: "NL91 ABNA 0417 1643 00", ibanNaam: "Klant Twee" } });
-  assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.amountCents, 36294); // 299,95 + 21%
-  const o = __fake.orders[r.data.paymentId]; assert.ok(o); assert.equal(o.amount.value, 36294);
+  assert.equal(r.status, 200, JSON.stringify(r.data)); assert.equal(r.data.amountCents, 12094); // 99,95 + 21%
+  const o = __fake.orders[r.data.paymentId]; assert.ok(o); assert.equal(o.amount.value, 12094);
   o.status = { code: 100, action: "PAID" };
   // Zoals Pay.nl het echt stuurt: GET met platte object[...]-velden en de uuid als id.
   const qs = new URLSearchParams({ event: "status_changed", type: "order", id: o.id, "object[id]": o.id, "object[orderId]": o.orderId, "object[status][code]": "100", "object[status][action]": "PAID" });
@@ -298,7 +298,7 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   assert.equal(zk.status, 200); assert.ok(zk.data.leads.some((l) => l.company === "Hovenier Groen"), "snel zoeken op domein/e-mail");
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
-  assert.match(prev.data.body, /€299,95 eenmalig/); assert.match(prev.data.body, /afmelden\?l=/);
+  assert.match(prev.data.body, /Is dit de richting die bij/); assert.match(prev.data.body, /afmelden\?l=/);
   // Zonder website geen voorbeeldwebsite, dus geen eerste mail.
   assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } })).data.changed, 0);
   for (const id of ids) {

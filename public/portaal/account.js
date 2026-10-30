@@ -99,13 +99,13 @@
       <ul class="lijst sites-lijst">${lijst.map((w) => html`<li class="${w.id === c.id ? "actief" : ""}"><div><b>${w.naam}</b><br><span class="klein dempen">${w.url ? w.url.replace(/^https?:\/\//, "") : w.start ? "Nog te starten" : "Nog geen adres"}</span></div>
         <div>${(() => { const [t, k] = SITESTATUS[w.siteStatus] || [w.siteStatus, "s-grijs"]; return html`<span class="status ${k}">${t}</span>`; })()}${w.id === c.id ? html`<span class="klein dempen">Open</span>` : html` <button class="knop knop-licht knop-klein" type="button" data-open="${w.id}">Openen</button>`}</div></li>`)}</ul>
       <details class="anders" id="extra"><summary>Extra website aanvragen</summary>
-        <p class="klein">Een extra website werkt net zo: ${euro(o.buildCents)} eenmalig en ${euro(o.monthlyCents)} per maand, met hosting en ${o.changesPerMonth} wijzigingen per maand voor die website. Je beheert alles met deze inlog.</p>
+        <p class="klein">Een extra website werkt net zo: ${euro(o.buildCents)} startkosten en ${euro(o.monthlyCents)} per maand, met hosting en ${o.changesPerMonth} wijzigingen per maand voor die website. Je beheert alles met deze inlog.</p>
         <form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
           <div class="veld"><label for="x-naam">Naam van de website</label><input id="x-naam" name="naam" maxlength="120" placeholder="Bijvoorbeeld de naam van je tweede zaak"><div class="fout" data-fout-voor="naam"></div></div>
           <div class="veld"><label for="x-oms">Waar gaat de website over?</label><textarea id="x-oms" name="omschrijving" rows="3" maxlength="3000"></textarea><div class="fout" data-fout-voor="omschrijving"></div></div>
           <div class="veld"><label for="x-site">Huidige website <span class="opt">(optioneel)</span></label><input id="x-site" name="huidigeSite" maxlength="300"></div>
           <div class="knoppen"><button class="knop knop-actie" type="submit">Aanvragen</button></div>
-          <p class="klein dempen">Na het aanvragen ga je akkoord en betaal je de bouwprijs; daarna lever je de informatie aan en staat de website binnen ${o.deliveryText} online.</p>
+          <p class="klein dempen">Na het aanvragen ga je akkoord en betaal je de startkosten; daarna lever je de informatie aan en staat de website binnen ${o.deliveryText} online.</p>
         </form></details>`);
     vak.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => window.SM_PORTAAL_WISSEL(Number(b.dataset.open))));
     const form = vak.querySelector("form");
@@ -254,7 +254,7 @@
         <ul class="gevolgen">
           <li>Je abonnement loopt door tot en met <b>${datum(o.einde)}</b> (opzegtermijn van één kalendermaand). Tot die datum betaal je de maandelijkse ${euro(state.customer.monthlyCents)}.</li>
           <li>Na die datum gaat je website <b>offline</b> en kun je geen wijzigingen meer doorgeven.</li>
-          <li>De bouwprijs krijg je niet terug.</li>
+          <li>De startkosten krijg je niet terug.</li>
           <li>Binnen 30 dagen na de einddatum kun je je eigen teksten en foto's opvragen.</li>
           ${o.domein ? html`<li>Je domein ${o.domein.naam} staat bij je eigen provider en blijft van jou. Zet de instellingen daar om naar je nieuwe website, of zeg het op bij je provider.</li>` : ""}
           <li>Bedacht? Tot de einddatum kun je de opzegging hier intrekken.</li>

@@ -355,7 +355,7 @@ async function claude({ system, prompt }) {
   return (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("").trim();
 }
 
-const SITEMAKER = `Sitemaker (sitemaker.nl) bouwt professionele websites voor bedrijven (geen webshops): €299,95 eenmalig + €69,95 per maand, binnen 48 uur (2 werkdagen) online, hosting en 4 wijzigingen per maand inbegrepen via een eigen klantenportaal. Toon: zakelijk, kort, eerlijk, je-vorm. Nooit iets verzinnen.`;
+const SITEMAKER = `Sitemaker (sitemaker.nl) bouwt professionele websites voor bedrijven (geen webshops): €99,95 startkosten + €69,95 per maand, binnen 48 uur (2 werkdagen) online, hosting en 4 wijzigingen per maand inbegrepen via een eigen klantenportaal. Toon: zakelijk, kort, eerlijk, je-vorm. Nooit iets verzinnen.`;
 
 // De persoonlijke openingszin (komt direct na "Hi!" en vóór "We hebben de website van … bekeken").
 export const INTRO_VERSIE = 2;

@@ -39,7 +39,7 @@ export async function requestExtra(user, b) {
   const c = await maakExtra(van, b, { userIds: [user.id], door: "door de klant in het portaal" });
   await q("UPDATE sessions SET customer_id = $2 WHERE token_hash = $1", [user.sessie, c.id]);
   await audit(user.id, c.id, "website.extra", { naam: c.site_naam, van: van.id });
-  await notifyStaff(`Extra website aangevraagd: ${van.company}`, [`${van.company} wil een extra website: ${c.site_naam}.`, str(b.omschrijving, 400), `Prijs zoals altijd: €299,95 eenmalig + €69,95 per maand. De klant gaat in het portaal akkoord en betaalt; daarna levert hij de informatie aan.`], `/hq/#klant/${c.id}`).catch(() => {});
+  await notifyStaff(`Extra website aangevraagd: ${van.company}`, [`${van.company} wil een extra website: ${c.site_naam}.`, str(b.omschrijving, 400), `Prijs zoals altijd: €99,95 startkosten + €69,95 per maand. De klant gaat in het portaal akkoord en betaalt; daarna levert hij de informatie aan.`], `/hq/#klant/${c.id}`).catch(() => {});
   return { id: c.id };
 }
 

@@ -1,5 +1,5 @@
 // Online betalen via Pay.nl (vervangt Mollie).
-// Stroom: eerste betaling (bouwprijs) via een Pay.nl-order (iDEAL e.d.). Is die betaald, dan maken we een SEPA-machtiging
+// Stroom: eerste betaling (startkosten) via een Pay.nl-order (iDEAL e.d.). Is die betaald, dan maken we een SEPA-machtiging
 // (RECURRING, elke maand het maandbedrag) op het IBAN dat de klant in het portaal invulde. Pay.nl incasseert dan zelf;
 // elke geïnde termijn (exchange "incassocollected") wordt een betaalde factuur. Lukt de machtiging niet (incasso nog niet
 // actief bij Pay.nl, of geen IBAN), dan valt de klant terug op handmatige maandfacturen (billing_status 'handmatig').
@@ -66,7 +66,7 @@ async function haalOrder(orderId) {
   return api("GET", `${ORDERS}/${encodeURIComponent(orderId)}/status`);
 }
 
-// Start: betaallink voor de bouwprijs. De machtiging volgt na betaling (op het IBAN van de klant).
+// Start: betaallink voor de startkosten. De machtiging volgt na betaling (op het IBAN van de klant).
 export async function startFirstPayment(customerId, { startDate, userId } = {}) {
   const s = await getSettings();
   if (!vatModeSet(s)) fail(400, "Kies eerst bij Instellingen › Facturatie of de prijzen inclusief of exclusief btw zijn.");
@@ -197,7 +197,7 @@ export async function handleExchange(velden) {
       await q("UPDATE invoices SET status = 'betaald', paid_at = NOW(), updated_at = NOW() WHERE id = $1", [local.invoice_id]);
       await generateInvoicePdf(local.invoice_id).catch(() => {});
     } else if (local.kind === "eerste" && s.billing.autoInvoices !== false && !(await one("SELECT id FROM invoices WHERE mollie_payment_id = $1", [orderId]))) {
-      await betaaldeFactuur(c, local.amount_cents, "Bouw van je website (eenmalig)", orderId, local.id);
+      await betaaldeFactuur(c, local.amount_cents, "Startkosten website (eenmalig)", orderId, local.id);
     }
     if (local.kind === "eerste") {
       await markStarted(c.id).catch((e) => console.log("[start]", e.message));
@@ -281,10 +281,10 @@ export async function mailPaymentLink(customerId, checkoutUrl, amountCents) {
   return sendMail({
     to: c.email, kind: "betaallink", ref: `customer:${c.id}`,
     subject: "Start je Sitemaker-abonnement",
-    text: `Beste ${c.contact_name || c.company},\n\nVia deze link betaal je de eenmalige bouwprijs (${euro(amountCents)}):\n${checkoutUrl}\n\nDaarna schrijven we het maandbedrag van je abonnement automatisch af.\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Beste ${c.contact_name || c.company},\n\nVia deze link betaal je de eenmalige startkosten (${euro(amountCents)}):\n${checkoutUrl}\n\nDaarna schrijven we het maandbedrag van je abonnement automatisch af.\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Start je Sitemaker-abonnement",
-      intro: [`Beste ${escH(c.contact_name || c.company)},`, `Via de knop hieronder betaal je de eenmalige bouwprijs van <b>${euro(amountCents)}</b>. Daarna schrijven we het maandbedrag van je abonnement (hosting en ${OFFER.changesPerMonth} wijzigingen per maand) automatisch af.`],
+      intro: [`Beste ${escH(c.contact_name || c.company)},`, `Via de knop hieronder betaal je de eenmalige startkosten van <b>${euro(amountCents)}</b>. Daarna schrijven we het maandbedrag van je abonnement (hosting en ${OFFER.changesPerMonth} wijzigingen per maand) automatisch af.`],
       button: { label: "Betalen", href: checkoutUrl },
       after: ["De betaling loopt veilig via Pay.nl. Na betaling vind je de factuur in je klantenportaal."],
     }),

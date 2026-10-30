@@ -190,11 +190,11 @@ export async function book(b, ip) {
   await Promise.allSettled([
     sendMail({
       to: email, kind: "afspraak-bevestiging", ref: `appointment:${appt.id}`, subject: `Je ${soortNaam(a.soort).toLowerCase()} met Sitemaker: ${wanneer}`,
-      text: `Hoi ${name},\n\nJe ${soortNaam(a.soort).toLowerCase()} staat vast: ${wanneer}, ${hoe}.\n\n${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: €299,95 eenmalig + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
+      text: `Hoi ${name},\n\nJe ${soortNaam(a.soort).toLowerCase()} staat vast: ${wanneer}, ${hoe}.\n\n${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: €99,95 startkosten + €69,95 per maand, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.\n\nKun je toch niet? Annuleer via ${annuleer} en kies gerust een nieuw moment op ${publicBase()}/#kennismaking\n\nTot dan!\nSitemaker`,
       html: brandHtml({
         title: `Je ${soortNaam(a.soort).toLowerCase()} staat vast`,
         intro: [`Hoi ${escH(name)},`, `<b>${escH(wanneer)}</b><br>${escH(hoe.charAt(0).toUpperCase() + hoe.slice(1))}.`,
-          `${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: <b>€299,95 eenmalig + €69,95 per maand</b>, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.`],
+          `${a.soort === "video" ? "We bespreken" : `In ${a.duur} minuten bespreken we`} wat je website moet doen en wat het kost. Ter info: <b>€99,95 startkosten + €69,95 per maand</b>, inclusief hosting en ${OFFER.changesPerMonth} wijzigingen per maand, maandelijks opzegbaar en 30 dagen geld-terug-garantie.`],
         after: [`Kun je toch niet? <a href="${annuleer}">Annuleer je afspraak</a> en kies gerust een nieuw moment.`],
       }),
       attachments: [{ filename: "kennismaking-sitemaker.ics", content: calendar([vevent(appt, a, false)]), contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
