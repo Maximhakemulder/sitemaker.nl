@@ -490,7 +490,7 @@
     main.querySelector("#factuur-nieuw").onclick = () => factuurDialoog(c.id);
     main.querySelector("#extra-site").onclick = () => {
       const dlg = SM.dialoog("Extra website voor " + c.company, html`<form novalidate><div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-        <p class="dempen">Maakt een nieuwe website aan met dezelfde bedrijfsgegevens en dezelfde portaalinlog. De klant gaat in het portaal akkoord en betaalt de bouwprijs, en levert daarna de informatie aan.</p>
+        <p class="dempen">Maakt een nieuwe website aan met dezelfde bedrijfsgegevens en dezelfde portaalinlog. De klant gaat in het portaal akkoord en betaalt de startkosten, en levert daarna de informatie aan.</p>
         <div class="veld"><label for="xs-naam">Naam van de website</label><input id="xs-naam" name="naam"><div class="fout" data-fout-voor="naam"></div></div>
         <div class="veld"><label for="xs-oms">Waar gaat hij over? <span class="opt">(optioneel)</span></label><textarea id="xs-oms" name="omschrijving" rows="3"></textarea><div class="fout" data-fout-voor="omschrijving"></div></div>
         <button class="knop knop-actie" type="submit">Aanmaken</button></form>`);
@@ -575,7 +575,7 @@
     const morgen = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
     const dlg = SM.dialoog("Automatisch incasseren", html`<form novalidate>
       <div class="melding melding-fout" data-fout role="alert" hidden tabindex="-1"></div>
-      <p>${c.company} betaalt via een Pay.nl-link de bouwprijs (${euro(c.buildCents)}). Daarna zet HQ een incasso aan van ${euro(c.monthlyCents)} per maand op het IBAN hieronder. Van elke betaling maakt HQ automatisch een factuur. Zonder IBAN krijgt de klant elke maand een factuur per mail.</p>
+      <p>${c.company} betaalt via een Pay.nl-link de startkosten (${euro(c.buildCents)}). Daarna zet HQ een incasso aan van ${euro(c.monthlyCents)} per maand op het IBAN hieronder. Van elke betaling maakt HQ automatisch een factuur. Zonder IBAN krijgt de klant elke maand een factuur per mail.</p>
       <div class="rij2"><div class="veld"><label for="m-iban">IBAN van de klant</label><input id="m-iban" name="iban" value="${c.iban || ""}" placeholder="NL00 BANK 0123 4567 89"><div class="fout" data-fout-voor="iban"></div></div>
         <div class="veld"><label for="m-ibannaam">Naam rekeninghouder</label><input id="m-ibannaam" name="ibanNaam" value="${c.ibanNaam || c.company}"></div></div>
       <div class="veld"><label for="m-start">Eerste maandtermijn op</label><input id="m-start" name="startDate" type="date" value="${morgen}"><div class="hulp">Standaard een maand na de eerste betaling. Kies bijvoorbeeld de dag na oplevering.</div></div>
@@ -966,7 +966,7 @@
   async function betalingen(main) {
     const d = await api("hq/payments");
     render(main, html`
-      <div class="hq-kop"><div><h1>Betalingen</h1><p>Online betalen via Pay.nl: eerste betaling (bouwprijs), daarna elke maand automatische incasso van het abonnement.</p></div></div>
+      <div class="hq-kop"><div><h1>Betalingen</h1><p>Online betalen via Pay.nl: eerste betaling (startkosten), daarna elke maand automatische incasso van het abonnement.</p></div></div>
       ${!d.mollie.ready ? html`<div class="melding melding-let">${raw(icon.let)}<p><b>Pay.nl is nog niet gekoppeld.</b> Zet PAYNL_SERVICE_ID, PAYNL_SERVICE_SECRET, PAYNL_AT_CODE en PAYNL_TOKEN in Netlify. Tot die tijd kun je klanten op "Handmatig gefactureerd" zetten en losse facturen toevoegen.</p></div>`
         : d.mollie.mode === "test" ? html`<div class="melding melding-info">${raw(icon.let)}<p>Pay.nl draait in <b>testmodus</b>: er wordt niets echt afgeschreven.</p></div>` : ""}
       ${!d.vatSet ? html`<div class="melding melding-let">${raw(icon.let)}<p>Kies eerst bij <a href="#instellingen">Instellingen</a> of de prijzen inclusief of exclusief btw zijn. Daarvan hangt af wat Pay.nl afschrijft.</p></div>` : ""}

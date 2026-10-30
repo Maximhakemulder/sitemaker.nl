@@ -40,11 +40,11 @@ export async function submitAppointment(b, ip) {
 
   pending.push(sendMail({
     to: email, kind: "aanvraag-bevestiging", ref: `appointment:${a.id}`, subject: "We hebben je aanvraag ontvangen",
-    text: `Hoi ${name},\n\nBedankt voor je aanvraag voor een kennismaking met Sitemaker. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.\n\nTer herinnering: een website kost €299,95 eenmalig + €69,95 per maand. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.\n\nMet vriendelijke groet,\nSitemaker`,
+    text: `Hoi ${name},\n\nBedankt voor je aanvraag voor een kennismaking met Sitemaker. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.\n\nTer herinnering: een website kost €99,95 startkosten + €69,95 per maand. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.\n\nMet vriendelijke groet,\nSitemaker`,
     html: brandHtml({
       title: "Bedankt voor je aanvraag",
       intro: [`Hoi ${escH(name)},`, `Bedankt voor je aanvraag voor een kennismaking. We nemen zo snel mogelijk contact met je op${preference === "bellen" ? " per telefoon" : ""} om een moment af te spreken.`,
-        `Ter herinnering: <b>€299,95 eenmalig + €69,95 per maand</b>. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.`],
+        `Ter herinnering: <b>€99,95 startkosten + €69,95 per maand</b>. Hosting en ${OFFER.changesPerMonth} wijzigingen per maand zijn inbegrepen, en je website staat binnen ${OFFER.deliveryText} online. Maandelijks opzegbaar, en niet tevreden? De eerste 30 dagen na livegang krijg je je geld terug.`],
     }),
   }).catch(() => {}));
   await Promise.allSettled(pending);

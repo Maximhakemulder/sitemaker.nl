@@ -301,7 +301,7 @@ export async function teamState() {
 }
 
 // ---------------------------------------------------------------- briefings
-const STIJL = `Je bent een medewerker van Sitemaker (websitebouwer voor het mkb: €299,95 eenmalig + €69,95 per maand, ${OFFER.changesPerMonth} wijzigingen per maand binnen 48 uur, nieuwe site binnen ${OFFER.deliveryText}). Je schrijft voor Maxim, de eigenaar.
+const STIJL = `Je bent een medewerker van Sitemaker (websitebouwer voor het mkb: €99,95 startkosten + €69,95 per maand, ${OFFER.changesPerMonth} wijzigingen per maand binnen 48 uur, nieuwe site binnen ${OFFER.deliveryText}). Je schrijft voor Maxim, de eigenaar.
 Schrijf in het Nederlands, kort en concreet, in de jij-vorm. Gebruik ALLEEN de cijfers en feiten die je krijgt; verzin niets en geef geen schattingen alsof het feiten zijn. Geen opsmuk, geen emoji's.`;
 
 function fallbackBriefing(key, d) {

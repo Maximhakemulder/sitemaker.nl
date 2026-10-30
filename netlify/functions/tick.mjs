@@ -74,7 +74,7 @@ async function startHerinnering() {
     env("ADMIN_EMAILS") ? `Log in op HQ met ${env("ADMIN_EMAILS").split(",")[0].trim()}.` : "Let op: ADMIN_EMAILS staat nog niet in Netlify. Zet daar je eigen adres in, anders kun je niet inloggen.",
     env("OPEN_MODE") ? "Haal OPEN_MODE weg uit Netlify (Project configuration › Environment variables), zodat HQ nooit per ongeluk weer open gaat." : null,
     env("PAYNL_SERVICE_ID") && env("PAYNL_SERVICE_SECRET") ? null : "Zet de Pay.nl-gegevens in Netlify: PAYNL_SERVICE_ID, PAYNL_SERVICE_SECRET, PAYNL_AT_CODE en PAYNL_TOKEN.",
-    s.billing?.pricesIncludeVat !== false ? "Check de btw: in HQ › Instellingen staan de prijzen nu als inclusief btw. Reken je €299,95 en €69,95 exclusief btw, zet dat dan uit." : null,
+    s.billing?.pricesIncludeVat !== false ? "Check de btw: in HQ › Instellingen staan de prijzen nu als inclusief btw. Reken je €99,95 en €69,95 exclusief btw, zet dat dan uit." : null,
     "Na het wijzigen van variabelen is één nieuwe deploy nodig.",
   ].filter(Boolean);
   await notifyStaff("Mail werkt: rond de start van Sitemaker af", regels, "/hq/");
