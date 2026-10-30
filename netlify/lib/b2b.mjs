@@ -29,16 +29,19 @@ export async function unsubscribe(id) {
 }
 
 // ---------------------------------------------------------------- opstellen
-export const conceptReady = (lead) => lead.concept_status === "klaar" && lead.concept_token && (!lead.concept_expires || new Date(lead.concept_expires) > new Date(Date.now() + 2 * 86400000));
+export const conceptReady = (lead, marge = 2) => lead.concept_status === "klaar" && lead.concept_token && (!lead.concept_expires || new Date(lead.concept_expires) > new Date(Date.now() + marge * 86400000));
 // (Was 7 dagen marge: met geldigDagen = 7 viel de link dan weg uit de eerste mail, 28-10-2026.)
 export const LEAD_SELECT = `SELECT l.*, c.token AS concept_token, c.status AS concept_status, c.expires_at AS concept_expires, c.created_at AS concept_created FROM leads l LEFT JOIN concepts c ON c.lead_id = l.id`;
-export function fillTemplate(tpl, lead, s) {
+export function fillTemplate(tpl, lead, s, kind = "eerste") {
+  const klaar = conceptReady(lead, kind === "opvolging" ? 0 : 2);
   const sender = s.b2b.senderName || s.company.name || "Sitemaker";
   const map = {
     bedrijf: lead.company || "jullie bedrijf", plaats: lead.city || "", afzender: sender,
     intro: lead.intro ? lead.intro.trim() + "\n\n" : "", link: `${publicBase()}/#kennismaking`,
-    concept: conceptReady(lead) ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
-    conceptlink: conceptReady(lead) ? conceptUrl(lead.concept_token) : "",
+    concept: klaar ? `Ik heb alvast een eerste opzet gemaakt van hoe een nieuwe website voor ${lead.company} eruit kan zien, op basis van jullie huidige site. Bekijk hem hier (gratis en vrijblijvend):\n${conceptUrl(lead.concept_token)}\n\n` : "",
+    conceptlink: klaar ? conceptUrl(lead.concept_token) : "",
+    // Zelf een belafspraak inplannen (Maxim belt niet zelf rond; besluit 30-10-2026): interessepagina met "Bel mij" open.
+    belafspraak: `${publicBase()}/interesse?${lead.concept_token ? `concept=${encodeURIComponent(lead.concept_token)}&` : ""}bedrijf=${encodeURIComponent(lead.company || "")}&keuze=telefoon`,
     dagen: String(conceptDagen(s)),
     verloopt: lead.concept_expires ? datumNl(lead.concept_expires) : datumNl(Date.now() + conceptDagen(s) * 86400000),
   };
@@ -53,10 +56,10 @@ export function compose(lead, kind, s) {
   // De eerste mail zet de looptijd opnieuw vanaf het versturen (sendBatch schrijft dat ook weg).
   if (kind !== "opvolging" && lead.concept_status === "klaar") lead = { ...lead, concept_expires: new Date(Date.now() + conceptDagen(s) * 86400000).toISOString() };
   const t = s.b2b.templates[kind === "opvolging" ? "opvolging" : "eerste"];
-  const subject = fillTemplate(t.subject, lead, s).slice(0, 200);
+  const subject = fillTemplate(t.subject, lead, s, kind).slice(0, 200);
   // Besluit Maxim (27-10-2026): geen bedrijfsnaam/KvK meer onder de mail, alleen de afmeldregel.
   const footer = `\n\n--\nGeen berichten meer van ons? Hier afmelden: ${unsubUrl(lead.id)}`;
-  let body = fillTemplate(t.body, lead, s).replace(/^- /gm, "• "); // opsommingen als bolletjes
+  let body = fillTemplate(t.body, lead, s, kind).replace(/^- /gm, "• "); // opsommingen als bolletjes
   // Elke eerste mail bevat de voorbeeldwebsite; staat de link niet in de tekst, dan na de aanhef.
   if (kind !== "opvolging" && conceptReady(lead) && !body.includes(conceptUrl(lead.concept_token))) {
     const [aanhef, ...rest] = body.split(/\n\n/);
@@ -102,6 +105,13 @@ ${hoofd.split(/\n\n/).map((p) => {
     const knop = regels.findIndex((r) => /^https?:\/\/\S+\/voorbeeld\/\S+$/.test(r.trim()));
     // Kopje boven een opsomming ("Alles in één, zonder verrassingen:") vetgedrukt.
     if (knop < 0 && regels.length > 1 && /:$/.test(regels[0].trim()) && regels.slice(1).every((r) => /^[•-] /.test(r.trim()))) return `<p style="margin:0 0 12px"><b>${linkify(regels[0])}</b><br>${regels.slice(1).map(linkify).join("<br>")}</p>`;
+    // Een regel met alleen de link om een belafspraak in te plannen wordt een tweede, rustige knop.
+    const bel = regels.findIndex((r) => /^https?:\/\/\S+\/interesse\?\S*keuze=telefoon\S*$/.test(r.trim()));
+    if (knop < 0 && bel >= 0) {
+      const url = regels[bel].trim(), href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
+      const tekst = regels.filter((_, i) => i !== bel).join("\n");
+      return `${tekst ? `<p style="margin:0 0 12px">${linkify(tekst).replace(/\n/g, "<br>")}</p>` : ""}<p style="margin:4px 0 18px"><a href="${escH(href)}" style="display:inline-block;background:#FFFFFF;color:#1C0747;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:8px;border:2px solid #1C0747">Plan een belafspraak</a></p>`;
+    }
     if (knop < 0) return `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`;
     const url = regels[knop].trim();
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
@@ -127,6 +137,20 @@ export function perUurVan(b2b) {
   const vast = Number(b2b.perUur || 0);
   if (vast > 0) return vast;
   return Math.max(1, Math.ceil(Number(b2b.dailyMax || 40) / Math.max(1, tot - van)));
+}
+
+// Automatisch opvolgen (besluit Maxim 30-10-2026): na followupDays de opvolgmail, alleen als er niet gereageerd, afgemeld of gebounced is
+// en het voorbeeld nog bestaat (niet verlopen). Zet de lead op opvolging_goedgekeurd; sendBatch verstuurt binnen daglimiet en verzendtijden.
+export async function autoOpvolgen({ max = 40 } = {}) {
+  const s = await getSettings();
+  if (s.b2b.autoOpvolgen === false) return { uit: true };
+  const r = await q(`UPDATE leads SET status = 'opvolging_goedgekeurd', updated_at = NOW() WHERE id IN (
+      SELECT l.id FROM leads l JOIN concepts c ON c.lead_id = l.id
+      WHERE l.status = 'verstuurd' AND l.email IS NOT NULL AND l.sent_at < NOW() - ($1 || ' days')::interval
+        AND l.reply_at IS NULL AND l.unsub_at IS NULL AND l.bounced_at IS NULL AND l.klacht_at IS NULL
+        AND c.status = 'klaar' AND (c.expires_at IS NULL OR c.expires_at > NOW())
+      ORDER BY l.sent_at LIMIT $2) RETURNING id`, [String(s.b2b.followupDays || 5), max]);
+  return { klaargezet: r.length };
 }
 
 // ---------------------------------------------------------------- versturen (vanuit tick)
