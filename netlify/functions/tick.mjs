@@ -26,6 +26,7 @@ async function ronde(started) {
   await step("credits", () => controleerCredits({ budgetMs: Math.min(6000, left() - 5000) }), 40000);
   const spaar = await spaarstand().catch(() => false);
   // Mails eerst: anders is de ronde (max ±13 s) al op door het scannen van websites en gaan er geen mails uit.
+  if (new Date().getMinutes() < 5) await step("b2b-opvolgen", async () => (await import("../lib/b2b.mjs")).autoOpvolgen());
   await step("b2b-send", () => sendBatch({ max: 3, budgetMs: Math.min(7000, left() - 4000) }));
   const minuut = new Date().getMinutes();
   if (!spaar || minuut < 5 || (minuut >= 30 && minuut < 35)) await step("uptime", () => runChecks({ max: 8 }));
