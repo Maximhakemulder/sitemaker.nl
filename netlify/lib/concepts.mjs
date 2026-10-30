@@ -590,15 +590,18 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
-.sm-strook{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:14px;z-index:2147482999;display:flex;align-items:center;gap:6px;background:rgba(28,7,71,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#E7E3F4;border-radius:999px;padding:6px 12px 6px 9px;box-shadow:0 6px 18px rgba(14,3,40,.25);font:12.5px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;transition:opacity .4s ease,transform .4s ease}
-.sm-strook.weg{opacity:0;transform:translateY(8px);pointer-events:none}
-.sm-strook svg{flex:none;width:13px;height:13px;color:#0CC0DF}.sm-strook b{font-weight:600;color:#fff}
-.sm-strook button{display:none}
-@media(max-width:700px){.sm-strook{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));font-size:12px}}
+.sm-slot{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147482999;width:48px;height:48px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
+.sm-slot svg{width:21px;height:21px}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
+@media(max-width:700px){.sm-slot{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:44px;height:44px}}
+.sm-prive .sm-intro-kaart{position:relative;max-width:400px;text-align:center;padding:30px 24px 24px}
+.sm-prive-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#1C0747;color:#0CC0DF;display:grid;place-items:center}.sm-prive-ic svg{width:24px;height:24px}
+.sm-prive h2{margin:0 0 8px;font-size:21px}.sm-prive p{margin:0!important}
+.sm-x{position:absolute;top:10px;right:10px;width:38px;height:38px;border:0;border-radius:50%;background:#EEF0F6;color:#1C0747;font:700 22px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}.sm-x:hover{background:#E1E4EE}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
-  const strook = `<div class="sm-strook" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span><b>Privé ontwerp</b> · verloopt ${d}</span><button type="button" aria-label="Sluiten">×</button></div>`;
+  const slot = `<button type="button" class="sm-slot" aria-label="Privé ontwerp: meer informatie"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>`;
+  const prive = `<div class="sm-intro sm-prive" role="dialog" aria-modal="true" aria-labelledby="sm-prive-t" hidden><div class="sm-intro-kaart"><button type="button" class="sm-x" aria-label="Sluiten">×</button><div class="sm-prive-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h2 id="sm-prive-t">Alleen voor jullie gemaakt</h2><p>Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</p></div></div>`;
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we verwijderen dit voorstel direct en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch interesse</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
@@ -606,13 +609,16 @@ function priveScript(token, naam, datum, hq = false) {
   return `<script>(function(){var d=document,T=${JSON.stringify(token)},K="sm-intro-"+T;
 function maak(h){var t=d.createElement("div");t.innerHTML=h;return t.firstElementChild}
 var dlg=maak(${JSON.stringify(dlg)});d.body.appendChild(dlg);
-var gezien=false;try{gezien=sessionStorage.getItem(K)==="1"}catch(e){}
 function vast(a){d.documentElement.classList.toggle("sm-vast",a)}
-var strook=null;function sluit(){if(!strook)return;strook.classList.add("weg");var s=strook;strook=null;setTimeout(function(){s.remove()},450);try{sessionStorage.setItem(K,"1")}catch(e){}}
-if(!gezien){strook=maak(${JSON.stringify(strook)});d.body.appendChild(strook);strook.querySelector("button").addEventListener("click",sluit);setTimeout(sluit,9000)}
+var slot=maak(${JSON.stringify(slot)}),prive=maak(${JSON.stringify(prive)});d.body.appendChild(slot);d.body.appendChild(prive);
+function toonPrive(){prive.hidden=false;vast(true);prive.querySelector(".sm-x").focus()}
+function sluitPrive(){if(prive.hidden)return;prive.hidden=true;vast(false);slot.focus()}
+slot.addEventListener("click",toonPrive);prive.querySelector(".sm-x").addEventListener("click",sluitPrive);
+prive.addEventListener("click",function(e){if(e.target===prive)sluitPrive()});
+function sluit(){}
 d.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-sm-weg]");if(!t)return;e.preventDefault();sluit();dlg.hidden=false;vast(true);dlg.querySelector("[data-sm-bewaar]").focus()});
 dlg.querySelector("[data-sm-bewaar]").addEventListener("click",function(){dlg.hidden=true;vast(false)});
-d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else sluit()});
+d.addEventListener("keydown",function(e){if(e.key!=="Escape")return;if(!dlg.hidden){dlg.hidden=true;vast(false)}else sluitPrive()});
 var ja=dlg.querySelector("[data-sm-ja]"),fout=dlg.querySelector(".sm-dlg-fout");
 ja.addEventListener("click",function(){if(${hq ? "true" : "false"}){fout.textContent="HQ-weergave: hier wordt niemand afgemeld. Zo ziet de lead dit.";fout.hidden=false;return}ja.disabled=true;ja.textContent="Bezig…";fout.hidden=true;
 fetch("/api/voorbeeld/"+T+"/verwijderen",{method:"POST",headers:{"x-sm":"1"}}).then(function(r){if(!r.ok)throw 0;
