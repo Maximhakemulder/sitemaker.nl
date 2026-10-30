@@ -590,15 +590,15 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-knoppen{display:grid;gap:10px}.sm-dlg-nee{display:flex;width:100%;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:#D93636;color:#fff;border:0;font:700 16px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
-.sm-strook{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,0);z-index:2147482999;width:max-content;max-width:calc(100% - 20px);display:flex;align-items:center;gap:10px;background:#1C0747;color:#fff;border-radius:14px;padding:10px 8px 10px 14px;box-shadow:0 12px 34px rgba(14,3,40,.35);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .4s ease,transform .4s ease}
-.sm-strook.weg{opacity:0;transform:translate(-50%,16px);pointer-events:none}
-.sm-strook svg{flex:none;width:18px;height:18px;color:#0CC0DF}.sm-strook b{font-weight:700;color:#0CC0DF}
-.sm-strook button{flex:none;width:30px;height:30px;border:0;border-radius:8px;background:rgba(255,255,255,.14);color:#fff;font:700 16px/1 system-ui,sans-serif;cursor:pointer}
-@media(max-width:700px){.sm-strook{font-size:14px;width:calc(100% - 20px);bottom:calc(96px + env(safe-area-inset-bottom))}}
+.sm-strook{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:14px;z-index:2147482999;display:flex;align-items:center;gap:6px;background:rgba(28,7,71,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#E7E3F4;border-radius:999px;padding:6px 12px 6px 9px;box-shadow:0 6px 18px rgba(14,3,40,.25);font:12.5px/1.3 system-ui,-apple-system,"Segoe UI",sans-serif;white-space:nowrap;transition:opacity .4s ease,transform .4s ease}
+.sm-strook.weg{opacity:0;transform:translateY(8px);pointer-events:none}
+.sm-strook svg{flex:none;width:13px;height:13px;color:#0CC0DF}.sm-strook b{font-weight:600;color:#fff}
+.sm-strook button{display:none}
+@media(max-width:700px){.sm-strook{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));font-size:12px}}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
-  const strook = `<div class="sm-strook" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span><b>Alleen voor jullie gemaakt.</b> Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</span><button type="button" aria-label="Sluiten">×</button></div>`;
+  const strook = `<div class="sm-strook" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span><b>Privé ontwerp</b> · verloopt ${d}</span><button type="button" aria-label="Sluiten">×</button></div>`;
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we verwijderen dit voorstel direct en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch interesse</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
