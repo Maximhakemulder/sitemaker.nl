@@ -191,11 +191,15 @@ export async function status() {
     COUNT(*) FILTER (WHERE l.status = 'kandidaat')::int AS kandidaten, COUNT(*) FILTER (WHERE l.created_at > NOW() - INTERVAL '24 hours')::int AS nieuw24u FROM leads l`);
   const leads = await q("SELECT status, COUNT(*)::int AS n FROM leads GROUP BY status");
   const [{ n: gestartVandaag }] = await q("SELECT COUNT(*)::int AS n FROM concepts WHERE started_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
+  // Mailvoorraad (besluit Maxim 30-10-2026): zolang er minder dan 100 goedgekeurde + te beoordelen concepten klaarstaan, maken de dagrondes ook gewone concepten.
+  const [mv] = await q(`SELECT COUNT(*) FILTER (WHERE l.status = 'goedgekeurd')::int AS goedgekeurd,
+    COUNT(*) FILTER (WHERE l.status = 'nieuw')::int AS beoordelen FROM concepts c JOIN leads l ON l.id = c.lead_id WHERE c.status = 'klaar' AND l.sent_at IS NULL`);
+  const mailvoorraad = { ...mv, totaal: mv.goedgekeurd + mv.beoordelen, doel: 100, aanvullen: mv.goedgekeurd + mv.beoordelen < 100 };
   const { spaarstand } = await import("./credits.mjs");
   const pulse = (await one("SELECT value FROM settings WHERE key = 'team_pulse'"))?.value || {};
   const kies = (k) => pulse[k] || null;
   const { voorraad } = await import("./b2b.mjs");
-  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag, voorraadVannacht: await voorraad(),
+  return { perStatus: Object.fromEntries(rows.map((r) => [r.status, r.n])), vandaagKlaar: vandaag, mailvoorraad, voorraadVannacht: await voorraad(),
     diagnose: { concepten: s.b2b?.concepten || {}, scout: { categorieen: (s.b2b?.scout?.categories || s.scout?.categories || []).length }, gestartVandaag, spaarstand: await spaarstand().catch(() => null),
       aanvoer, leads: Object.fromEntries(leads.map((r) => [r.status, r.n])), tick: { concepten: kies("concepten"), scout: kies("scout"), research: kies("research") } } };
 }
