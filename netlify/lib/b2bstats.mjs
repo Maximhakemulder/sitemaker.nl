@@ -9,10 +9,10 @@ const VERSTUURD = "('verstuurd','opvolging_goedgekeurd','opgevolgd','reactie','a
 // Mailprestaties voor mails die sinds `vanaf` zijn verstuurd (per mail: eerste of opvolging).
 // Afgeleverd = verstuurd zonder bounce. Geopend is een indicatie (sommige mailapps laden plaatjes vooraf of blokkeren ze).
 // Geklikt = op een link geklikt of het concept bekeken. Percentages t.o.v. afgeleverd.
-async function mailStats(vanaf) {
+async function mailStats(vanaf, tot = null) {
   const r = await one(`WITH m AS (
       SELECT DISTINCT ON (ref, kind) substring(ref from 6)::int AS lead_id, replace(kind, 'b2b-', '') AS mail, ok, created_at
-      FROM mail_log WHERE kind LIKE 'b2b-%' AND ref LIKE 'lead:%' AND ($1::timestamptz IS NULL OR created_at >= $1) ORDER BY ref, kind, created_at DESC)
+      FROM mail_log WHERE kind LIKE 'b2b-%' AND ref LIKE 'lead:%' AND ($1::timestamptz IS NULL OR created_at >= $1) AND ($2::timestamptz IS NULL OR created_at < $2) ORDER BY ref, kind, created_at DESC)
     SELECT
       COUNT(*) FILTER (WHERE m.ok)::int AS verstuurd,
       COUNT(*) FILTER (WHERE NOT m.ok)::int AS mislukt,
@@ -25,22 +25,22 @@ async function mailStats(vanaf) {
       COUNT(*) FILTER (WHERE m.ok AND l.klacht_at >= m.created_at)::int AS klachten,
       COUNT(*) FILTER (WHERE m.ok AND m.mail = 'eerste')::int AS eerste,
       COUNT(*) FILTER (WHERE m.ok AND m.mail = 'opvolging')::int AS opvolging
-    FROM m JOIN leads l ON l.id = m.lead_id LEFT JOIN concepts c ON c.lead_id = m.lead_id`, [vanaf]);
+    FROM m JOIN leads l ON l.id = m.lead_id LEFT JOIN concepts c ON c.lead_id = m.lead_id`, [vanaf, tot]);
   const afgeleverd = Math.max(0, r.verstuurd - r.bounces);
   const p = (n, d) => (d ? Math.round((n / d) * 1000) / 10 : null);
   return { ...r, afgeleverd, pct: { afgeleverd: p(afgeleverd, r.verstuurd), bounce: p(r.bounces, r.verstuurd), geopend: p(r.geopend, afgeleverd), geklikt: p(r.geklikt, afgeleverd), reacties: p(r.reacties, afgeleverd), afmeldingen: p(r.afmeldingen, afgeleverd), klachten: p(r.klachten, afgeleverd) } };
 }
 export async function mailPrestaties() {
   const T = (d) => new Date(Date.now() - d * 86400000).toISOString();
-  const vandaag = (await one(`SELECT ${T0} AS t`)).t;
-  const [a, b, c, d] = await Promise.all([mailStats(vandaag), mailStats(T(7)), mailStats(T(30)), mailStats(null)]);
+  const { t: vandaag, g: gisteren } = await one(`SELECT ${T0} AS t, ${T0} - INTERVAL '1 day' AS g`);
+  const [a, g, b, c, d] = await Promise.all([mailStats(vandaag), mailStats(gisteren, vandaag), mailStats(T(7)), mailStats(T(30)), mailStats(null)]);
   // Signalen: bij een te hoge bounce of klachten eerst rustiger aan.
   const s = d.verstuurd >= 20 ? c : d;
   const waarschuwingen = [];
   if (s.verstuurd >= 20 && s.pct.bounce > 3) waarschuwingen.push(`Bounce ${s.pct.bounce}% (boven 3%): controleer de mailadressen en verlaag de daglimiet.`);
   if (s.verstuurd >= 20 && s.pct.klachten > 0.3) waarschuwingen.push(`Klachten ${s.pct.klachten}%: pas de tekst aan en verlaag de daglimiet.`);
   if (s.verstuurd >= 20 && s.pct.afmeldingen > 2) waarschuwingen.push(`Afmeldingen ${s.pct.afmeldingen}%: de mail past mogelijk niet bij deze branches.`);
-  return { vandaag: a, d7: b, d30: c, alles: d, waarschuwingen };
+  return { vandaag: a, gisteren: g, d7: b, d30: c, alles: d, waarschuwingen };
 }
 
 export async function b2bDashboard() {
