@@ -125,3 +125,10 @@
     finally { knop.disabled = false; knop.textContent = "Afspraak bevestigen"; }
   });
 })();
+
+// Social proof in de hero van de interessepagina: echte reviewscore en het echte aantal ontwerpen van deze week.
+(() => {
+  const score = document.getElementById("ik-score"), teller = document.getElementById("ik-teller");
+  if (score) fetch("/api/reviews").then((r) => r.json()).then((d) => { if (!d?.count) return; document.getElementById("ik-score-n").textContent = Number(d.average).toFixed(1).replace(".", ","); score.hidden = false; }).catch(() => {});
+  if (teller) fetch("/api/start/teller").then((r) => r.json()).then((d) => { if (!d?.toon) return; document.getElementById("ik-teller-n").textContent = Number(d.ontwerpen).toLocaleString("nl-NL"); teller.hidden = false; }).catch(() => {});
+})();

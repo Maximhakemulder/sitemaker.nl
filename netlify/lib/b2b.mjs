@@ -100,6 +100,8 @@ ${hoofd.split(/\n\n/).map((p) => {
     // Een regel met alleen de link naar de voorbeeldwebsite wordt een duidelijke knop.
     const regels = p.split("\n");
     const knop = regels.findIndex((r) => /^https?:\/\/\S+\/voorbeeld\/\S+$/.test(r.trim()));
+    // Kopje boven een opsomming ("Alles in één, zonder verrassingen:") vetgedrukt.
+    if (knop < 0 && regels.length > 1 && /:$/.test(regels[0].trim()) && regels.slice(1).every((r) => /^[•-] /.test(r.trim()))) return `<p style="margin:0 0 12px"><b>${linkify(regels[0])}</b><br>${regels.slice(1).map(linkify).join("<br>")}</p>`;
     if (knop < 0) return `<p style="margin:0 0 12px">${linkify(p).replace(/\n/g, "<br>")}</p>`;
     const url = regels[knop].trim();
     const href = meet?.kliks ? trackLink(meet.leadId, meet.mail, url) : url;
