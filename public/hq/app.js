@@ -1005,7 +1005,7 @@
   const b2bTabs = (actief, d) => html`<nav class="sub-tabs" aria-label="B2B"><a href="#b2b" ${actief === "overzicht" ? raw('aria-current="page"') : ""}>Overzicht</a><a href="#b2b/leads" ${actief === "leads" ? raw('aria-current="page"') : ""}>Leads${d ? html` <span class="n">${d}</span>` : ""}</a><a href="#concepten">Concepten</a></nav>`;
   let mailPeriode = "d7";
   function mailPrestaties(vak, d) {
-    const P = { vandaag: "Vandaag", d7: "7 dagen", d30: "30 dagen", alles: "Alles" };
+    const P = { vandaag: "Vandaag", gisteren: "Gisteren", d7: "7 dagen", d30: "30 dagen", alles: "Alles" };
     const s = d.mail[mailPeriode], pc = (v) => (v == null ? "–" : String(v).replace(".", ",") + "%");
     const tegel = (waarde, naam, sub, cls = "") => html`<div class="kpi ${cls}"><div class="waarde">${waarde}</div><div class="naam">${naam}${sub ? html`<br><span class="klein">${sub}</span>` : ""}</div></div>`;
     render(vak, html`<div class="paneel-kop"><h2>Mailprestaties</h2>
