@@ -591,17 +591,18 @@ html.sm-vast,html.sm-vast body{overflow:hidden!important}
 .sm-dlg-fout{color:#C0262D;font-weight:600;font-size:14px;margin:10px 0 0!important}
 .sm-weg-klaar a{display:inline-flex;margin-top:4px;color:#1C0747;font-weight:700}
 .sm-slot{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:2147482999;width:84px;height:84px;border-radius:50%;border:0;padding:0;display:grid;place-items:center;background:#1C0747;color:#0CC0DF;box-shadow:0 8px 22px rgba(14,3,40,.35),0 0 0 2px rgba(255,255,255,.9);cursor:pointer}
-.sm-slot span{font-size:40px;line-height:1}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
+.sm-slot{margin:0!important;transform:none!important;top:auto!important;right:auto!important}.sm-slot span{font-size:40px;line-height:1}.sm-slot:hover{transform:scale(1.05)}.sm-slot:focus-visible{outline:3px solid #0CC0DF;outline-offset:3px}
 @media(max-width:700px){.sm-slot{left:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:56px;height:56px}.sm-slot span{font-size:26px}}
-.sm-prive .sm-intro-kaart{position:relative;max-width:400px;text-align:center;padding:30px 24px 24px}
+.sm-prive .sm-intro-kaart{position:relative;max-width:400px;text-align:center;padding:24px 24px 26px}
 .sm-prive-ic{width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#1C0747;color:#0CC0DF;display:grid;place-items:center}.sm-prive-ic span{font-size:26px;line-height:1}
 .sm-prive h2{margin:0 0 8px;font-size:21px}.sm-prive p{margin:0!important}
-.sm-x{position:absolute;top:12px;right:12px;width:40px;height:40px;border:0;border-radius:50%;background:#1C0747;color:#fff;font:700 22px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}.sm-x:hover{background:#2E1466}
+.sm-prive-kop{display:flex!important;justify-content:flex-end!important;margin:-14px -10px 0 0!important;height:40px}
+.sm-prive .sm-x{all:unset;box-sizing:border-box!important;position:static!important;width:40px!important;height:40px!important;border-radius:50%!important;background:#1C0747!important;color:#fff!important;font:700 22px/40px system-ui,-apple-system,sans-serif!important;text-align:center!important;cursor:pointer!important;transform:none!important;margin:0!important}.sm-prive .sm-x:hover{background:#2E1466!important}.sm-prive .sm-x:focus-visible{outline:3px solid #0CC0DF!important;outline-offset:2px!important}
 `;
 function priveScript(token, naam, datum, hq = false) {
   const n = escH(naam), d = escH(datum);
   const slot = `<button type="button" class="sm-slot" aria-label="Privé ontwerp: meer informatie"><span aria-hidden="true">🔒</span></button>`;
-  const prive = `<div class="sm-intro sm-prive" role="dialog" aria-modal="true" aria-labelledby="sm-prive-t" hidden><div class="sm-intro-kaart"><button type="button" class="sm-x" aria-label="Sluiten">×</button><div class="sm-prive-ic"><span aria-hidden="true">🔒</span></div><h2 id="sm-prive-t">Alleen voor jullie gemaakt</h2><p>Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</p></div></div>`;
+  const prive = `<div class="sm-intro sm-prive" role="dialog" aria-modal="true" aria-labelledby="sm-prive-t" hidden><div class="sm-intro-kaart"><div class="sm-prive-kop"><button type="button" class="sm-x" aria-label="Sluiten">×</button></div><div class="sm-prive-ic"><span aria-hidden="true">🔒</span></div><h2 id="sm-prive-t">Alleen voor jullie gemaakt</h2><p>Niet openbaar, niet in Google en verdwijnt vanzelf op ${d}.</p></div></div>`;
   const dlg = `<div class="sm-intro" role="alertdialog" aria-modal="true" aria-labelledby="sm-dlg-t" hidden><div class="sm-intro-kaart">
 <h2 id="sm-dlg-t">Geen interesse?</h2><p>Dan meld je je af: we verwijderen dit voorstel direct en je hoort niets meer van ons. Dit kan niet ongedaan worden gemaakt.</p>
 <div class="sm-dlg-knoppen"><button type="button" class="sm-intro-actie" data-sm-bewaar>Nee, toch interesse</button><button type="button" class="sm-dlg-nee" data-sm-ja>Meld me af en verwijder alles</button></div><p class="sm-dlg-fout" hidden></p></div></div>`;
