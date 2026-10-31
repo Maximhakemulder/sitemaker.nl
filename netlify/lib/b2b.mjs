@@ -131,13 +131,15 @@ export async function recordTrack({ l, m, u, ua = "" }) {
   return true;
 }
 
-// Verzenddag (besluit Maxim 31-10-2026): ma–vr volgens sendHours/dailyMax; zaterdag beperkt (standaard 9:00 tot 13:00, max 40); zondag niet.
-export const ZATERDAG = { aan: true, van: 9, tot: 13, max: 40 };
+// Verzenddag (besluit Maxim 31-10-2026): ma–za volgens sendHours/dailyMax (zaterdag net als een werkdag, 100 per dag); zondag niet.
+// settings.b2b.zaterdag {aan, van, tot, max} kan zaterdag nog apart beperken.
+export const ZATERDAG = { aan: true };
 export function verzendDag(s, now = new Date()) {
   const wd = new Date(dayKey(now) + "T12:00:00Z").getUTCDay();
   if (wd === 0) return { dag: "zondag", open: false, uren: s.b2b.sendHours || [8, 17], max: 0 };
   if (wd === 6) {
-    const z = { ...ZATERDAG, ...(s.b2b.zaterdag || {}) };
+    const [van, tot] = s.b2b.sendHours || [8, 17];
+    const z = { van, tot, max: Number(s.b2b.dailyMax || 40), ...ZATERDAG, ...(s.b2b.zaterdag || {}) };
     return { dag: "zaterdag", open: !!z.aan, uren: [Number(z.van), Number(z.tot)], max: z.aan ? Number(z.max) : 0 };
   }
   return { dag: "werkdag", open: true, uren: s.b2b.sendHours || [8, 17], max: Number(s.b2b.dailyMax || 40) };
