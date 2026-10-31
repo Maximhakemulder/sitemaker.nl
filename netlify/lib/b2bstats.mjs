@@ -90,13 +90,14 @@ export async function b2bDashboard() {
     one("SELECT COUNT(*) FILTER (WHERE status = 'goedgekeurd')::int AS eerste, COUNT(*) FILTER (WHERE status = 'opvolging_goedgekeurd')::int AS opvolging FROM leads"),
     q("SELECT source, COUNT(*)::int AS n FROM leads GROUP BY source"),
   ]);
-  const max = Number(s.b2b.dailyMax || 40);
-  const [van, tot2] = s.b2b.sendHours || [8, 17];
   const now = new Date();
-  const wd = new Date(dayKey(now) + "T12:00:00Z").getUTCDay();
+  const { verzendDag } = await import("./b2b.mjs");
+  const dag = verzendDag(s, now);
+  const max = dag.dag === "werkdag" ? Number(s.b2b.dailyMax || 40) : dag.max;
+  const [van, tot2] = dag.uren;
   const h = hourAms(now);
-  const weekend = wd === 0 || wd === 6;
-  const venster = env("B2B_ANY_TIME") === "1" || (!weekend && h >= van && h < tot2);
+  const weekend = !dag.open;
+  const venster = env("B2B_ANY_TIME") === "1" || (dag.open && h >= van && h < tot2);
   const rest = Math.max(0, max - vandaag.verstuurd);
   const cats = (sc.categories || []).filter(Boolean), places = (sc.places || []).filter(Boolean);
   const plan = cats.map((cat) => {
