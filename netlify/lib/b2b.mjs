@@ -131,6 +131,18 @@ export async function recordTrack({ l, m, u, ua = "" }) {
   return true;
 }
 
+// Verzenddag (besluit Maxim 31-10-2026): ma–vr volgens sendHours/dailyMax; zaterdag beperkt (standaard 9:00 tot 13:00, max 40); zondag niet.
+export const ZATERDAG = { aan: true, van: 9, tot: 13, max: 40 };
+export function verzendDag(s, now = new Date()) {
+  const wd = new Date(dayKey(now) + "T12:00:00Z").getUTCDay();
+  if (wd === 0) return { dag: "zondag", open: false, uren: s.b2b.sendHours || [8, 17], max: 0 };
+  if (wd === 6) {
+    const z = { ...ZATERDAG, ...(s.b2b.zaterdag || {}) };
+    return { dag: "zaterdag", open: !!z.aan, uren: [Number(z.van), Number(z.tot)], max: z.aan ? Number(z.max) : 0 };
+  }
+  return { dag: "werkdag", open: true, uren: s.b2b.sendHours || [8, 17], max: Number(s.b2b.dailyMax || 40) };
+}
+
 // Mails per uur: vast getal, of automatisch de daglimiet gelijk verdeeld over de verzenduren.
 export function perUurVan(b2b) {
   const [van, tot] = b2b.sendHours || [8, 17];
@@ -158,11 +170,11 @@ export async function sendBatch({ max = 3, budgetMs = 9000 } = {}) {
   if (!mailReady()) return { skipped: "mail" };
   const s = await getSettings();
   const now = new Date();
-  const wd = new Date(dayKey(now) + "T12:00:00Z").getUTCDay();
-  const [from, to] = s.b2b.sendHours || [8, 17];
-  if (env("B2B_ANY_TIME") !== "1" && (wd === 0 || wd === 6 || hourAms(now) < from || hourAms(now) >= to)) return { skipped: "buiten verzendtijd" };
+  const dag = verzendDag(s, now);
+  const [from, to] = dag.uren;
+  if (env("B2B_ANY_TIME") !== "1" && (!dag.open || hourAms(now) < from || hourAms(now) >= to)) return { skipped: "buiten verzendtijd" };
   const [{ n: today }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('day', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
-  let room = Math.max(0, Number(s.b2b.dailyMax || 40) - today);
+  let room = Math.max(0, (env("B2B_ANY_TIME") === "1" ? Number(s.b2b.dailyMax || 40) : dag.max) - today);
   if (!room) return { skipped: "daglimiet" };
   const [{ n: ditUur }] = await q("SELECT COUNT(*)::int AS n FROM mail_log WHERE kind LIKE 'b2b-%' AND ok AND created_at >= (date_trunc('hour', NOW() AT TIME ZONE 'Europe/Amsterdam') AT TIME ZONE 'Europe/Amsterdam')");
   room = Math.min(room, Math.max(0, perUurVan(s.b2b) - ditUur));

@@ -1041,7 +1041,7 @@
     const maxDag = Math.max(1, ...d.dagen.map((x) => Math.max(x.gevonden, x.verstuurd)));
     const vensterTekst = !z.mail ? "Mail is nog niet ingesteld; goedgekeurde mails wachten in de wachtrij."
       : z.open ? `Verzenden staat open tot ${z.uren[1]}:00. Elke 5 minuten gaan er een paar de deur uit.`
-      : z.weekend ? `Weekend: maandag vanaf ${z.uren[0]}:00 gaat het verzenden weer verder.`
+      : z.weekend ? `Zondag: maandag gaat het verzenden weer verder.`
       : `Buiten verzendtijd (${z.uren[0]}:00–${z.uren[1]}:00).`;
     const scoutTekst = !sc.klaar ? "Outscraper is niet gekoppeld (OUTSCRAPER_API_KEY)." : !sc.actief ? "De scout staat uit. Zet hem aan om elke werkdag automatisch te zoeken." : `Zoekt elke werkdag vanaf 7:00 automatisch, ongeveer ${sc.perDag} bedrijven per dag.`;
     render(main, html`
