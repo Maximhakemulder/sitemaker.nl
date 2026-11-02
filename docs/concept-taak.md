@@ -63,6 +63,18 @@ de aanvrager: maak het dus net zo goed als altijd, maar laat het niet liggen.
   Staat er in `bron.tekst` een "Gewenste hoofdkleur", gebruik die als primaire kleur (`kleurBron: "gekozen"`); anders kies je een kleur die bij het vak past. Afmelden bij een aanvraag alleen als het echt geen bedrijf
   is of een webshop; dan krijgt Maxim een melding in HQ.
 
+## Kwaliteitslat: zo goed als (of beter dan) de concurrent (besluit Maxim 02-11-2026)
+Maxim vergeleek met de concepten van een concurrent (tandartspraktijk, keuringsbedrijf, wellness-studio, pompen/turbines, factoring, vastgoed). Wat die sterk maakt, en wat wij nu ook doen. Ze zijn een lat, geen sjabloon: kopieer nooit hun indeling, teksten of beelden.
+1. **Een complete site, geen folder.** Hun pagina's hebben 10 tot 14 secties. Een gewone bedrijfssite van ons krijgt minimaal: hero, diensten (genummerd of als kaarten), wie/over ons, werkwijze in 3 tot 4 stappen (bijv. "zo verloopt een bezoek"), foto's, veelgestelde vragen (4 tot 6, uit hun eigen tekst of logisch uit hun diensten), openingstijden/werkgebied en een contactblok met formulier. Hebben ze spoed, certificaten of een team in hun tekst: eigen blok.
+2. **Eén kenmerkend, op hun vak toegespitst element.** Bij hen: een kiezer die op drie vragen een advies geeft, een scrolbare teller, een sleepbaar onderdeel, een ademhalingsoefening, een rekenhulp. Wij hebben geen eigen script, dus bouw dit met `data-stap`/`data-toon`/`data-verhaal` (stappen die opengaan), `data-horizontaal` (swipen langs diensten), `data-onthul`/`data-scrub` (beeld dat meebeweegt met scrollen) en `data-tekenen`. Een kiezer in stappen ("Wat heb je nodig? → Wanneer? → Aanbevolen dienst") met `data-stap` is bijna altijd mogelijk en werkt goed op mobiel.
+2b. **Echte foto's voor de hele breedte.** Volle breedte hero-foto en foto's per dienst en per team, uit hun eigen site. Gebruik niet dezelfde foto op drie plekken (bij de concurrent valt dat op).
+3. **Vertrouwen met echte feiten.** Cijfers, jaren, aantallen, certificaten, erkenningen, verzekeraars, KvK/BIG/VCA en teamnamen alleen als ze letterlijk in `bron.json` staan. Staan er geen cijfers: gebruik dan geen cijferblok, maar betrouwbare, controleerbare dingen (openingstijden, werkgebied, hoe een afspraak werkt, wat ze doen). Nooit verzonnen reviews of aantallen. Placeholders zoals "[Naam partner]" mogen nooit in een concept staan.
+4. **Structuur die scant.** Genummerde kaarten (01, 02, 03) alleen als het echt een volgorde of lijst van diensten is, korte tussenkoppen en een tussenkop-label dat iets zegt. Cijfers groot, uitleg klein.
+5. **Overal een volgende stap.** Vaste kop met knop "Maak een afspraak" en telefoon, herhaalde knop onderaan elk blok, en op mobiel een vaste balk met Bel/Mail/Route (zie `.sm-actiebalk`). Openingstijden direct onder de hero als ze bekend zijn.
+6. **Eerst helder wat ze doen.** De kop van de hero zegt in één regel wat het bedrijf voor wie doet, in hun woorden, niet "Welkom bij …". Eén accent in de kop (lettertype/kleur) is genoeg.
+7. **Zichtbaar afgemaakt.** Geen lege vlakken, geen dubbele foto's achter elkaar, geen half uitgewerkte blokken, geen tekst in de verkeerde taal.
+Komt het concept na jouw eigen beoordeling niet op dit niveau (hero + minimaal acht secties, één kenmerkend element, goede mobiele weergave), werk dan door tot het wel zo is.
+
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
    foto's in `afbeeldingen/` met de Read-tool. Kijk echt: wat doet dit bedrijf, welke foto's zijn goed, welke kleuren heeft het logo?
