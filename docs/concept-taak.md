@@ -88,7 +88,29 @@ Gezien op het concept van de concurrent voor een tandartspraktijk (gezien in de 
 - **Knoppen**: altijd pillen (volledig afgerond), gevuld in merkkleur of omlijnd; een hover/tik met lichte lift.
 - **Foto's**: echte foto's van team, ruimte en werk; mensen mogen herkenbaar in beeld zijn. Teamkaartje met naam en functie over de foto geschoven (alleen namen die in `bron.json` staan).
 - **Kleur**: één merkkleur (uit het logo) + een lichte tint ervan + een donkere variant. Verder wit en bijna-wit. Niet meer dan één accentkleur.
-- Bij bedrijven waar dit echt niet past (bijv. een stoere bouwer of notaris) mag de typografie en kleur anders, maar het opzet (zwevende kop, volle hero, kaarten, cijfer/waardenband, pil-knoppen) blijft.
+- De Totaal-look is één van meerdere richtingen (zie hieronder). Kies per bedrijf de richting die bij hun merk en vak past; kopieer niet voor elk bedrijf dezelfde look.
+
+## Stijl-richtingen per bedrijf (analyse concurrent, 02-11-2026)
+Uit alle zeven concurrent-concepten blijkt: elke site heeft een **eigen stijl die bij het merk past** én dezelfde kwaliteitsbouwstenen. Kies per concept één richting, en zet daar altijd de gemeenschappelijke bouwstenen onder.
+
+**Richtingen** (gezien):
+- **Zacht en warm (zorg, wellness, dienstverlening)**: lichte, getinte vlakken, grote afgeronde kaarten, pil-knoppen, serif-cursief accent. Dit is de Totaal-look.
+- **Webshop-chic (dieren, wonen, kleding, producten)**: crème achtergrond, hero met een grote afgeronde foto met een klein productkaartje eroverheen (naam, kleuren, "vanaf" prijs alleen als in de bron), kop in een elegante schreef met cursieve tweede regel, USP-rij met kleine iconen (levering, retour, personaliseren) direct onder de hero, daarna "shop per moment" als grote fotokaarten met aantal producten en pijl.
+- **Donker en statig (financieel, vastgoed, advies)**: diep bordeaux/marine achtergrond, hoofdletters in een klassieke schreef, fijn rasterpatroon, een eigen lijntekening als hero (bijv. gevelrij met verlichte ramen) die tijdens scrollen verandert (een deur die opengaat, ramen die aangaan), knoppen "Plan een kennismaking" en "Bekijk track record".
+- **Technisch en industrieel (techniek, productie, keuring)**: harde kleurvlakken, grote cijfers, tellers (bijv. "0000 RPM" die meeloopt met scrollen), genummerde categorietegels, een doorlopende ticker/marquee in kleur, sleepbaar of draaibaar onderdeel.
+- **Rustig en ruim (studio, coach, praktijk)**: veel witruimte, één beeld per scherm, ademende animatie, korte zinnen.
+
+**Bouwstenen die ze allemaal hebben** (altijd doen):
+1. **Eén signatuur-element dat bij het vak hoort** en meebeweegt met scrollen of aanraking (teller, tekening die zich opbouwt, kiezer in stappen, deur die opengaat). Bouw het met `data-scrub`, `data-tekenen`, `data-verhaal`, `data-horizontaal`, `data-onthul`; geen eigen script. Bedenk het element vanuit wat het bedrijf doet, niet uit deze lijst.
+2. **Vaste actiebalk onderin** op mobiel (Bel / Plan een afspraak) en een zwevende pil bovenaan.
+3. **Doorlopende ticker** (marquee) met hun diensten of werkgebied, in merkkleur.
+4. **Genummerde categorie- of dienstkaarten** (alleen als het echt een lijst is) met iconen en aantallen die in de bron staan.
+5. **USP-rij onder de hero** met 3 tot 4 echte feiten (levering, openingstijden, werkgebied, certificaat) met kleine iconen.
+6. **Kop met een tweede, cursieve regel of één geaccentueerd woord**, maar variëren: niet in elk concept hetzelfde trucje.
+7. **Eigen foto's groot en bijgesneden op onderwerp**; geen stockbeeld tenzij nodig (dan eerlijk labelen).
+8. **Mobiel eerst**: eerste scherm moet al kloppen (kop, uitleg, twee knoppen, beeld).
+
+**Zo kies je**: lees `bron.json` (branche, toon, kleuren, foto's), kies de richting die het best past, en schrijf bovenaan je werkbestand in één regel welke richting en welk signatuur-element je kiest. Twee concepten achter elkaar met dezelfde richting én hetzelfde signatuur-element mag niet.
 
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
