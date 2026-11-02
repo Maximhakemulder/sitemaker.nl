@@ -75,6 +75,21 @@ Maxim vergeleek met de concepten van een concurrent (tandartspraktijk, keuringsb
 7. **Zichtbaar afgemaakt.** Geen lege vlakken, geen dubbele foto's achter elkaar, geen half uitgewerkte blokken, geen tekst in de verkeerde taal.
 Komt het concept na jouw eigen beoordeling niet op dit niveau (hero + minimaal acht secties, één kenmerkend element, goede mobiele weergave), werk dan door tot het wel zo is.
 
+## Stijl-richting: de "Totaal-look" (besluit Maxim 02-11-2026: "deze design style wil ik ook")
+Gezien op het concept van de concurrent voor een tandartspraktijk (gezien in de browser, 02-11). Dit is de basisstijl van onze concepten, binnen het ontwerp-DNA (het DNA bepaalt nog steeds het skelet; dit is de afwerking). Neem de stijl over, nooit hun teksten, foto's of exacte indeling.
+- **Laadmoment**: effen lichte achtergrond, bedrijfsnaam in kleine, wijd gespatieerde hoofdletters in het midden, dan een zachte onthulling van de pagina.
+- **Zwevende pil-kop**: een afgeronde, half doorzichtige balk met blur, los van de rand (marge boven en opzij), links logo, in het midden de menu-items (actief item in merkkleur), rechts een gevulde pil-knop "Maak een afspraak" in de merkkleur. Op mobiel: logo + menuknop + Bel-knop.
+- **Hero met volle foto**: hun beste eigen foto over de hele breedte, donkere verloop-laag voor leesbaarheid, grote witte kop in een strakke, vette groteske (bijv. Plus Jakarta Sans, Manrope of Outfit, strak gezet met negatieve letterspatiëring). **Eén woord** van de kop in een elegante schreef-cursief (bijv. Instrument Serif of Fraunces italic) in een lichte tint van de merkkleur. Daaronder 2 tot 3 regels uitleg, twee pil-knoppen naast elkaar (gevuld + omlijnd met telefoonnummer) en onderin drie "glas"-kaartjes (half doorzichtig, ronde hoeken, icoon + titel + één regel): bijv. Ons team, Locatie & route, Afspraak maken.
+- **Status-pil in de hero** ("Nu gesloten, morgen open vanaf 08:30" of "Nu open tot 17:00"), alleen als de openingstijden in `bron.json` staan (dat doet ons script, gebruik de bestaande "nu open"-functie).
+- **Secties als grote kaarten**: heel lichte, met de merkkleur getinte achtergrond; daarop witte kaarten met grote afgeronde hoeken (ca. 24 tot 32 px) en zachte schaduw. Binnen de kaart tekst en foto naast elkaar.
+- **Kopjes**: klein label met een kort streepje ervoor ("— Onze waarden"), dan een grote, strakke kop waarin één of twee woorden in schreef-cursief en in de merkkleur staan. Maak dit consistent in alle secties.
+- **Waardenkaarten**: genummerd 01 / 02 / 03, met rechtsboven een zacht gekleurd icoon-vlak (ons iconen-sprite), korte titel en 1 tot 2 regels.
+- **Donkere cijferband**: één sectie in diep donker (afgeleid van hun merkkleur, niet zwart) met afgeronde hoeken, een zachte gloed in de hoek en een rij grote cijfers met een "+" in de merkkleur. Alleen echte cijfers uit `bron.json`; zijn die er niet, laat dit blok dan weg of vervang het door hun diensten/werkwijze in dezelfde donkere stijl.
+- **Knoppen**: altijd pillen (volledig afgerond), gevuld in merkkleur of omlijnd; een hover/tik met lichte lift.
+- **Foto's**: echte foto's van team, ruimte en werk; mensen mogen herkenbaar in beeld zijn. Teamkaartje met naam en functie over de foto geschoven (alleen namen die in `bron.json` staan).
+- **Kleur**: één merkkleur (uit het logo) + een lichte tint ervan + een donkere variant. Verder wit en bijna-wit. Niet meer dan één accentkleur.
+- Bij bedrijven waar dit echt niet past (bijv. een stoere bouwer of notaris) mag de typografie en kleur anders, maar het opzet (zwevende kop, volle hero, kaarten, cijfer/waardenband, pil-knoppen) blijft.
+
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
    foto's in `afbeeldingen/` met de Read-tool. Kijk echt: wat doet dit bedrijf, welke foto's zijn goed, welke kleuren heeft het logo?
