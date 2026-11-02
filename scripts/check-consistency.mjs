@@ -8,12 +8,12 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
   else if (/\.(html|js|mjs)$/.test(e.name) && !p.includes("logo-pdf")) files.push(p);
 });
 walk("public"); walk("netlify/lib");
-const ALLOWED = new Set(["€99,95", "€69,95", "€0,00"]);
+const ALLOWED = new Set(["€99,95", "€49,95", "€0,00"]);
 let bad = 0;
 for (const f of files) {
   // Oude standaard-mailteksten (OUDE_TEMPLATES) zijn alleen om te herkennen en te vervangen; die tellen niet mee.
   const t = fs.readFileSync(f, "utf8").replace(/const OUDE_TEMPLATES = \[[\s\S]*?\n\];/, "");
-  for (const m of t.matchAll(/€\s?\d+(?:[.,]\d+)?/g)) if (!ALLOWED.has(m[0]) && !/(84,64|120,94)/.test(m[0])) { console.log(`${f}: onverwacht bedrag ${m[0]}`); bad++; }
+  for (const m of t.matchAll(/€\s?\d+(?:[.,]\d+)?/g)) if (!ALLOWED.has(m[0]) && !/(60,44|84,64|120,94)/.test(m[0])) { console.log(`${f}: onverwacht bedrag ${m[0]}`); bad++; }
   // 24 = gratis ontwerp via /start en wijzigingen (besluit Maxim 29-10-2026)
   for (const m of t.matchAll(/(\d+)\s*(?:werkdagen|uur)\b/g)) if (!["48", "2", "15", "1", "8", "24"].includes(m[1])) { console.log(`${f}: onverwachte termijn "${m[0]}"`); bad++; }
   if (/webshop/i.test(t) && /webshop (bouwen|maken) we wel/i.test(t)) { console.log(`${f}: webshop-belofte`); bad++; }

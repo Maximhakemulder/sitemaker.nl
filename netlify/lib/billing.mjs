@@ -5,7 +5,7 @@ import { putFile } from "./files.mjs";
 import { sendMail, brandHtml } from "./mail.mjs";
 import { LOGO_PNG_B64 } from "./logo-pdf.mjs";
 
-// Bedrag uit het aanbod (bijv. 6995) omzetten naar wat de klant betaalt, afhankelijk van de btw-instelling.
+// Bedrag uit het aanbod (bijv. 4995) omzetten naar wat de klant betaalt, afhankelijk van de btw-instelling.
 export function priceParts(baseCents, billing) {
   const rate = Number(billing.vatRate ?? 21);
   if (billing.pricesIncludeVat === true) {
