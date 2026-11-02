@@ -935,7 +935,7 @@
       <div class="veld"><label for="f-klant">Klant</label><select id="f-klant" name="customerId">${customers.map((c) => html`<option value="${c.id}" ${String(c.id) === String(klantId) ? raw("selected") : ""}>${c.company}</option>`)}</select><div class="fout" data-fout-voor="customerId"></div></div>
       <div class="veld"><label for="f-oms">Omschrijving</label><input id="f-oms" name="description" required placeholder="Bijvoorbeeld: Abonnement november"></div>
       <div class="rij3">
-        <div class="veld"><label for="f-bedrag">Totaal incl. btw</label><input id="f-bedrag" name="amount" inputmode="decimal" placeholder="60,44" required><div class="fout" data-fout-voor="amount"></div></div>
+        <div class="veld"><label for="f-bedrag">Totaal incl. btw</label><input id="f-bedrag" name="amount" inputmode="decimal" placeholder="72,54" required><div class="fout" data-fout-voor="amount"></div></div>
         <div class="veld"><label for="f-btw">Btw</label><select id="f-btw" name="vatRate"><option value="21">21%</option><option value="9">9%</option><option value="0">0%</option></select></div>
         <div class="veld"><label for="f-datum">Datum</label><input id="f-datum" name="date" type="date" value="${vandaag}"></div>
       </div>
@@ -1750,8 +1750,8 @@ ${p.body}</div>
             <button class="knop" type="submit">Opslaan</button></form>
           <form class="paneel" id="f-fact" novalidate><h2>Facturatie en btw</h2>
             <fieldset class="veld"><legend class="label"><b>Btw op de factuur</b></legend><p class="hulp">Op de website en in het portaal staat geen btw. Op de factuur wordt de btw wel uitgesplitst.</p>
-              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="false" ${bi.pricesIncludeVat === false ? raw("checked") : ""}> Klant betaalt €49,95 + btw</label>
-              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="true" ${bi.pricesIncludeVat === true ? raw("checked") : ""}> Klant betaalt €49,95 (btw zit erin; standaard)</label>
+              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="false" ${bi.pricesIncludeVat === false ? raw("checked") : ""}> Klant betaalt €59,95 + btw</label>
+              <label class="vinkje"><input type="radio" name="pricesIncludeVat" value="true" ${bi.pricesIncludeVat === true ? raw("checked") : ""}> Klant betaalt €59,95 (btw zit erin; standaard)</label>
               ${bi.pricesIncludeVat == null ? html`<div class="hulp">Nog niet gekozen. Automatische betalingen starten pas als dit is ingesteld.</div>` : ""}</fieldset>
             <div class="rij3"><div class="veld"><label for="s-vat">Btw-tarief</label><select id="s-vat" name="vatRate">${[21, 9, 0].map((r) => html`<option value="${r}" ${r === bi.vatRate ? raw("selected") : ""}>${r}%</option>`)}</select></div>
               ${v("paymentTermDays", "Betaaltermijn (dagen)", bi.paymentTermDays, { type: "number" })}${v("invoicePrefix", "Factuurprefix", bi.invoicePrefix)}</div>
