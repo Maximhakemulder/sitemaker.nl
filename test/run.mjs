@@ -268,7 +268,7 @@ await test("eerste betaling → machtiging (incasso) → factuur met PDF", async
   assert.equal(w.status, 200); assert.match(await w.text(), /^TRUE\|/);
   const [c] = await q("SELECT * FROM customers WHERE id = $1", [c2]);
   assert.equal(c.billing_status, "actief"); assert.match(c.mollie_subscription_id, /^IO-/);
-  const m = __fake.mandates[c.mollie_subscription_id]; assert.equal(m.type, "RECURRING"); assert.equal(m.customer.bankAccount.iban, "NL91ABNA0417164300"); assert.equal(m.amount.value, 8464);
+  const m = __fake.mandates[c.mollie_subscription_id]; assert.equal(m.type, "RECURRING"); assert.equal(m.customer.bankAccount.iban, "NL91ABNA0417164300"); assert.equal(m.amount.value, 6044);
   const st = await call("GET", "portal/state", { cookie: k2 });
   assert.equal(st.data.invoices.length, 1); assert.equal(st.data.invoices[0].status, "betaald"); assert.equal(st.data.invoices[0].hasPdf, true);
   await handleExchange({ action: "new_ppt", order_id: o.orderId }); // dubbele exchange: geen tweede factuur
@@ -278,11 +278,11 @@ await test("eerste betaling → machtiging (incasso) → factuur met PDF", async
 });
 await test("maandincasso geïnd → nieuwe factuur; storno → status en melding", async () => {
   const [c] = await q("SELECT * FROM customers WHERE id = $1", [c2]);
-  __fake.debits["IL-1111-2222-3333"] = { status: { code: 100 }, amount: { value: 8464 }, mandate: { code: c.mollie_subscription_id } };
-  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "84.64" });
-  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "84.64" });
+  __fake.debits["IL-1111-2222-3333"] = { status: { code: 100 }, amount: { value: 6044 }, mandate: { code: c.mollie_subscription_id } };
+  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "60.44" });
+  await exchange({ action: "incassocollected", referenceId: "IL-1111-2222-3333", mandateId: c.mollie_subscription_id, amount: "60.44" });
   assert.equal((await q("SELECT COUNT(*)::int n FROM invoices WHERE customer_id = $1", [c2]))[0].n, 2);
-  __fake.debits["IL-4444-5555-6666"] = { status: { code: 106 }, decline: { name: "Onvoldoende saldo" }, amount: { value: 8464 }, mandate: { code: c.mollie_subscription_id } };
+  __fake.debits["IL-4444-5555-6666"] = { status: { code: 106 }, decline: { name: "Onvoldoende saldo" }, amount: { value: 6044 }, mandate: { code: c.mollie_subscription_id } };
   await exchange({ action: "incassostorno", referenceId: "IL-4444-5555-6666", mandateId: c.mollie_subscription_id });
   assert.equal((await q("SELECT billing_status FROM customers WHERE id = $1", [c2]))[0].billing_status, "betaling_mislukt");
   assert.equal((await q("SELECT COUNT(*)::int n FROM invoices WHERE customer_id = $1", [c2]))[0].n, 2);
@@ -298,7 +298,7 @@ await test("leads toevoegen, CSV importeren, goedkeuren en versturen met afmeldl
   assert.equal(zk.status, 200); assert.ok(zk.data.leads.some((l) => l.company === "Hovenier Groen"), "snel zoeken op domein/e-mail");
   const ids = list.data.leads.filter((l) => l.status === "nieuw").map((l) => l.id);
   const prev = await call("GET", `hq/leads/${ids[0]}/preview?kind=eerste`, { cookie: admin });
-  assert.match(prev.data.body, /Vragen, of zin om even kort te bellen/); assert.match(prev.data.body, /afmelden\?l=/);
+  assert.match(prev.data.body, /Zullen we een korte meeting inplannen/); assert.match(prev.data.body, /afmelden\?l=/);
   // Zonder website geen voorbeeldwebsite, dus geen eerste mail.
   assert.equal((await call("POST", "hq/leads/action", { cookie: admin, body: { action: "goedkeuren", ids } })).data.changed, 0);
   for (const id of ids) {
