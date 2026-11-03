@@ -122,6 +122,11 @@ Maxim: "ik mis het luxe, kwalitatieve van de concurrent: grote mooie afbeeldinge
 - **Vermijd het "oude" gevoel**: geen platte witte blokken met alleen tekst, geen standaard rij kaarten met kleine icoontjes als hoofdinhoud, geen kleine foto's naast lange tekst. Elke sectie heeft een beeld of beweging als hoofdmoment.
 - **Mobiel**: dezelfde hero in staand formaat (`object-position` op het onderwerp), kop en twee knoppen op het eerste scherm.
 
+## Interactief en high-end (besluit Maxim 03-11-2026)
+- Elk concept krijgt één **interactief onderdeel dat bij hun vak hoort** (zie het ontwerp-prompt, punt 4): rekenhulp/indicatie met schuifregelaar (`data-rekenaar`), kiezer of tabbladen (`data-tabs`), filterbare FAQ (`data-filter`), carrousel (`data-carrousel`), oplopende cijfers (`data-teller`). Bij concurrenten: rekenaar met schuifregelaars, "zoetmomenten"-kiezer, RPM-teller.
+- Prijzen en cijfers alleen uit `bron.json`. Geen prijzen bekend → geen bedragen, maar een kiezer/advies. Indicatie altijd als "indicatie, geen offerte" labelen.
+- Laadscherm met het logo van de klant (kort, max. 0,6 s). 15 tot 20 secties. Hero = één grote foto, geen slider.
+
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
    foto's in `afbeeldingen/` met de Read-tool. Kijk echt: wat doet dit bedrijf, welke foto's zijn goed, welke kleuren heeft het logo?
