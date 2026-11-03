@@ -18,7 +18,7 @@ export const DNA = {
     lokaal: "Lokaal en trots: hun stad/wijk centraal, kaartdetails, straatnamen, buurtgevoel.",
   },
   hero: {
-    volbeeld: "Foto-slider over de volle breedte en (bijna) het hele scherm: 3 tot 4 foto's die in elkaar overlopen met langzame zoom (CSS), grote kop linksonder op een donker verloop; geen kaart, geen badge.",
+    volbeeld: "Één grote, toffe foto over de volle breedte en (bijna) het hele scherm met langzame zoom/parallax (geen slider), grote kop linksonder op een donker verloop; geen kaart, geen badge.",
     typografisch: "De kop ís het beeld: gigantisch (tot ~11vw), over de volle breedte; een foto klein als uitsnede tussen of naast de letters.",
     gesplitst: "Scherm 50/50 tot aan de randen: foto loopt door tot de rand (geen afgeronde kaart), tekstkant op een zachte tint van hun kleur.",
     collage: "3 of 4 eigen foto's in een asymmetrische compositie van verschillende formaten die licht overlappen; de kop ertussen.",

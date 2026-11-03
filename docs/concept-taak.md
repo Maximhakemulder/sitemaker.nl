@@ -115,12 +115,17 @@ Uit alle zeven concurrent-concepten blijkt: elke site heeft een **eigen stijl di
 ## Hero-standaard: groot, luxe en in beweging (besluit Maxim 02-11-2026, na de eerste 5 testconcepten)
 Maxim: "ik mis het luxe, kwalitatieve van de concurrent: grote mooie afbeeldingen, hero, bewegende elementen. Je doet nog te veel oude designs." Dit gaat voor het ontwerp-DNA als het erom gaat hoe de hero eruitziet.
 - **Hero = bijna het hele scherm (90 tot 100 vh) met grote, scherpe eigen foto's.** Liggend (landscape) in de meeste gevallen, volle breedte tot de rand; staand alleen als het concept erom vraagt. Geen kleine kaart of kleine foto in een hoek.
-- **Beeldslider zonder JavaScript**: 3 tot 4 van hun beste foto's als lagen boven elkaar met CSS `@keyframes` (crossfade, ~6 s per foto, `animation-delay` per laag, laatste laag terug naar de eerste) plus langzame Ken Burns-zoom (`transform: scale(1.0)` naar `1.08`). Eerste foto staat er direct (geen lege hero), bij `prefers-reduced-motion` alleen de eerste foto. Heeft het bedrijf minder dan 3 goede foto's: één foto met Ken Burns + `data-parallax`.
+- **Eén toffe, grote hero-foto, geen slider** (aanscherping Maxim 02-11, 21:50: "hoeft geen slider met meerdere foto's, ik bedoelde 1 toffe"). Kies de allermooiste, scherpste eigen foto (liggend, met een duidelijk onderwerp) en laat die het werk doen: langzame Ken Burns-zoom in CSS (`scale(1.0)` naar `1.08`) en/of `data-parallax` bij scrollen, plus de kop-animatie hieronder. Geen crossfade tussen meerdere foto's. `prefers-reduced-motion`: geen zoom.
 - **Koptekst animeert bij het laden**: regels komen één voor één omhoog uit een masker (CSS `animation`, korte vertraging), knoppen daarna. Donker verloop onder de tekst voor leesbaarheid.
 - **Meer beweging door de hele pagina**: `data-reveal` op koppen en kaarten, `data-parallax` op foto's, `data-schaal` op brede beelden, `data-onthul` op een beeld per sectie, ticker, `data-horizontaal` voor een spoor met grote foto's. Minimaal 5 verschillende bewegingen per pagina, altijd soepel op mobiel (geen zware effecten, `will-change` alleen op bewegende lagen).
 - **Grote foto's ook elders**: minimaal 3 beeldvullende of bijna beeldvullende foto-momenten tussen de secties. Foto's scherp en goed bijgesneden op het onderwerp; nooit uitgerekt of onscherp. Te weinig eigen foto's: sfeerbeelden (gelabeld) zoals nu.
 - **Vermijd het "oude" gevoel**: geen platte witte blokken met alleen tekst, geen standaard rij kaarten met kleine icoontjes als hoofdinhoud, geen kleine foto's naast lange tekst. Elke sectie heeft een beeld of beweging als hoofdmoment.
 - **Mobiel**: dezelfde hero in staand formaat (`object-position` op het onderwerp), kop en twee knoppen op het eerste scherm.
+
+## Interactief en high-end (besluit Maxim 03-11-2026)
+- Elk concept krijgt één **interactief onderdeel dat bij hun vak hoort** (zie het ontwerp-prompt, punt 4): rekenhulp/indicatie met schuifregelaar (`data-rekenaar`), kiezer of tabbladen (`data-tabs`), filterbare FAQ (`data-filter`), carrousel (`data-carrousel`), oplopende cijfers (`data-teller`). Bij concurrenten: rekenaar met schuifregelaars, "zoetmomenten"-kiezer, RPM-teller.
+- Prijzen en cijfers alleen uit `bron.json`. Geen prijzen bekend → geen bedragen, maar een kiezer/advies. Indicatie altijd als "indicatie, geen offerte" labelen.
+- Laadscherm met het logo van de klant (kort, max. 0,6 s). 15 tot 20 secties. Hero = één grote foto, geen slider.
 
 ## Per concept
 1. **Lees** `bron.json` (bedrijf, tekst van hun site, kleuren, analyse, instructie van Maxim) en **bekijk** het logo en alle
