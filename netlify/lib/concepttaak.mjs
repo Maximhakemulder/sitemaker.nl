@@ -144,7 +144,7 @@ export async function eigenAfbeelding(id, { url, logo = false, alt = "" } = {}) 
 
 // Resultaat opslaan: content.json (zelfde eerlijkheidscontrole als altijd) + ontwerp-HTML (zelfde veiligheidsfilter).
 export async function opslaan(id, { content, html }) {
-  const c = await eigen(id, ["ontwerpen", "ontwerp"]); // een claim die na 3 uur is verlopen mag nog opgeslagen worden
+  const c = await eigen(id, ["ontwerpen", "ontwerp"]); // een verlopen claim mag nog opgeslagen worden
   const lead = await one("SELECT * FROM leads WHERE id = $1", [c.lead_id]);
   const images = c.images || [];
   const tekst = c.bron?.tekst || "";
