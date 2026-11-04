@@ -158,6 +158,11 @@ export async function getSettings() {
     const t = tpl[k];
     if (t && OUDE_TEMPLATES.some((o) => o.body === t.body)) tpl[k] = { ...DEFAULT_SETTINGS.b2b.templates[k] };
   }
+  // Opgeslagen teksten (ook aangepaste) met een oud bedrag vervangen we door de standaardtekst met de huidige prijzen.
+  const oudBedrag = new RegExp(["299", "69", "49"].map((n) => n + ",95").join("|"));
+  for (const k of Object.keys(tpl)) {
+    if (tpl[k]?.body && oudBedrag.test(tpl[k].body) && DEFAULT_SETTINGS.b2b.templates[k]) tpl[k] = { ...DEFAULT_SETTINGS.b2b.templates[k] };
+  }
   return out;
 }
 export async function saveSetting(key, value) {
