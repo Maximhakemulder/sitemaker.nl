@@ -8,7 +8,7 @@
 
   function vul(d) {
     const naam = d.rechtsvorm || "MH Holding B.V.";
-    const volledig = [naam +  ` (handelsnaam ${d.naam || "Sitemaker"})`, d.adres, `KvK ${d.kvk || "58436254"}`, d.btw ? `btw ${d.btw}` : ""].filter(Boolean).join(", ");
+    const volledig = [naam +  ` (handelsnaam ${d.naam || "Sitemaker"})`, d.adres, `KvK ${d.kvk || "86540440"}`, d.btw ? `btw ${d.btw}` : ""].filter(Boolean).join(", ");
     const waarden = {
       volledig, email: d.email || "hallo@sitemaker.nl", telefoon: d.telefoon || "085 200 92 05", btwregel: d.btw ? ` · btw ${d.btw}` : "", conceptdagen: String(d.conceptDagen || 60),
       btwzin: d.pricesIncludeVat === false ? "De genoemde bedragen zijn exclusief btw." : d.pricesIncludeVat === true ? "De genoemde bedragen zijn inclusief btw." : "Op je factuur staat hoe de btw is verwerkt.",
