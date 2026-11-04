@@ -75,7 +75,7 @@ export const DEFAULT_SETTINGS = {
   // Tracking op de website (alleen na toestemming via de cookiebanner).
   tracking: { metaPixelId: "" },
   company: {
-    name: "Sitemaker", legalName: "MH Holding B.V.", address: "", postcode: "", city: "", kvk: "58436254", vat: "", iban: "",
+    name: "Sitemaker", legalName: "MH Holding B.V.", address: "", postcode: "", city: "", kvk: "86540440", vat: "", iban: "",
     email: "hallo@sitemaker.nl", phone: "085 200 92 05", website: "https://sitemaker.nl",
   },
   billing: {
